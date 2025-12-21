@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Ruta del dataset
-DATA_PATH = r"G:\CUCEI\Fraud-AI\Files\creditcard.csv"
+DATA_PATH = r"G:\CUCEI\Fraud-AI\Files\dataset2.csv"
 # Carpeta para guardar gráficas
 PLOTS_DIR = os.path.join(os.path.dirname(__file__), "plots")
 os.makedirs(PLOTS_DIR, exist_ok=True)
