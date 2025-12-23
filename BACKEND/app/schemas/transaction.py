@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
 class TransactionCreate(BaseModel):
-    transaction_id: str
-    user_id: str
+    transaction_id: int
+    user_id: int
     amount: float
     hour: int
     day_of_week: int

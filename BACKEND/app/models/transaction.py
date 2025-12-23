@@ -1,27 +1,23 @@
-from sqlalchemy import Column, Integer, Float, String, Boolean
+from sqlalchemy import (
+    Column, BigInteger, Numeric, String,
+    Boolean, SmallInteger, TIMESTAMP, ForeignKey
+)
 from app.db.base import Base
 
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    transaction_id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, index=True)
+    transaction_id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id"))
+    merchant_id = Column(BigInteger)
 
-    amount = Column(Float)
-    hour = Column(Integer)
-    day_of_week = Column(Integer)
+    amount = Column(Numeric(14,2))
+    currency = Column(String(5))
+    timestamp = Column(TIMESTAMP)
 
-    merchant_category = Column(String)
-    country = Column(String)
+    hour = Column(SmallInteger)
+    day_of_week = Column(SmallInteger)
+
+    country = Column(String(5))
     is_international = Column(Boolean)
-
-    device_type = Column(String)
-
-    transactions_last_24h = Column(Integer)
-    avg_amount_user = Column(Float)
-    amount_vs_avg = Column(Float)
-
-    failed_attempts = Column(Integer)
-    risk_score_rule = Column(Float)
-
-    is_fraud = Column(Boolean)
+    device_type = Column(String(10))
