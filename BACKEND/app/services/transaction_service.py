@@ -4,6 +4,7 @@ from app.models.fraud_prediction import FraudPrediction
 from app.queries.transaction_queries import create_transaction
 from app.queries.prediction_queries import save_prediction
 from app.ml.fraud_model import predict_fraud
+from app.services.user_behavior_service import update_user_behavior
 
 def process_transaction(db, tx_data):
 
@@ -23,6 +24,14 @@ def process_transaction(db, tx_data):
     )
 
     create_transaction(db, transaction)
+
+    # Actualizar features del usuario
+    update_user_behavior(
+        db=db,
+        user_id=tx_data["user_id"],
+        amount=tx_data["amount"],
+        avg_amount_user=tx_data["avg_amount_user"]
+    )
 
     # Features que se van a usar para ML
     features = {
