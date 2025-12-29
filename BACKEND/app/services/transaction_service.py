@@ -6,6 +6,7 @@ from app.queries.prediction_queries import save_prediction
 from app.ml.fraud_model import predict_fraud
 from app.services.user_behavior_service import update_user_behavior
 from app.ml.explainability import explain_transaction
+from app.queries.fraud_explanation_queries import save_explanations
 
 def process_transaction(db, tx_data):
 
@@ -66,6 +67,14 @@ def process_transaction(db, tx_data):
 
     if prob >= 0.7:
         explanations = explain_transaction(features)
+
+    # Guardar explicaciones SHAP si existen
+    if explanations:
+        save_explanations(
+            db=db,
+            prediction_id=fraud_pred.prediction_id,
+            explanations=explanations
+        )
 
     return {
         "transaction_id": transaction.transaction_id,
