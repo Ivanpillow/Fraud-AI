@@ -1,15 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import transactions
-import uvicorn
-import os
-
 from app.db.base import Base
 from app.db.session import engine
-
+from app.routers import transactions
+from app.routers import metrics
 from app.models.user import User
 from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
+import uvicorn
+import os
+
 
 
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,7 @@ app = FastAPI(
 # )
 
 app.include_router(transactions.router)
+app.include_router(metrics.router)
 
 
 

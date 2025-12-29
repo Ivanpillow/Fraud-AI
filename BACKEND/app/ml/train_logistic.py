@@ -4,7 +4,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import os
-import pandas as pd
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -25,28 +24,33 @@ FEATURES = [
     "risk_score_rule"
 ]
 
-X = df[FEATURES]
+X = df[FEATURES]           # 👈 DataFrame
 y = df["is_fraud"]
+
+# Split (70% entrenamiento, 30% prueba)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42
+)
 
 # Escalado (Normalización)
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
-# Split (Separar datos para entrenamiento y prueba)
-X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.3, random_state=42
-)
-
-# Modelo (Entrenamiento)
+# Modelo (Regresión Logística)
 model = LogisticRegression(
     max_iter=1000,
-    class_weight="balanced" 
-) # Con class weight balanced, el fraude recibe mucho más peso en la función de pérdida, ya que en datasets de fraude es muy común que haya un desbalance significativo entre clases (muchos más casos no fraudulentos que fraudulentos
+    class_weight="balanced"
+)
 
-model.fit(X_train, y_train)
+model.fit(X_train_scaled, y_train)
 
-# Guardar modelo y scaler
-joblib.dump(model, "app/ml/model.pkl")
-joblib.dump(scaler, "app/ml/scaler.pkl")
+# Background para SHAP (Explicabilidad)
+background = X_train.sample(100, random_state=42)
 
-print("Modelo entrenado y guardado correctamente")
+# Guardar artefactos
+joblib.dump(model, os.path.join(BASE_DIR, "model.pkl"))
+joblib.dump(scaler, os.path.join(BASE_DIR, "scaler.pkl"))
+joblib.dump(background, os.path.join(BASE_DIR, "background.pkl"))
+
+print("Modelo, scaler y background guardados correctamente")
