@@ -8,6 +8,11 @@ from app.services.user_behavior_service import update_user_behavior
 from app.ml.utils.explainability import explain_transaction
 from app.queries.fraud_explanation_queries import save_explanations
 
+from app.services.user_behavior_service import (
+    get_user_stats,
+    calculate_amount_vs_avg,
+    calculate_risk_score_rule,
+)
 
 def process_transaction(db, tx_data):
 
@@ -28,13 +33,6 @@ def process_transaction(db, tx_data):
 
     create_transaction(db, transaction)
 
-    # Actualizar features del usuario
-    update_user_behavior(
-        db=db,
-        user_id=tx_data["user_id"],
-        amount=tx_data["amount"],
-        avg_amount_user=tx_data["avg_amount_user"]
-    )
 
     # Features que se van a usar para ML
     features = {
@@ -56,7 +54,7 @@ def process_transaction(db, tx_data):
  
     if prob >= 0.8:
         decision = "block"
-    elif prob >= 0.40: 
+    elif prob >= 0.45: 
         decision = "review"
     else:
         decision = "allow"
@@ -72,10 +70,28 @@ def process_transaction(db, tx_data):
 
     save_prediction(db, fraud_pred)
 
+    # Actualizar comportamiento del usuario DESPUÉS de la transacción
+    update_user_behavior(
+        db=db,
+        user_id=tx_data["user_id"],
+        amount=tx_data["amount"],
+        avg_amount_user=tx_data["avg_amount_user"]
+    )
+
     explanations = None
  
-    if prob >= 0.40:   # 0.45 para que explique tanto en review como block
-        explanations = explain_transaction(features)
+    if prob >= 0.45:   # 0.45 para que explique tanto en review como block
+        logistic_features = {
+            "amount_vs_avg": features["amount_vs_avg"],
+            "transactions_last_24h": features["transactions_last_24h"],
+            "hour": features["hour"],
+            "day_of_week": features["day_of_week"],
+            "failed_attempts": features["failed_attempts"],
+            "is_international": features["is_international"],
+            "risk_score_rule": features["risk_score_rule"],
+        }
+
+        explanations = explain_transaction(logistic_features)
 
     # Guardar explicaciones SHAP si existen
     if explanations:
@@ -91,3 +107,54 @@ def process_transaction(db, tx_data):
         "decision": fraud_pred.decision,
         "explanations": explanations
     }
+
+
+
+
+
+def process_transaction_simple(db, tx_data):
+
+    now = datetime.utcnow()
+
+    hour = tx_data.get("hour", now.hour)
+    day_of_week = tx_data.get("day_of_week", now.weekday())
+
+    # Obtener historial del usuario
+    user_stats = get_user_stats(db, tx_data["user_id"])
+
+    transactions_last_24h = user_stats["transactions_last_24h"]
+    avg_amount_user = user_stats["avg_amount_user"]
+    failed_attempts = user_stats["failed_attempts"]
+
+    # Calcular amount_vs_avg
+    amount_vs_avg = calculate_amount_vs_avg(
+        amount=tx_data["amount"],
+        avg_amount_user=avg_amount_user
+    )
+
+    # Determinar si es internacional
+    is_international = tx_data["country"] != "MX"
+
+    # Calcular risk_score_rule
+    risk_score_rule = calculate_risk_score_rule(
+        amount_vs_avg=amount_vs_avg,
+        transactions_last_24h=transactions_last_24h,
+        failed_attempts=failed_attempts,
+        is_international=is_international,
+        hour=hour
+    )
+
+    # Construir payload COMPLETO (interno)
+    full_tx = {
+        **tx_data,
+        "hour": hour,
+        "day_of_week": day_of_week,
+        "transactions_last_24h": transactions_last_24h,
+        "avg_amount_user": avg_amount_user,
+        "amount_vs_avg": amount_vs_avg,
+        "failed_attempts": failed_attempts,
+        "is_international": is_international,
+        "risk_score_rule": risk_score_rule
+    }
+
+    return process_transaction(db, full_tx)
