@@ -9,3 +9,4 @@ router = APIRouter(prefix="/transactions", tags=["Transactions"])
 @router.post("/")
 def create_transaction(tx: TransactionCreate, db: Session = Depends(get_db)):
     return process_transaction(db, tx.dict())
+

@@ -18,3 +18,5 @@ class TransactionCreate(BaseModel):
 
 class TransactionResponse(TransactionCreate):
     is_fraud: bool
+
+

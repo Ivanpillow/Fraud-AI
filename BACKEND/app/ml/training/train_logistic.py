@@ -15,6 +15,7 @@ DATASET_PATH = os.path.join(
 df = pd.read_csv(DATASET_PATH)
 
 FEATURES = [
+    "amount",
     "amount_vs_avg",
     "transactions_last_24h",
     "hour",
@@ -24,7 +25,7 @@ FEATURES = [
     "risk_score_rule"
 ]
 
-X = df[FEATURES]           # 👈 DataFrame
+X = df[FEATURES]           # DataFrame
 y = df["is_fraud"]
 
 # Split (70% entrenamiento, 30% prueba)

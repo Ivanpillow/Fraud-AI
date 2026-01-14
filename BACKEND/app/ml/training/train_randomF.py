@@ -20,8 +20,7 @@ FEATURES = [
     "hour",
     "day_of_week",
     "failed_attempts",
-    "is_international",
-    "risk_score_rule"
+    "is_international"
 ]
 
 X = df[FEATURES]

@@ -10,6 +10,7 @@ model = joblib.load(os.path.join(PARENT_DIR, "model.pkl"))
 scaler = joblib.load(os.path.join(PARENT_DIR, "scaler.pkl"))
 
 FEATURE_ORDER = [
+    "amount",
     "amount_vs_avg",
     "transactions_last_24h",
     "hour",
