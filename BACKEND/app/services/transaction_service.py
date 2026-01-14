@@ -3,9 +3,9 @@ from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
 from app.queries.transaction_queries import create_transaction
 from app.queries.prediction_queries import save_prediction
-from app.ml.fraud_model import predict_fraud
+from app.ml.predictors.fraud_ensemble import predict_fraud_combined
 from app.services.user_behavior_service import update_user_behavior
-from app.ml.explainability import explain_transaction
+from app.ml.utils.explainability import explain_transaction
 from app.queries.fraud_explanation_queries import save_explanations
 
 def process_transaction(db, tx_data):
@@ -50,22 +50,32 @@ def process_transaction(db, tx_data):
     }
 
     # Predicción
-    prediction, prob = predict_fraud(features)
+    result = predict_fraud_combined(features)
+
+    prediction = result["label"]
+    prob = result["final_score"]
+ 
+    if prob >= 0.8:
+        decision = "block"
+    elif prob >= 0.45:
+        decision = "review"
+    else:
+        decision = "allow"
 
     fraud_pred = FraudPrediction(
         transaction_id=transaction.transaction_id,
-        model_version="v1",
+        model_version="RF_LG_v1",
         fraud_probability=prob,
         prediction_label=prediction,
         risk_score_rule=tx_data["risk_score_rule"],
-        decision="block" if prob > 0.8 else "allow"
+        decision=decision
     )
 
     save_prediction(db, fraud_pred)
 
     explanations = None
 
-    if prob >= 0.7:
+    if prob >= 0.6:
         explanations = explain_transaction(features)
 
     # Guardar explicaciones SHAP si existen

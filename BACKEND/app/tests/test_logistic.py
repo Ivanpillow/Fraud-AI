@@ -1,4 +1,4 @@
-from app.ml.fraud_model import predict_fraud
+from app.ml.predictors.fraud_model import predict_fraud
 
 def run_tests():
     scenarios = [

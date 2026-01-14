@@ -4,10 +4,12 @@ import joblib
 import os
 
 BASE_DIR = os.path.dirname(__file__)
+# Subimos un nivel para acceder a los archivos .pkl que están en ml/
+PARENT_DIR = os.path.dirname(BASE_DIR)
 
-model = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
-scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
-background = joblib.load(os.path.join(BASE_DIR, "background.pkl"))  # 🔑 CLAVE
+model = joblib.load(os.path.join(PARENT_DIR, "model.pkl"))
+scaler = joblib.load(os.path.join(PARENT_DIR, "scaler.pkl"))
+background = joblib.load(os.path.join(PARENT_DIR, "background.pkl"))  # 🔑 CLAVE
 
 FEATURE_ORDER = [
     "amount_vs_avg",
@@ -51,3 +53,7 @@ def explain_transaction(features: dict):
         })
 
     return explanations
+
+def explain(features: dict):
+    """Alias para explain_transaction"""
+    return explain_transaction(features)

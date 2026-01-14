@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../utils/fraud_ai_dataset.csv"
+    "../../utils/fraud_ai_dataset.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)
@@ -48,9 +48,10 @@ model.fit(X_train_scaled, y_train)
 # Background para SHAP (Explicabilidad)
 background = X_train.sample(100, random_state=42)
 
-# Guardar artefactos
-joblib.dump(model, os.path.join(BASE_DIR, "model.pkl"))
-joblib.dump(scaler, os.path.join(BASE_DIR, "scaler.pkl"))
-joblib.dump(background, os.path.join(BASE_DIR, "background.pkl"))
+# Guardar artefactos en la carpeta padre (ml/)
+parent_dir = os.path.dirname(BASE_DIR)
+joblib.dump(model, os.path.join(parent_dir, "model.pkl"))
+joblib.dump(scaler, os.path.join(parent_dir, "scaler.pkl"))
+joblib.dump(background, os.path.join(parent_dir, "background.pkl"))
 
 print("Modelo, scaler y background guardados correctamente")

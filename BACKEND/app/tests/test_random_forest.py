@@ -1,4 +1,4 @@
-from app.ml.random_forest_model import predict_fraud_rf
+from app.ml.predictors.random_forest_model import predict_fraud_rf
 
 def main():
     # EJEMPLO de transacción (ajusta a tu modelo)

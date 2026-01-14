@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../utils/fraud_ai_dataset.csv"
+    "../../utils/fraud_ai_dataset.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)
@@ -39,17 +39,19 @@ X_test_scaled = scaler.transform(X_test)
 
 model = RandomForestClassifier(
     n_estimators=300,
-    max_depth=None,
-    min_samples_split=10,
-    class_weight="balanced",
+    max_depth=8,              
+    min_samples_split=5,      # esto lo hace mas sensible
+    min_samples_leaf=2,       # esto evita los extremos
+    class_weight="balanced_subsample",
     random_state=42,
     n_jobs=-1
 )
 
 model.fit(X_train_scaled, y_train)
 
-# Guardar artefactos
-joblib.dump(model, os.path.join(BASE_DIR, "rf_model.pkl"))
-joblib.dump(scaler, os.path.join(BASE_DIR, "rf_scaler.pkl"))
+# Guardar artefactos en la carpeta padre (ml/)
+parent_dir = os.path.dirname(BASE_DIR)
+joblib.dump(model, os.path.join(parent_dir, "rf_model.pkl"))
+joblib.dump(scaler, os.path.join(parent_dir, "rf_scaler.pkl"))
 
 print("Random Forest entrenado y guardado correctamente")

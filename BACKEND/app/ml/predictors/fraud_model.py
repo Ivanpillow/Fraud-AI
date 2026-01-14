@@ -3,9 +3,11 @@ import pandas as pd
 import os
 
 BASE_DIR = os.path.dirname(__file__)
+# Subimos un nivel para acceder a los archivos .pkl que están en ml/
+PARENT_DIR = os.path.dirname(BASE_DIR)
 
-model = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
-scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+model = joblib.load(os.path.join(PARENT_DIR, "model.pkl"))
+scaler = joblib.load(os.path.join(PARENT_DIR, "scaler.pkl"))
 
 FEATURE_ORDER = [
     "amount_vs_avg",
