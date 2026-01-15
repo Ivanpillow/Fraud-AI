@@ -52,7 +52,12 @@ def explain_transaction(features: dict):
     explanations = []
 
     for i, feature in enumerate(FEATURE_ORDER):
-        value = float(shap_values.values[0][i])
+        raw_value = shap_values.values[0][i]
+
+        if raw_value is None or pd.isna(raw_value):
+            value = 0.0
+        else:
+            value = float(raw_value)
 
         explanations.append({
             "feature_name": feature,

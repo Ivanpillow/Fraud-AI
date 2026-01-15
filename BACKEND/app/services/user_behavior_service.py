@@ -61,6 +61,38 @@ def update_user_behavior(
     return behavior
 
 
+def update_user_avg_amount(
+    db,
+    user_id: int,
+    amount: float,
+    alpha: float = 0.1
+):
+    """
+    Actualiza el avg_amount_user usando un promedio móvil exponencial.
+
+    alpha:
+      - 0.1 → aprende lento (más estable)
+      - 0.2 → aprende más rápido
+    """
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+
+    if not user:
+        return
+
+    # Usuario nuevo o sin promedio
+    if user.avg_amount_user is None or float(user.avg_amount_user) <= 0:
+        user.avg_amount_user = round(amount, 2)
+    else:
+        prev_avg = float(user.avg_amount_user)
+
+        # EMA
+        new_avg = (prev_avg * (1 - alpha)) + (amount * alpha)
+        user.avg_amount_user = round(new_avg, 2)
+
+    db.commit()
+
+
 
 def get_user_stats(db: Session, user_id: int) -> dict:
     """
@@ -143,7 +175,9 @@ def calculate_risk_score_rule(
         score += 0.20
 
     # Riesgo por frecuencia
-    if transactions_last_24h >= 10:
+    if transactions_last_24h == 0:
+        score += 0.10
+    elif transactions_last_24h >= 10:
         score += 0.25
     elif transactions_last_24h >= 5:
         score += 0.15

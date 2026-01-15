@@ -6,8 +6,8 @@ def save_explanations(db, prediction_id: int, explanations: list):
     for exp in explanations:
         obj = FraudExplanation(
             prediction_id=prediction_id,
-            feature_name=exp["feature"],
-            contribution_value=exp["contribution"],
+            feature_name=exp["feature_name"],
+            contribution_value=exp["contribution_value"],
             direction=exp["direction"]
         )
         objects.append(obj)
