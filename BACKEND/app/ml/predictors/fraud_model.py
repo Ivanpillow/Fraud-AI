@@ -13,6 +13,8 @@ FEATURE_ORDER = [
     "amount",
     "amount_vs_avg",
     "transactions_last_24h",
+    "card_tx_last_24h",
+    "qr_tx_last_24h",
     "hour",
     "day_of_week",
     "failed_attempts",

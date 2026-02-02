@@ -20,8 +20,8 @@ def collect_metrics(db):
     ]
 
     decisions = [
-        {"decision": d, "count": c}
-        for d, c in decisions_distribution(db)
+        {"channel": ch, "decision": d, "count": c}
+        for ch, d, c in decisions_distribution(db)
     ]
 
     return {

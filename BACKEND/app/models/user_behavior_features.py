@@ -7,8 +7,15 @@ class UserBehaviorFeatures(Base):
 
     user_id = Column(BigInteger, ForeignKey("users.user_id"), primary_key=True)
 
-    transactions_last_24h = Column(Integer)
-    failed_attempts = Column(Integer)
+    transactions_last_24h = Column(Integer, default=0)
+    card_tx_last_24h = Column(Integer, default=0)
+    qr_tx_last_24h = Column(Integer, default=0)
+
+    failed_attempts = Column(Integer, default=0)
     amount_vs_avg = Column(Numeric(6,2))
 
-    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        TIMESTAMP,
+        server_default=func.now(),
+        onupdate=func.now()
+    )

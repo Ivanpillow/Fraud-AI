@@ -16,6 +16,8 @@ REQUIRED_FIELDS = [
     "failed_attempts", 
     "is_international",
     "risk_score_rule",
+    "card_tx_last_24h",
+    "qr_tx_last_24h",
 ]
 
 def predict_fraud_combined(tx_features: dict):

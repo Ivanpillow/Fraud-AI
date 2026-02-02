@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../../utils/fraud_ai_dataset.csv"
+    "../../utils/fraud_ai_dataset_v2.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)
@@ -18,12 +18,15 @@ FEATURES = [
     "amount",
     "amount_vs_avg",
     "transactions_last_24h",
+    "card_tx_last_24h",
+    "qr_tx_last_24h",
     "hour",
     "day_of_week",
     "failed_attempts",
     "is_international",
     "risk_score_rule"
 ]
+
 
 X = df[FEATURES]           # DataFrame
 y = df["is_fraud"]

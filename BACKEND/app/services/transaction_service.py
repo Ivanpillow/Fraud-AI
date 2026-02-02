@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
 from app.queries.transaction_queries import create_transaction
@@ -23,7 +23,7 @@ def process_transaction(db, tx_data):
         merchant_id=1,
         amount=tx_data["amount"],
         currency="MXN",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         hour=tx_data["hour"],
         day_of_week=tx_data["day_of_week"],
         country=tx_data["country"],
@@ -70,6 +70,7 @@ def process_transaction(db, tx_data):
     # Guardar predicción siempre
     fraud_pred = FraudPrediction(
         transaction_id=transaction.transaction_id,
+        channel="card",
         model_version="RF_LG_v1",
         fraud_probability=prob,
         prediction_label=prediction,
@@ -92,7 +93,8 @@ def process_transaction(db, tx_data):
         db=db,
         user_id=tx_data["user_id"],
         amount=tx_data["amount"],
-        avg_amount_user=tx_data["avg_amount_user"]
+        avg_amount_user=tx_data["avg_amount_user"],
+        channel="card"
     )
 
     # Explainability
@@ -127,12 +129,9 @@ def process_transaction(db, tx_data):
 
 
 
-
-
-
 def process_transaction_simple(db, tx_data):
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     hour = tx_data.get("hour", now.hour)
     day_of_week = tx_data.get("day_of_week", now.weekday())
@@ -143,6 +142,8 @@ def process_transaction_simple(db, tx_data):
     transactions_last_24h = user_stats["transactions_last_24h"]
     avg_amount_user = user_stats["avg_amount_user"]
     failed_attempts = user_stats["failed_attempts"]
+    card_tx_last_24h = user_stats["card_tx_last_24h"]
+    qr_tx_last_24h = user_stats["qr_tx_last_24h"]
 
     # Calcular amount_vs_avg
     amount_vs_avg = calculate_amount_vs_avg(
@@ -159,7 +160,10 @@ def process_transaction_simple(db, tx_data):
         transactions_last_24h=transactions_last_24h,
         failed_attempts=failed_attempts,
         is_international=is_international,
-        hour=hour
+        hour=hour,
+        channel="card",
+        card_tx_last_24h=card_tx_last_24h,
+        qr_tx_last_24h=qr_tx_last_24h
     )
 
     # Construir payload COMPLETO (interno)

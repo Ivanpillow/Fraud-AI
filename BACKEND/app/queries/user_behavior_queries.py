@@ -11,6 +11,8 @@ def create_or_update_user_behavior(
     db,
     user_id: int,
     transactions_last_24h: int,
+    card_tx_last_24h: int,
+    qr_tx_last_24h: int,
     failed_attempts: int,
     amount_vs_avg: float
 ):
@@ -18,12 +20,16 @@ def create_or_update_user_behavior(
 
     if behavior:
         behavior.transactions_last_24h = transactions_last_24h
+        behavior.card_tx_last_24h = card_tx_last_24h
+        behavior.qr_tx_last_24h = qr_tx_last_24h
         behavior.failed_attempts = failed_attempts
         behavior.amount_vs_avg = amount_vs_avg
     else:
         behavior = UserBehaviorFeatures(
             user_id=user_id,
             transactions_last_24h=transactions_last_24h,
+            card_tx_last_24h=card_tx_last_24h,
+            qr_tx_last_24h=qr_tx_last_24h,
             failed_attempts=failed_attempts,
             amount_vs_avg=amount_vs_avg
         )

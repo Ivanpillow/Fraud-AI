@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../../utils/fraud_ai_dataset.csv"
+    "../../utils/fraud_ai_dataset_v2.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)

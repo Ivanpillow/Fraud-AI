@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.transaction import Transaction
-from app.queries.user_behavior_queries import create_or_update_user_behavior
+from app.models.qr_transaction import QRTransaction
 from app.models.user_behavior_features import UserBehaviorFeatures
 from app.models.user import User
 
@@ -10,12 +10,10 @@ def update_user_behavior(
     db: Session,
     user_id: int,
     amount: float,
-    avg_amount_user: float | None = None
+    avg_amount_user: float | None = None,
+    channel: str = "card"  # card o qr
 ):
-    """
-    Actualiza el estado agregado de comportamiento del usuario
-    DESPUÉS de procesar una transacción.
-    """
+   # Segun el canal se actualiza el usuario
 
     # Obtener registro actual si es que existe
     behavior = (
@@ -25,9 +23,10 @@ def update_user_behavior(
     )
 
     # Calcular transactions_last_24h 
-    since = datetime.utcnow() - timedelta(hours=24)
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
 
-    tx_count_24h = (
+    # Conteo total (tarjeta + QR)
+    card_count = (
         db.query(func.count(Transaction.transaction_id))
         .filter(
             Transaction.user_id == user_id,
@@ -36,7 +35,18 @@ def update_user_behavior(
         .scalar()
     )
 
-    # Calcular amount_vs_avg solamente informativo
+    qr_count = (
+        db.query(func.count(QRTransaction.transaction_id))
+        .filter(
+            QRTransaction.user_id == user_id,
+            QRTransaction.created_at >= since
+        )
+        .scalar()
+    )
+
+    total_count = card_count + qr_count
+
+    # Calcular amount_vs_avg es solamente informativo
     amount_vs_avg = (
         amount / avg_amount_user if avg_amount_user and avg_amount_user > 0 else 0
     )
@@ -45,13 +55,17 @@ def update_user_behavior(
     if not behavior:
         behavior = UserBehaviorFeatures(
             user_id=user_id,
-            transactions_last_24h=tx_count_24h,
+            transactions_last_24h=total_count,
+            card_tx_last_24h=card_count,
+            qr_tx_last_24h=qr_count,
             failed_attempts=0,
             amount_vs_avg=amount_vs_avg
         )
         db.add(behavior)
     else:
-        behavior.transactions_last_24h = tx_count_24h
+        behavior.transactions_last_24h = total_count
+        behavior.card_tx_last_24h = card_count
+        behavior.qr_tx_last_24h = qr_count
         behavior.amount_vs_avg = amount_vs_avg
         # failed_attempts se mantiene o se actualiza por otra lógica
 
@@ -95,10 +109,6 @@ def update_user_avg_amount(
 
 
 def get_user_stats(db: Session, user_id: int) -> dict:
-    """
-    Obtiene estadísticas de comportamiento del usuario.
-    Devuelve valores seguros incluso para usuarios nuevos.
-    """
 
     # Obtener usuario
     user = db.query(User).filter(User.user_id == user_id).first()
@@ -117,12 +127,16 @@ def get_user_stats(db: Session, user_id: int) -> dict:
     if not behavior:
         return {
             "transactions_last_24h": 0,
+            "card_tx_last_24h": 0,
+            "qr_tx_last_24h": 0,
             "failed_attempts": 0,
             "avg_amount_user": float(user.avg_amount_user or 0.0),
         }
 
     return {
         "transactions_last_24h": behavior.transactions_last_24h or 0,
+        "card_tx_last_24h": behavior.card_tx_last_24h or 0,
+        "qr_tx_last_24h": behavior.qr_tx_last_24h or 0,
         "failed_attempts": behavior.failed_attempts or 0,
         "avg_amount_user": float(user.avg_amount_user or 0.0),
     }
@@ -159,10 +173,14 @@ def calculate_risk_score_rule(
     transactions_last_24h: int,
     failed_attempts: int,
     is_international: bool,
-    hour: int
+    hour: int,
+    channel: str,
+    card_tx_last_24h: int = 0,
+    qr_tx_last_24h: int = 0,
 ) -> float:
     """
-    Calcula un score heurístico de riesgo basado en reglas.
+    Calcula un score heurístico de riesgo basado en reglas para transacciones CARD.
+    Para QR, usar calculate_risk_score_rule_qr() en su lugar.
     Retorna un valor entre 0 y 1.
     """
 
@@ -174,15 +192,24 @@ def calculate_risk_score_rule(
     elif amount_vs_avg >= 2:
         score += 0.20
 
-    # Riesgo por frecuencia
-    if transactions_last_24h == 0:
+    # Riesgo por frecuencia (dependiente de canal)
+
+    if channel == "card":
+        freq = card_tx_last_24h
+    elif channel == "qr":
+        freq = qr_tx_last_24h
+    else:
+        freq = transactions_last_24h
+
+    if freq == 0:
         score += 0.10
-    elif transactions_last_24h >= 10:
+    elif freq >= 10:
         score += 0.25
-    elif transactions_last_24h >= 5:
+    elif freq >= 5:
         score += 0.15
 
     # Riesgo por intentos fallidos
+
     if failed_attempts >= 3:
         score += 0.25
     elif failed_attempts >= 1:
@@ -194,6 +221,60 @@ def calculate_risk_score_rule(
 
     # Riesgo por horario (madrugada)
     if hour is not None and (hour >= 0 and hour <= 5):
+        score += 0.10
+
+    # Asegurar rango [0,1]
+    return round(min(score, 1.0), 2)
+
+
+def calculate_risk_score_rule_qr(
+    amount_vs_avg: float,
+    qr_scans_last_24h: int,
+    device_change_flag: bool,
+    failed_attempts: int,
+    is_international: bool,
+    transactions_last_24h: int,
+    geo_distance: float = 0.0,
+) -> float:
+    """
+    Calcula un score heurístico de riesgo ESPECÍFICO para transacciones QR.
+    Mantiene los factores QR originales: geo_distance, device_change, qr_scans.
+    Retorna un valor entre 0 y 1.
+    """
+    score = 0.0
+
+    # Riesgo por monto
+    if amount_vs_avg >= 3:
+        score += 0.30
+    elif amount_vs_avg >= 2:
+        score += 0.20
+
+    # Riesgo por distancia geográfica (ESPECÍFICO QR)
+    if geo_distance > 50:
+        score += 0.30
+
+    # Riesgo por cambio de dispositivo (ESPECÍFICO QR)
+    if device_change_flag:
+        score += 0.20
+
+    # Riesgo por múltiples escaneos QR (ESPECÍFICO QR)
+    if qr_scans_last_24h >= 10:
+        score += 0.20
+    elif qr_scans_last_24h >= 5:
+        score += 0.10
+
+    # Riesgo por intentos fallidos
+    if failed_attempts >= 3:
+        score += 0.25
+    elif failed_attempts >= 1:
+        score += 0.10
+
+    # Riesgo internacional
+    if is_international:
+        score += 0.15
+
+    # Riesgo usuario nuevo
+    if transactions_last_24h == 0:
         score += 0.10
 
     # Asegurar rango [0,1]

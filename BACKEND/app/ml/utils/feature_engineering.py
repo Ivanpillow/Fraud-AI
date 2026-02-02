@@ -7,6 +7,8 @@ def build_logistic_features(tx: dict) -> dict:
         "amount": tx["amount"],
         "amount_vs_avg": tx["amount_vs_avg"],
         "transactions_last_24h": tx["transactions_last_24h"],
+        "card_tx_last_24h": tx.get("card_tx_last_24h", 0),
+        "qr_tx_last_24h": tx.get("qr_tx_last_24h", 0),
         "hour": tx["hour"],
         "day_of_week": tx["day_of_week"],
         "failed_attempts": tx["failed_attempts"],
@@ -23,6 +25,8 @@ def build_rf_features(tx: dict) -> dict:
     return {
         "amount_vs_avg": tx["amount_vs_avg"],
         "transactions_last_24h": tx["transactions_last_24h"],
+        "card_tx_last_24h": tx.get("card_tx_last_24h", 0),
+        "qr_tx_last_24h": tx.get("qr_tx_last_24h", 0),
         "hour": tx["hour"],
         "day_of_week": tx["day_of_week"],
         "failed_attempts": tx["failed_attempts"],
