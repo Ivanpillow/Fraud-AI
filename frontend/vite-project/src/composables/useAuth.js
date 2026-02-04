@@ -21,7 +21,7 @@ export async function login(credentials) {
 }
 
 export function logout() {
-  clearUiPermissions
+  // clearUiPermissions
   user.value = null
   userAbilityRules.value = null
   userDataCookie.value = null

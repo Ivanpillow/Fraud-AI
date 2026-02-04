@@ -1,42 +1,48 @@
 import inicio from './inicio'
 import direccion from './direccion'
 import contabilidad from './contabilidad'
+
+import appsAndPages from './apps-and-pages'
+import charts from './charts'
+import dashboard from './dashboard'
 import forms from './forms'
-
+import others from './others'
 import uiElements from './ui-elements'
-import { useUiPermissions } from '@/composables/useUiPermissions'
 
-const { permissions } = useUiPermissions()
+export default [...dashboard, ...appsAndPages, ...uiElements, ...forms, ...charts, ...others]
 
-const navItemsRaw = [
-  ...inicio,
-  ...direccion,
-  ...contabilidad,
-  // ...forms,
-]
 
-function filterNavItemsStrict(items, userPermissions) {
-  if (!Array.isArray(items)) return []
+// const { permissions } = useUiPermissions()
 
-  return items
-    .filter(item => {
-      // si no tiene permisoId, siempre aparece
-      if (!item.permisoId) return true
+// const navItemsRaw = [
+//   ...inicio,
+//   ...direccion,
+//   ...contabilidad,
+//   // ...forms,
+// ]
 
-      // si tiene permisoId, validar contra permisos del backend
-      return userPermissions.includes(item.permisoId)
-    })
-    .map(item => {
-      if (Array.isArray(item.children)) {
-        return {
-          ...item,
-          children: filterNavItemsStrict(item.children, userPermissions),
-        }
-      }
-      return item
-    })
-}
+// function filterNavItemsStrict(items, userPermissions) {
+//   if (!Array.isArray(items)) return []
 
-const navItems = filterNavItemsStrict(navItemsRaw, permissions.value)
+//   return items
+//     .filter(item => {
+//       // si no tiene permisoId, siempre aparece
+//       if (!item.permisoId) return true
 
-export default navItems
+//       // si tiene permisoId, validar contra permisos del backend
+//       return userPermissions.includes(item.permisoId)
+//     })
+//     .map(item => {
+//       if (Array.isArray(item.children)) {
+//         return {
+//           ...item,
+//           children: filterNavItemsStrict(item.children, userPermissions),
+//         }
+//       }
+//       return item
+//     })
+// }
+
+// const navItems = filterNavItemsStrict(navItemsRaw, permissions.value)
+
+// export default navItems

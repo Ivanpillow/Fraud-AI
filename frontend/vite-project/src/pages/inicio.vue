@@ -15,14 +15,13 @@
           </VCardText> -->
           <VCardText>
             <img 
-              src="/imagenes/logos/img_loader.png" 
+              src="/imagenes/logos/logo_horizontal.png" 
               alt="Logo" 
               class="responsive-logo"
             />
           </VCardText>
             <VCardText class="text-center mt-4">
-                <h2>Bienvenido a CasaAdminERP</h2>
-                <!-- <p>Tu solución integral para la gestión administrativa y contable.</p> -->
+                <h2>FraudAI</h2>
             </VCardText>
         </VCard>
       </VCol>

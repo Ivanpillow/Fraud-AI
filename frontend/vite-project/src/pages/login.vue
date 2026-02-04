@@ -1,54 +1,32 @@
-<!-- ❗Errors in the form are set on line 60 -->
 <script setup>
-import { VForm } from 'vuetify/components/VForm'
-// import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
 import SocialLinks from '@/views/pages/otros/socialLinks.vue'
-
-import { useGenerateImageVariant } from '@core/composable/useGenerateImageVariant'
-import authV2LoginIllustrationBorderedDark from '@images/pages/auth-v2-login-illustration-bordered-dark.png'
-import authV2LoginIllustrationBorderedLight from '@images/pages/auth-v2-login-illustration-bordered-light.png'
-// import authV2LoginIllustrationDark from '@images/pages/auth-v2-login-illustration-dark.png'
-import authV2LoginIllustrationDark from '@images/pages/img_loader.png'
-import authV2LoginIllustrationLight from '@images/pages/img_loader.png'
-import authV2MaskDark from '@images/pages/misc-mask-dark.png'
-import authV2MaskLight from '@images/pages/misc-mask-light.png'
+import authV1BottomShape from '@images/svg/auth-v1-bottom-shape.svg?raw'
+import authV1TopShape from '@images/svg/auth-v1-top-shape.svg?raw'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
 import { themeConfig } from '@themeConfig'
 
-import api from '@/services/api'
-import { $api } from '@/utils/api'
 
-// import { usePermissions } from '@/composables/usePermissions'
 import { useUiPermissions } from '@/composables/useUiPermissions'
 import { useAuth } from '@/composables/useAuth'
 
 
-const { setPermissionsAndRole } = usePermissions()
-
-// ###############################
-/* import api from '@/services/api'
-
-api.get('/test-db').then(response => {
-  console.log('Datos del backend:', response.data)
-}) */
-
-// ###############################
-
-
-const authThemeImg = useGenerateImageVariant(authV2LoginIllustrationLight, authV2LoginIllustrationDark, authV2LoginIllustrationBorderedLight, authV2LoginIllustrationBorderedDark, true)
-const authThemeMask = useGenerateImageVariant(authV2MaskLight, authV2MaskDark)
-
 definePage({
   meta: {
     layout: 'blank',
-    unauthenticatedOnly: true,
+    public: true,
   },
 })
 
+const form = ref({
+  email: '',
+  password: '',
+  remember: false,
+})
+
 const isPasswordVisible = ref(false)
-const route = useRoute()
-const router = useRouter()
-// const ability = useAbility()
+
+
+
 
 const errors = ref({
   login: undefined,
@@ -58,16 +36,14 @@ const errors = ref({
 const refVForm = ref()
 
 const credentials = ref({
-  // email: 'admin@demo.com',
-  // password: 'admin',
-  login: 'xDelVivar',
-  password: 'Casa81',
+  login: 'admin@gmail.com',
+  password: '123456',
 })
 
-const rememberMe = ref(false)
+
 
 const { login, fetchSession } = useAuth()
-const { fetchUiPermissions } = useUiPermissions()
+// const { fetchUiPermissions } = useUiPermissions()
 
 const loginUser = async () => {
   try {
@@ -77,7 +53,7 @@ const loginUser = async () => {
     })
 
     await fetchSession()
-    await fetchUiPermissions()
+    // await fetchUiPermissions()
 
     // router.replace(route.query.to || '/inicio')
     window.location.href = '/inicio'
@@ -98,144 +74,130 @@ const onSubmit = () => {
 </script>
 
 <template>
-  <RouterLink to="/">
-    <div class="auth-logo d-flex align-center gap-x-3">
-      <VNodeRenderer :nodes="themeConfig.app.logo" />
-      
-    </div>
-  </RouterLink>
+  <div class="auth-wrapper d-flex align-center justify-center pa-4">
+    <div class="position-relative my-sm-16">
+      <!-- 👉 Top shape -->
+      <VNodeRenderer
+        :nodes="h('div', { innerHTML: authV1TopShape })"
+        class="text-primary auth-v1-top-shape d-none d-sm-block"
+      />
 
-  <VRow
-    no-gutters
-    class="auth-wrapper bg-surface"
-  >
-    <VCol
-      md="8"
-      class="d-none d-md-flex"
-    >
-      <div class="position-relative bg-background w-100 me-0">
-        <div
-          class="d-flex align-center justify-center w-100 h-100"
-          style="padding-inline: 6.25rem;"
-        >
-          <VImg
-            max-width="613"
-            :src="authThemeImg"
-            class="auth-illustration mt-16 mb-2"
-          />
-        </div>
+      <!-- 👉 Bottom shape -->
+      <VNodeRenderer
+        :nodes="h('div', { innerHTML: authV1BottomShape })"
+        class="text-primary auth-v1-bottom-shape d-none d-sm-block"
+      />
 
-        <img
-          class="auth-footer-mask"
-          :src="authThemeMask"
-          alt="auth-footer-mask"
-          height="280"
-          width="100"
-        >
-      </div>
-    </VCol>
-
-    <VCol
-      cols="12"
-      md="4"
-      class="auth-card-v2 d-flex align-center justify-center"
-    >
+      <!-- 👉 Auth Card -->
       <VCard
-        flat
-        :max-width="500"
-        class="mt-12 mt-sm-0 pa-4"
+        class="auth-card"
+        max-width="460"
+        :class="$vuetify.display.smAndUp ? 'pa-6' : 'pa-0'"
       >
+        <!-- <VCardItem class="justify-center">
+          <VCardTitle>
+            <RouterLink to="/">
+              <div class="app-logo">
+                <VNodeRenderer :nodes="themeConfig.app.logo" />
+                <h1 class="app-logo-title">
+                  {{ themeConfig.app.title }}
+                </h1>
+              </div>
+            </RouterLink>
+          </VCardTitle>
+        </VCardItem> -->
+
         <VCardText>
-          <h4 class="text-h4 mb-1">
-            <span class="text-capitalize"> Casa Administraciones</span>
+          <h4 class="text-h4 mb-1 text-center">
+            <span class="text-capitalize">{{ themeConfig.app.title }}</span>
           </h4>
           <p class="mb-0">
-            Por favor, inicie sesión en su cuenta para comenzar.
+            Por favor, inicie sesión.
           </p>
         </VCardText>
-        <!-- <VCardText>
-          <VAlert
-            color="primary"
-            variant="tonal"
-          >
-            <p class="text-sm mb-2">
-              Admin Email: <strong>admin@demo.com</strong> / Pass: <strong>admin</strong>
-            </p>
-            <p class="text-sm mb-0">
-              Client Email: <strong>client@demo.com</strong> / Pass: <strong>client</strong>
-            </p>
-          </VAlert>
-        </VCardText> -->
+
         <VCardText>
           <VForm
             ref="refVForm"
             @submit.prevent="onSubmit"
           >
             <VRow>
-              <!-- Nombre de usuario -->
+              <!-- email -->
               <VCol cols="12">
                 <AppTextField
                   v-model="credentials.login"
-                  label="Usuario"
-                  type="text"
                   autofocus
-                  :rules="[requiredValidator]"
+                  label="Correo electrónico"
+                  type="email"
+                  placeholder="Ingresa tu correo electrónico"
                   :error-messages="errors.login"
+                  :rules="[requiredValidator, emailValidator]"
                 />
               </VCol>
 
-              <!-- Password -->
+              <!-- password -->
               <VCol cols="12">
                 <AppTextField
                   v-model="credentials.password"
-                  label="Password"
-                  :rules="[requiredValidator]"
+                  label="Contraseña"
+                  placeholder="Ingresa tu contraseña"
                   :type="isPasswordVisible ? 'text' : 'password'"
                   autocomplete="password"
-                  :error-messages="errors.password"
                   :append-inner-icon="isPasswordVisible ? 'tabler-eye-off' : 'tabler-eye'"
-                  @click:append-inner="isPasswordVisible = !isPasswordVisible"
+                  @click:append-inner="isPasswordVisible = !isPasswordVisible",
+                  :error-messages="errors.password"
                 />
 
-                <div class="d-flex align-center flex-wrap justify-space-between my-6">
-                  
-                </div>
+                <!-- remember me checkbox -->
+                <!-- <div class="d-flex align-center justify-space-between flex-wrap my-6">
+                  <VCheckbox
+                    v-model="form.remember"
+                    label="Remember me"
+                  />
 
+                  <RouterLink
+                    class="text-primary"
+                    :to="{ name: 'pages-authentication-forgot-password-v1' }"
+                  >
+                    Forgot Password?
+                  </RouterLink>
+                </div> -->
+
+                <!-- login button -->
                 <VBtn
                   block
                   type="submit"
+                  class="mt-9"
                 >
                   Iniciar sesión
                 </VBtn>
               </VCol>
 
-               <!-- create account -->
-                
+              <!-- create account -->
               <VCol
                 cols="12"
-                class="text-center"
+                class="text-body-1 text-center"
               >
-                <span>Encuentra la propiedad adecuada para tí.</span>
-                <a
-                  class="text-primary ms-1"
-                  href="https://casaadministraciones.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <span class="d-inline-block">
+                  Frase chida aqui
+                </span>
+                <!-- <RouterLink
+                  class="text-primary ms-1 d-inline-block text-body-1"
+                  :to="{ name: 'pages-authentication-register-v1' }"
                 >
-                  Ingresa aquí
-                </a>
+                  Create an account
+                </RouterLink> -->
               </VCol>
-
 
               <VCol
                 cols="12"
                 class="d-flex align-center"
               >
                 <VDivider />
+                <span class="mx-4 text-high-emphasis">Conócenos</span>
                 <VDivider />
               </VCol>
 
-              <!-- Social Links -->
               <VCol
                 cols="12"
                 class="text-center"
@@ -246,8 +208,8 @@ const onSubmit = () => {
           </VForm>
         </VCardText>
       </VCard>
-    </VCol>
-  </VRow>
+    </div>
+  </div>
 </template>
 
 <style lang="scss">

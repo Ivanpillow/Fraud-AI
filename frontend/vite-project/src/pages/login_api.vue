@@ -1,19 +1,15 @@
 <!-- ❗Errors in the form are set on line 60 -->
 <script setup>
-//useCookie('accessToken').value = null
-//useCookie('userData').value = null
-//useCookie('userAbilityRules').value = null
-//document.cookie.split(';').forEach(c => {
-//  document.cookie = c.trim().replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/')
-//})
-
 import { VForm } from 'vuetify/components/VForm'
-import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
+// import AuthProvider from '@/views/pages/authentication/AuthProvider.vue'
+import SocialLinks from '@/views/pages/otros/socialLinks.vue'
+
 import { useGenerateImageVariant } from '@core/composable/useGenerateImageVariant'
 import authV2LoginIllustrationBorderedDark from '@images/pages/auth-v2-login-illustration-bordered-dark.png'
 import authV2LoginIllustrationBorderedLight from '@images/pages/auth-v2-login-illustration-bordered-light.png'
-import authV2LoginIllustrationDark from '@images/pages/auth-v2-login-illustration-dark.png'
-import authV2LoginIllustrationLight from '@images/pages/auth-v2-login-illustration-light.png'
+// import authV2LoginIllustrationDark from '@images/pages/auth-v2-login-illustration-dark.png'
+import authV2LoginIllustrationDark from '@images/pages/img_loader.png'
+import authV2LoginIllustrationLight from '@images/pages/img_loader.png'
 import authV2MaskDark from '@images/pages/misc-mask-dark.png'
 import authV2MaskLight from '@images/pages/misc-mask-light.png'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
@@ -21,6 +17,13 @@ import { themeConfig } from '@themeConfig'
 
 import api from '@/services/api'
 import { $api } from '@/utils/api'
+
+// import { usePermissions } from '@/composables/usePermissions'
+import { useUiPermissions } from '@/composables/useUiPermissions'
+import { useAuth } from '@/composables/useAuth'
+
+
+const { setPermissionsAndRole } = usePermissions()
 
 // ###############################
 /* import api from '@/services/api'
@@ -45,7 +48,7 @@ definePage({
 const isPasswordVisible = ref(false)
 const route = useRoute()
 const router = useRouter()
-const ability = useAbility()
+// const ability = useAbility()
 
 const errors = ref({
   login: undefined,
@@ -55,43 +58,33 @@ const errors = ref({
 const refVForm = ref()
 
 const credentials = ref({
+  // email: 'admin@demo.com',
+  // password: 'admin',
   login: 'xDelVivar',
   password: 'Casa81',
 })
 
 const rememberMe = ref(false)
 
+const { login, fetchSession } = useAuth()
+const { fetchUiPermissions } = useUiPermissions()
 
-
-const login = async () => {
+const loginUser = async () => {
   try {
-    const res = await api.post('/auth/login', {
+    await login({
       login: credentials.value.login,
       password: credentials.value.password,
     })
 
-    const { accessToken, userData, userAbilityRules } = res.data
+    await fetchSession()
+    await fetchUiPermissions()
 
-    //useCookie('accessToken', { maxAge: 300 }).value = accessToken // token guardado en una cookie con una duración de 5 minutos
-    console.log('Token guardado:', accessToken)
-    //useCookie('userData').value = userData
-    //useCookie('userAbilityRules').value = userAbilityRules || []
-
-    ability.update(userAbilityRules || [])
-
-    await nextTick(() => {
-      console.log('Redireccionando a:', route.query.to ? String(route.query.to) : '/')
-      //router.replace(route.query.to ? String(route.query.to) : '/')
-      //router.replace('/usuarios')
-    })
-  } catch (err) {
-    if (err.response && err.response.status === 401) {
-      errors.value = {
-        login: 'Credenciales incorrectas',
-        password: 'Credenciales incorrectas',
-      }
-    } else {
-      console.error('Error de login:', err)
+    // router.replace(route.query.to || '/inicio')
+    window.location.href = '/inicio'
+  } catch {
+    errors.value = {
+      login: 'Credenciales incorrectas',
+      password: 'Credenciales incorrectas',
     }
   }
 }
@@ -99,7 +92,7 @@ const login = async () => {
 const onSubmit = () => {
   refVForm.value?.validate().then(({ valid: isValid }) => {
     if (isValid)
-      login()
+      loginUser()
   })
 }
 </script>
@@ -108,9 +101,7 @@ const onSubmit = () => {
   <RouterLink to="/">
     <div class="auth-logo d-flex align-center gap-x-3">
       <VNodeRenderer :nodes="themeConfig.app.logo" />
-      <h1 class="auth-title">
-        {{ themeConfig.app.title }}
-      </h1>
+      
     </div>
   </RouterLink>
 
@@ -156,13 +147,13 @@ const onSubmit = () => {
       >
         <VCardText>
           <h4 class="text-h4 mb-1">
-            <span class="text-capitalize"> {{ themeConfig.app.title }} </span> 
+            <span class="text-capitalize"> Casa Administraciones</span>
           </h4>
           <p class="mb-0">
             Por favor, inicie sesión en su cuenta para comenzar.
           </p>
         </VCardText>
-        <!--<VCardText>
+        <!-- <VCardText>
           <VAlert
             color="primary"
             variant="tonal"
@@ -172,21 +163,20 @@ const onSubmit = () => {
             </p>
             <p class="text-sm mb-0">
               Client Email: <strong>client@demo.com</strong> / Pass: <strong>client</strong>
-            </p> 
+            </p>
           </VAlert>
-        </VCardText>-->
+        </VCardText> -->
         <VCardText>
           <VForm
             ref="refVForm"
             @submit.prevent="onSubmit"
           >
             <VRow>
-              <!-- usuario -->
+              <!-- Nombre de usuario -->
               <VCol cols="12">
                 <AppTextField
                   v-model="credentials.login"
                   label="Usuario"
-                  placeholder="angel"
                   type="text"
                   autofocus
                   :rules="[requiredValidator]"
@@ -194,12 +184,11 @@ const onSubmit = () => {
                 />
               </VCol>
 
-              <!-- password -->
+              <!-- Password -->
               <VCol cols="12">
                 <AppTextField
                   v-model="credentials.password"
                   label="Password"
-                  placeholder="············"
                   :rules="[requiredValidator]"
                   :type="isPasswordVisible ? 'text' : 'password'"
                   autocomplete="password"
@@ -220,20 +209,38 @@ const onSubmit = () => {
                 </VBtn>
               </VCol>
 
-              
-              <VCol
-                cols="12"
-                class="d-flex align-center"
-              >
-                <VDivider /><VDivider />
-              </VCol>
-
-              <!-- auth providers -->
+               <!-- create account -->
+                
               <VCol
                 cols="12"
                 class="text-center"
               >
-                <AuthProvider />
+                <span>Encuentra la propiedad adecuada para tí.</span>
+                <a
+                  class="text-primary ms-1"
+                  href="https://casaadministraciones.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Ingresa aquí
+                </a>
+              </VCol>
+
+
+              <VCol
+                cols="12"
+                class="d-flex align-center"
+              >
+                <VDivider />
+                <VDivider />
+              </VCol>
+
+              <!-- Social Links -->
+              <VCol
+                cols="12"
+                class="text-center"
+              >
+                <SocialLinks />
               </VCol>
             </VRow>
           </VForm>
