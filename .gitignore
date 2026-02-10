@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Logs
 logs
 *.log
@@ -41,3 +42,8 @@ public/mockServiceWorker.js
 # Env files
 .env*
 !.env.example
+=======
+/frontend/vite-project/node_modules
+/frontend/vite-project/node_modules
+>>>>>>> Stashed changes
+/frontend/vite-project/node_modules
