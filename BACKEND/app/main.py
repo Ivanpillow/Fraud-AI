@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.base import Base
 from app.db.session import engine
-from app.routers import fraud_feedback, qr_transactions, transactions
+from app.routers import fraud_feedback, qr_transactions, transactions, auth_router
 from app.routers import metrics
 from app.models.user import User
 from app.models.transaction import Transaction
@@ -30,6 +30,7 @@ app = FastAPI(
 #     allow_headers=["*"],
 # )
 
+app.include_router(auth_router.router)
 app.include_router(transactions.router)
 app.include_router(metrics.router)
 app.include_router(fraud_feedback.router)
