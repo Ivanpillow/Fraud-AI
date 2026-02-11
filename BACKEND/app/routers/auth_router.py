@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/login")
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    result = login_user(db, payload.login, payload.password)
+    result = login_user(db, payload.email, payload.password)
 
     response.set_cookie(
         key="accessToken",

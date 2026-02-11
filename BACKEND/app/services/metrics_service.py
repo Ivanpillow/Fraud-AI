@@ -2,7 +2,8 @@ from app.queries.metrics_queries import (
     get_global_metrics,
     frauds_by_hour,
     frauds_by_country,
-    decisions_distribution
+    decisions_distribution,
+    get_dashboard_stats
 )
 
 def collect_metrics(db):
@@ -30,3 +31,9 @@ def collect_metrics(db):
         "fraud_by_country": fraud_country,
         "decisions": decisions
     }
+
+def get_dashboard_metrics(db):
+    """
+    Obtiene las estadísticas del dashboard con datos reales de la BD.
+    """
+    return get_dashboard_stats(db)

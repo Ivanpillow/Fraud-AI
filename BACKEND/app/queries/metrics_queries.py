@@ -2,6 +2,7 @@ from sqlalchemy import func
 from app.models.transaction import Transaction
 from app.models.qr_transaction import QRTransaction
 from app.models.fraud_prediction import FraudPrediction
+from app.models.user import User
 
 def get_global_metrics(db):
     """
@@ -127,3 +128,52 @@ def decisions_distribution(db):
         .group_by(FraudPrediction.channel, FraudPrediction.decision)
         .all()
     )
+
+def get_dashboard_stats(db):
+    """
+    Obtiene estadísticas del dashboard:
+    - Total de transacciones (card + QR)
+    - Total de usuarios
+    - Usuarios activos (igual a total de usuarios por ahora)
+    - Total de fraudes
+    - Total de ingresos (suma de todas las transacciones)
+    - Cambios porcentuales (datos dummy para "looks")
+    """
+    # Total de transacciones
+    total_card_tx = db.query(func.count(Transaction.transaction_id)).scalar() or 0
+    total_qr_tx = db.query(func.count(QRTransaction.transaction_id)).scalar() or 0
+    total_transactions = total_card_tx + total_qr_tx
+    
+    # Total de usuarios
+    total_users = db.query(func.count(User.user_id)).scalar() or 0
+    active_users = total_users  # Por ahora, usuarios activos = total de usuarios
+    
+    # Total de fraudes
+    total_frauds = (
+        db.query(func.count(FraudPrediction.prediction_id))
+        .filter(FraudPrediction.prediction_label == True)
+        .scalar() or 0
+    )
+    
+    # Total de ingresos (suma de todas las transacciones)
+    card_revenue = db.query(func.sum(Transaction.amount)).scalar() or 0
+    qr_revenue = db.query(func.sum(QRTransaction.amount)).scalar() or 0
+    total_revenue = float(card_revenue) + float(qr_revenue)
+    
+    # Cambios porcentuales (datos dummy para "looks")
+    users_change = 5.2  # +5.2%
+    transactions_change = 12.5  # +12.5%
+    revenue_change = 8.3  # +8.3%
+    frauds_change = -2.1  # -2.1%
+    
+    return {
+        "total_users": total_users,
+        "total_transactions": total_transactions,
+        "total_revenue": round(total_revenue, 2),
+        "active_users": active_users,
+        "total_frauds": total_frauds,
+        "users_change": users_change,
+        "transactions_change": transactions_change,
+        "revenue_change": revenue_change,
+        "frauds_change": frauds_change,
+    }

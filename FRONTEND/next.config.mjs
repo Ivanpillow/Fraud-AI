@@ -1,4 +1,22 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    unoptimized: true,
+  },
+  turbopack: {
+    root: './',
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8000/:path*',
+      },
+    ]
+  },
+}
 
-export default nextConfig;
+export default nextConfig
