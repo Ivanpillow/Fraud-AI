@@ -7,24 +7,16 @@ class QRTransactionCreate(BaseModel):
     user_id: int
     amount: float
 
-    hour: int
-    day_of_week: int
-
     merchant_id: int
-    merchant_qr_risk: float   # score [0,1] externo o interno
 
     country: str
     latitude: float
     longitude: float
 
-    qr_scans_last_24h: int
-    device_change_flag: bool
-    failed_attempts: int
+    hour: int
+    day_of_week: int
 
-    avg_amount_user: float
-    amount_vs_avg: float
-
-    risk_score_rule: float
+    device_change_flag: Optional[bool] = False
 
 
 class QRTransactionRawCreate(BaseModel):
@@ -37,5 +29,6 @@ class QRTransactionRawCreate(BaseModel):
     latitude: float
     longitude: float
 
+    device_change_flag: Optional[bool] = False
     hour: Optional[int] = None
     day_of_week: Optional[int] = None

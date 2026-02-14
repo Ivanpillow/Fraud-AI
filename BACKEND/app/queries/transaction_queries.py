@@ -4,7 +4,7 @@ from app.models.qr_transaction import QRTransaction
 
 def create_transaction(db, tx):
     db.add(tx)
-    db.commit()
+    # db.flush()
     db.refresh(tx)
     return tx
 

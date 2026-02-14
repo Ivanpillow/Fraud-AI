@@ -18,8 +18,7 @@ FEATURE_ORDER = [
     "hour",
     "day_of_week",
     "failed_attempts",
-    "is_international",
-    "risk_score_rule"
+    "is_international"
 ] # Orden de las features que el modelo espera recibir
 
 def predict_fraud(features: dict):

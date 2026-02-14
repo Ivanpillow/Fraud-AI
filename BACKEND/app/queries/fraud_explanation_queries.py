@@ -13,4 +13,4 @@ def save_explanations(db, prediction_id: int, explanations: list):
         objects.append(obj)
 
     db.add_all(objects)
-    db.commit()
+    db.flush()

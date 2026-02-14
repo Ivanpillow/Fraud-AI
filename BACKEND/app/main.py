@@ -35,10 +35,10 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(transactions.router)
+app.include_router(qr_transactions.router)
 app.include_router(metrics.router)
 app.include_router(notifications.router)
 app.include_router(fraud_feedback.router)
-app.include_router(qr_transactions.router)
 
 
 

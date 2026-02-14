@@ -19,6 +19,10 @@ class FraudPrediction(Base):
     decision = Column(String(10))
 
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+    rf_probability = Column(Numeric(6,5))
+    logistic_probability = Column(Numeric(6,5))
+    kmeans_score = Column(Numeric(6,5))
     
     # NOTA: No hay FK directa porque puede apuntar a transactions o qr_transactions
     # El campo 'channel' especifica a cuál tabla pertenece el transaction_id

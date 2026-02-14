@@ -21,6 +21,12 @@ REQUIRED_FIELDS = [
 ]
 
 def predict_fraud_combined(tx_features: dict):
+
+    # Completar campos faltantes con 0 (o valor neutro)
+    for key in REQUIRED_FIELDS:
+        if key not in tx_features or tx_features[key] is None:
+            tx_features[key] = 0
+
     # Validación defensiva
     validate_required_fields(tx_features, REQUIRED_FIELDS)
     
@@ -42,6 +48,8 @@ def predict_fraud_combined(tx_features: dict):
         0.15 * kmeans_score
     )
     label = int(final_score >= 0.6)
+    
+    print(f"Ensemble Prediction - RF: {rf_prob:.4f}, Logistic: {log_prob:.4f}, KMeans: {kmeans_score:.4f} => Final Score: {final_score:.4f}, Label: {label}")
 
     return {
         "label": label,

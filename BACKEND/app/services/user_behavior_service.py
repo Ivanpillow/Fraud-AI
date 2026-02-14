@@ -69,7 +69,7 @@ def update_user_behavior(
         behavior.amount_vs_avg = amount_vs_avg
         # failed_attempts se mantiene o se actualiza por otra lógica
 
-    db.commit()
+    db.flush()
     db.refresh(behavior)
 
     return behavior
@@ -104,7 +104,7 @@ def update_user_avg_amount(
         new_avg = (prev_avg * (1 - alpha)) + (amount * alpha)
         user.avg_amount_user = round(new_avg, 2)
 
-    db.commit()
+    db.flush()
 
 
 

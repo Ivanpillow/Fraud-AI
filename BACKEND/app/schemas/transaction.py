@@ -12,11 +12,7 @@ class TransactionCreate(BaseModel):
     country: str
     is_international: bool
     device_type: str
-    transactions_last_24h: int
-    avg_amount_user: float
     amount_vs_avg: float
-    failed_attempts: int
-    risk_score_rule: float
 
 class TransactionResponse(TransactionCreate):
     is_fraud: bool

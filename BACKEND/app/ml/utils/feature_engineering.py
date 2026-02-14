@@ -13,7 +13,6 @@ def build_logistic_features(tx: dict) -> dict:
         "day_of_week": tx["day_of_week"],
         "failed_attempts": tx["failed_attempts"],
         "is_international": tx["is_international"],
-        "risk_score_rule": tx["risk_score_rule"],
     }
 
 

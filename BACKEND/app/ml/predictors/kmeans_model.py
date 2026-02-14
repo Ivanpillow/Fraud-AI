@@ -25,6 +25,17 @@ def predict_kmeans_score(features: dict) -> float:
     """
 
     x = pd.DataFrame([features], columns=FEATURE_ORDER)
+
+    # Asegurar que todas las columnas existan
+    for col in FEATURE_ORDER:
+        if col not in x.columns:
+            x[col] = 0
+
+    x = x[FEATURE_ORDER]
+
+    # Reemplazar NaN por 0
+    x = x.fillna(0)
+
     x_scaled = scaler.transform(x)
 
     # Distancias a centroides
