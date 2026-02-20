@@ -200,3 +200,297 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   CHECKOUT PAGE — Glassmorphism & Liquid Glass Styles
+   Inspired by iOS 26 depth, rounded corners, blur layers
+   ═══════════════════════════════════════════════════════════ */
+
+/* Page background with subtle gradient */
+.checkout-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, hsla(220, 30%, 18%, 1) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, hsla(168, 40%, 12%, 0.4) 0%, transparent 50%),
+    hsl(220, 20%, 7%);
+}
+
+/* ── Main Glass Cards ── */
+.glass-checkout-card {
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.1) inset;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-checkout-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.15) inset;
+}
+
+/* ── Order Summary (right column) ── */
+.glass-checkout-summary {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(50px) saturate(200%);
+  -webkit-backdrop-filter: blur(50px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 -2px 0 rgba(0, 0, 0, 0.1) inset;
+}
+
+/* ── Method Selector Pills ── */
+.glass-checkout-pill {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-checkout-pill:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.glass-checkout-pill-active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 0 30px hsla(168, 70%, 45%, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
+}
+
+/* ── Checkout Inputs — Liquid glass feel ── */
+.checkout-input {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  color: hsl(210, 20%, 95%);
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.15) inset,
+    0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.checkout-input::placeholder {
+  color: hsla(210, 10%, 55%, 0.7);
+}
+
+.checkout-input:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: hsla(168, 70%, 45%, 0.5);
+  box-shadow:
+    0 0 0 4px hsla(168, 70%, 45%, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.15) inset,
+    0 0 20px hsla(168, 70%, 45%, 0.05);
+}
+
+.checkout-input:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Selects inherit glass style ── */
+.checkout-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.checkout-select option {
+  background: hsl(220, 15%, 14%);
+  color: hsl(210, 20%, 95%);
+}
+
+/* ── Labels ── */
+.checkout-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsla(210, 20%, 95%, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Primary button — iOS-like depth ── */
+.checkout-button-primary {
+  background: linear-gradient(
+    135deg,
+    hsl(168, 70%, 40%) 0%,
+    hsl(168, 70%, 50%) 100%
+  );
+  color: hsl(220, 20%, 10%);
+  border: none;
+  box-shadow:
+    0 4px 14px hsla(168, 70%, 45%, 0.3),
+    0 1px 0 hsla(168, 70%, 60%, 0.3) inset,
+    0 -2px 4px hsla(168, 70%, 30%, 0.4) inset;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.checkout-button-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px hsla(168, 70%, 45%, 0.4),
+    0 1px 0 hsla(168, 70%, 60%, 0.4) inset,
+    0 -2px 4px hsla(168, 70%, 30%, 0.4) inset;
+}
+
+.checkout-button-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow:
+    0 2px 8px hsla(168, 70%, 45%, 0.2),
+    0 -1px 0 hsla(168, 70%, 30%, 0.4) inset;
+}
+
+/* ── Card Preview — Animated depth ── */
+.glass-card-preview {
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.1) inset;
+  transform: perspective(800px) rotateX(2deg);
+  transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-preview:hover {
+  transform: perspective(800px) rotateX(0deg) scale(1.02);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 12px 30px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.15) inset;
+}
+
+@keyframes card-brand-pulse {
+  0% { transform: perspective(800px) rotateX(2deg) scale(1); }
+  30% { transform: perspective(800px) rotateX(0deg) scale(1.03); }
+  100% { transform: perspective(800px) rotateX(2deg) scale(1); }
+}
+
+.card-brand-animate {
+  animation: card-brand-pulse 0.6s ease-out;
+}
+
+/* ── QR Container ── */
+.glass-qr-container {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-qr-active {
+  background: rgba(255, 255, 255, 0.06);
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 40px hsla(168, 70%, 45%, 0.06);
+}
+
+/* ── Crypto Cards ── */
+.glass-crypto-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-crypto-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.glass-crypto-active {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ── Alert boxes ── */
+.glass-checkout-alert-error {
+  background: rgba(239, 68, 68, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.1);
+}
+
+.glass-checkout-alert-info {
+  background: rgba(59, 130, 246, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08);
+}
+
+/* ── Floating Buttons — iOS 26 pill style ── */
+.glass-floating-button {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.2) inset;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-floating-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 0 30px hsla(168, 70%, 45%, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  transform: scale(1.05);
+}
+
+.glass-floating-expanded {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}

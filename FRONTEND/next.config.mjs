@@ -7,7 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   turbopack: {
-    root: './',
+    root: import.meta.dirname || process.cwd(),
   },
   async rewrites() {
     return [

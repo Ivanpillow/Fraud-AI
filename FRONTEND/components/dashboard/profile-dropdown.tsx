@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { Shield, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
+import { Shield, LayoutDashboard, LogOut, ChevronDown, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
@@ -43,6 +43,14 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
     router.push("/dashboard");
   };
 
+  const handlePaymentPage = () => {
+    setIsOpen(false);
+    router.push("/checkout");
+    setTimeout(() => {
+      logout();
+    }, 100);
+  };
+
   return (
     <div
       ref={dropdownRef}
@@ -60,7 +68,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <Shield size={18} />
+            <Shield size={20} />
           </div>
           {!collapsed && (
             <div className="animate-fade-in overflow-hidden min-w-0">
@@ -100,6 +108,21 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
           >
             <LayoutDashboard size={16} />
             <span>Admin Panel</span>
+          </button>
+
+          {/* Payment Page Option */}
+          <button
+            onClick={handlePaymentPage}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2.5 text-sm",
+              "text-muted-foreground hover:text-emerald-400",
+              "hover:bg-emerald-500/10",
+              "transition-colors duration-150",
+              "border-b border-white/5"
+            )}
+          >
+            <CreditCard size={16} />
+            <span>Payment Page</span>
           </button>
 
           {/* Sign Out Option */}

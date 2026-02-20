@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Shield } from "lucide-react";
 import LoginForm from "@/components/login/login-form";
 import Testimonial from "@/components/login/testimonial";
+import CheckoutFloatingButton from "@/components/checkout/checkout-floating-button";
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -66,6 +67,9 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Floating button to go to Payment Page */}
+      <CheckoutFloatingButton />
     </main>
   );
 }
