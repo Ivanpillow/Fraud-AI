@@ -39,33 +39,33 @@ function getDecisionInfo(decision: string) {
         icon: ShieldCheck,
         color: "text-emerald-400",
         bg: "bg-emerald-500/10 border-emerald-500/20",
-        label: "Transaction Approved",
-        description: "This transaction has been approved by the AI system.",
+        label: "Transacción Aprobada",
+        description: "Esta transacción ha sido aprobada por el sistema de IA.",
       };
     case "review":
       return {
         icon: ShieldAlert,
         color: "text-amber-400",
         bg: "bg-amber-500/10 border-amber-500/20",
-        label: "Under Review",
+        label: "En Revisión",
         description:
-          "This transaction has been flagged for manual review by an administrator.",
+          "Esta transacción ha sido marcada para revisión manual por un administrador.",
       };
     case "block":
       return {
         icon: ShieldX,
         color: "text-red-400",
         bg: "bg-red-500/10 border-red-500/20",
-        label: "Transaction Blocked",
+        label: "Transacción Bloqueada",
         description:
-          "This transaction has a high fraud probability and was blocked.",
+          "Esta transacción tiene una alta probabilidad de fraude y fue bloqueada.",
       };
     default:
       return {
         icon: ShieldCheck,
         color: "text-muted-foreground",
         bg: "bg-white/5 border-white/10",
-        label: "Unknown",
+        label: "Desconocido",
         description: "",
       };
   }
@@ -87,11 +87,11 @@ export default function OrderSummary({
 
   return (
     <div className="glass-checkout-summary rounded-3xl p-6 flex flex-col gap-5 sticky top-8">
-      <h2 className="text-xl font-bold text-foreground">Payment Summary</h2>
+      <h2 className="text-xl font-bold text-foreground">Resumen del Pago</h2>
 
       {/* Order Total */}
       <div className="text-center py-4 border-b border-white/10">
-        <p className="text-sm text-muted-foreground">Order Total</p>
+        <p className="text-sm text-muted-foreground">Total de la Orden</p>
         <p className="text-4xl font-bold text-foreground mt-1 tracking-tight">
           ${total > 0 ? total.toFixed(2) : "0.00"}
         </p>
@@ -123,7 +123,7 @@ export default function OrderSummary({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Tag size={16} />
-          <span className="text-sm">Discounts</span>
+          <span className="text-sm">Descuentos</span>
         </div>
         <span className="text-sm text-muted-foreground">-$0.00</span>
       </div>
@@ -132,16 +132,16 @@ export default function OrderSummary({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Truck size={16} />
-          <span className="text-sm">Shipping</span>
+          <span className="text-sm">Envío</span>
         </div>
-        <span className="text-sm text-emerald-400">Free</span>
+        <span className="text-sm text-emerald-400">Gratis</span>
       </div>
 
       {/* Tax */}
       <div className="flex items-center justify-between border-t border-white/10 pt-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Receipt size={16} />
-          <span className="text-sm">Tax (IVA 16%)</span>
+          <span className="text-sm">Impuesto (IVA 16%)</span>
         </div>
         <span className="text-sm text-foreground">${tax.toFixed(2)}</span>
       </div>

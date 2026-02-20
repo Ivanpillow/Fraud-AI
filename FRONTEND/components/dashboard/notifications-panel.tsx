@@ -57,7 +57,7 @@ function timeAgo(ts: string): string {
 }
 
 export default function NotificationsPanel() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(true);
@@ -65,10 +65,9 @@ export default function NotificationsPanel() {
 
   useEffect(() => {
     async function load() {
-      if (token) {
-        const res = await fetchNotifications(token);
+      if (user) {
+        const res = await fetchNotifications();
         if (res.data) {
-          // Mapear los datos del backend al formato de Notification
           const formattedNotifications = res.data.map(n => ({
             id: n.id,
             type: n.type,
@@ -84,8 +83,9 @@ export default function NotificationsPanel() {
       }
       setIsLoading(false);
     }
+
     load();
-  }, [token]);
+  }, [user]);
 
   const handleNotificationClick = (notification: Notification) => {
     // Navega a la página de review con la transacción específica

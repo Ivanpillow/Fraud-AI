@@ -199,24 +199,24 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
   }, [brand, prevBrand]);
 
   const merchantCategories = [
-    { value: "retail", label: "Retail" },
-    { value: "food", label: "Food & Dining" },
-    { value: "travel", label: "Travel" },
-    { value: "entertainment", label: "Entertainment" },
-    { value: "utilities", label: "Utilities" },
-    { value: "health", label: "Health" },
-    { value: "education", label: "Education" },
-    { value: "technology", label: "Technology" },
+    { value: "retail", label: "Comercio" },
+    { value: "food", label: "Alimentos y restaurantes" },
+    { value: "travel", label: "Viajes" },
+    { value: "entertainment", label: "Entretenimiento" },
+    { value: "utilities", label: "Servicios públicos" },
+    { value: "health", label: "Salud" },
+    { value: "education", label: "Educación" },
+    { value: "technology", label: "Tecnología" },
   ];
 
   const countries = [
-    { value: "MX", label: "Mexico" },
-    { value: "US", label: "United States" },
-    { value: "CA", label: "Canada" },
-    { value: "GB", label: "United Kingdom" },
-    { value: "DE", label: "Germany" },
-    { value: "JP", label: "Japan" },
-    { value: "BR", label: "Brazil" },
+    { value: "MX", label: "México" },
+    { value: "US", label: "Estados Unidos" },
+    { value: "CA", label: "Canadá" },
+    { value: "GB", label: "Reino Unido" },
+    { value: "DE", label: "Alemania" },
+    { value: "JP", label: "Japón" },
+    { value: "BR", label: "Brasil" },
     { value: "IN", label: "India" },
   ];
 
@@ -226,11 +226,11 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
     onResult(null);
 
     if (!cardNumber || !cardName || !expiry || !cvv) {
-      setError("Please fill in all card details");
+      setError("Por favor complete todos los campos de la tarjeta");
       return;
     }
     if (subtotal <= 0) {
-      setError("Please enter a valid subtotal amount in the order summary");
+      setError("Por favor ingrese un monto válido en el resumen del pedido");
       return;
     }
 
@@ -270,7 +270,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <h2 className="text-lg font-semibold text-foreground">Card Details</h2>
+      <h2 className="text-lg font-semibold text-foreground">Información de la Tarjeta</h2>
 
       {/* ── Animated Card Preview ── */}
       <div
@@ -294,15 +294,15 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
           <div className="flex justify-between items-end">
             <div>
               <p className="text-[10px] text-white/50 uppercase tracking-widest">
-                Card Holder
+                Titular
               </p>
               <p className="text-white/80 text-sm font-medium uppercase tracking-wide">
-                {cardName || "YOUR NAME"}
+                {cardName || "NOMBRE"}
               </p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-white/50 uppercase tracking-widest">
-                Expires
+                Fecha de Expiración
               </p>
               <p className="text-white/80 text-sm font-mono">
                 {expiry || "MM/YY"}
@@ -315,17 +315,17 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
       {/* ── Card Fields ── */}
       <div className="grid grid-cols-1 gap-4">
         <div>
-          <label className="checkout-label">Name on card</label>
+          <label className="checkout-label">Nombre en la Tarjeta</label>
           <input
             type="text"
             value={cardName}
             onChange={(e) => setCardName(e.target.value)}
-            placeholder="John Doe"
+            // placeholder="John Doe"
             className="checkout-input"
           />
         </div>
         <div>
-          <label className="checkout-label">Card Number</label>
+          <label className="checkout-label">Número de Tarjeta</label>
           <div className="relative">
             <input
               type="text"
@@ -334,7 +334,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               onChange={(e) =>
                 setCardNumber(e.target.value.replace(/\D/g, "").slice(0, 19))
               }
-              placeholder="1234 5678 9012 3456"
+              // placeholder="1234 5678 9012 3456"
               className="checkout-input pr-20"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-300">
@@ -344,13 +344,13 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="checkout-label">Exp (MM/YY)</label>
+            <label className="checkout-label">Fecha de Expiración (MM/AA)</label>
             <input
               type="text"
               inputMode="numeric"
               value={expiry}
               onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-              placeholder="12/28"
+              // placeholder="MM/AA"
               maxLength={5}
               className="checkout-input"
             />
@@ -381,11 +381,11 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
       {/* ── Fraud Detection Variables ── */}
       <div className="border-t border-white/10 pt-5">
         <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-4">
-          Transaction Details
+          Detalles de la Transacción (para análisis de fraude)
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="checkout-label">User ID</label>
+            <label className="checkout-label">ID de Usuario</label>
             <input
               type="number"
               value={userId}
@@ -395,19 +395,19 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
             />
           </div>
           <div>
-            <label className="checkout-label">Device Type</label>
+            <label className="checkout-label">Tipo de Dispositivo</label>
             <select
               value={deviceType}
               onChange={(e) => setDeviceType(e.target.value)}
               className="checkout-input checkout-select"
             >
-              <option value="desktop">Desktop</option>
-              <option value="mobile">Mobile</option>
+              <option value="desktop">Ordenador</option>
+              <option value="mobile">Dispositivo Móvil</option>
               <option value="tablet">Tablet</option>
             </select>
           </div>
           <div>
-            <label className="checkout-label">Category</label>
+            <label className="checkout-label">Categoría</label>
             <select
               value={merchantCategory}
               onChange={(e) => setMerchantCategory(e.target.value)}
@@ -421,7 +421,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
             </select>
           </div>
           <div>
-            <label className="checkout-label">Country</label>
+            <label className="checkout-label">País</label>
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
@@ -440,35 +440,35 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
       {/* ── Shipping Address (for model variables, no cost) ── */}
       <div className="border-t border-white/10 pt-5">
         <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-1">
-          Shipping Address
+          Dirección de Envío
         </h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Required for fraud analysis — no shipping cost will be calculated
+          Requerida para análisis de fraude — no se calculará costo de envío ni se validará dirección.
         </p>
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="checkout-label">Full Name</label>
+            <label className="checkout-label">Nombre Completo</label>
             <input
               type="text"
               value={shippingName}
               onChange={(e) => setShippingName(e.target.value)}
-              placeholder="John Doe"
+              // placeholder="John Doe"
               className="checkout-input"
             />
           </div>
           <div>
-            <label className="checkout-label">Address</label>
+            <label className="checkout-label">Dirección</label>
             <input
               type="text"
               value={shippingAddress}
               onChange={(e) => setShippingAddress(e.target.value)}
-              placeholder="123 Main Street"
+              // placeholder="123 Main Street"
               className="checkout-input"
             />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="checkout-label">City</label>
+              <label className="checkout-label">Ciudad</label>
               <input
                 type="text"
                 value={shippingCity}
@@ -478,11 +478,12 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               />
             </div>
             <div>
-              <label className="checkout-label">Country</label>
+              <label className="checkout-label">País</label>
               <select
                 value={shippingCountry}
                 onChange={(e) => setShippingCountry(e.target.value)}
                 className="checkout-input checkout-select"
+                style={{ minWidth: "220px" }}
               >
                 {countries.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -492,12 +493,12 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               </select>
             </div>
             <div>
-              <label className="checkout-label">ZIP Code</label>
+              <label className="checkout-label">Código Postal</label>
               <input
                 type="text"
                 value={shippingZip}
                 onChange={(e) => setShippingZip(e.target.value)}
-                placeholder="44100"
+                // placeholder="44100"
                 className="checkout-input"
               />
             </div>
@@ -526,12 +527,12 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
         {isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Analyzing Transaction...
+            Analizando transacción...
           </>
         ) : (
           <>
             <ShieldCheck size={18} />
-            Pay ${subtotal.toFixed(2)} & Analyze
+            Pagar ${subtotal.toFixed(2)} & Analizar
           </>
         )}
       </button>

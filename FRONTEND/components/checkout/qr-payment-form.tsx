@@ -33,13 +33,13 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
   const [qrGenerated, setQrGenerated] = useState(false);
 
   const countries = [
-    { value: "MX", label: "Mexico" },
-    { value: "US", label: "United States" },
-    { value: "CA", label: "Canada" },
-    { value: "GB", label: "United Kingdom" },
-    { value: "DE", label: "Germany" },
-    { value: "JP", label: "Japan" },
-    { value: "BR", label: "Brazil" },
+    { value: "MX", label: "México" },
+    { value: "US", label: "Estados Unidos" },
+    { value: "CA", label: "Canadá" },
+    { value: "GB", label: "Reino Unido" },
+    { value: "DE", label: "Alemania" },
+    { value: "JP", label: "Japón" },
+    { value: "BR", label: "Brasil" },
     { value: "IN", label: "India" },
   ];
 
@@ -53,7 +53,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
     onResult(null);
 
     if (subtotal <= 0) {
-      setError("Please enter a valid subtotal amount in the order summary");
+      setError("Por favor ingrese un monto válido en el resumen del pedido");
       return;
     }
 
@@ -95,7 +95,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <h2 className="text-lg font-semibold text-foreground">QR Code Payment</h2>
+      <h2 className="text-lg font-semibold text-foreground">Pago con QR</h2>
 
       {/* QR Code Preview */}
       <div className="flex flex-col items-center gap-4">
@@ -149,7 +149,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
         </div>
         {qrGenerated && (
           <p className="text-xs text-muted-foreground animate-fade-in">
-            Scan with your banking app to pay
+            Escanea el código QR con tu aplicación bancaria para completar el pago.
           </p>
         )}
       </div>
@@ -157,11 +157,11 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
       {/* QR Transaction Fields */}
       <div className="border-t border-white/10 pt-5">
         <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-4">
-          Transaction Details
+          Detalles de la transacción
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="checkout-label">User ID</label>
+            <label className="checkout-label">ID de Usuario</label>
             <input
               type="number"
               value={userId}
@@ -171,7 +171,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             />
           </div>
           <div>
-            <label className="checkout-label">Merchant ID</label>
+            <label className="checkout-label">ID del Comerciante</label>
             <input
               type="number"
               value={merchantId}
@@ -181,7 +181,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             />
           </div>
           <div>
-            <label className="checkout-label">Country</label>
+            <label className="checkout-label">País</label>
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
@@ -195,7 +195,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <label className="checkout-label mb-0">Device Changed?</label>
+            <label className="checkout-label mb-0">¿Es dispositivo nuevo?</label>
             <button
               type="button"
               onClick={() => setDeviceChange(!deviceChange)}
@@ -223,14 +223,14 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
       <div className="border-t border-white/10 pt-5">
         <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-1 flex items-center gap-2">
           <MapPin size={14} />
-          Location Data
+          Datos de Ubicación
         </h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Used for geolocation-based fraud analysis
+          Usado para análisis de fraude basado en geolocalización
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="checkout-label">Latitude</label>
+            <label className="checkout-label">Latitud</label>
             <input
               type="text"
               value={latitude}
@@ -240,7 +240,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             />
           </div>
           <div>
-            <label className="checkout-label">Longitude</label>
+            <label className="checkout-label">Longitud</label>
             <input
               type="text"
               value={longitude}

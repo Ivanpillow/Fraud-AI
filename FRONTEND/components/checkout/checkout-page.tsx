@@ -33,30 +33,27 @@ export default function CheckoutPage() {
   );
 
   const paymentMethods = [
-    { id: "card" as PaymentMethod, label: "Card", icon: CreditCard },
-    { id: "qr" as PaymentMethod, label: "QR Code", icon: QrCode },
-    { id: "crypto" as PaymentMethod, label: "Crypto", icon: Bitcoin },
+    { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },
+    { id: "qr" as PaymentMethod, label: "Código QR", icon: QrCode },
+    { id: "crypto" as PaymentMethod, label: "Criptomoneda", icon: Bitcoin },
   ];
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 md:py-12">
-      {/* Header */}
       <div className="w-full max-w-6xl mb-8 animate-fade-in">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
           Checkout
         </h1>
         <p className="text-muted-foreground mt-1 text-sm md:text-base">
-          Complete your payment securely with fraud detection powered by AI
+          Realiza tu pago y obtén una evaluación de riesgo instantánea para tu transacción.
         </p>
       </div>
 
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
-        {/* Left Column - Payment Form */}
         <div className="flex flex-col gap-6 animate-fade-in">
-          {/* Payment Method Selector */}
           <div className="glass-checkout-card rounded-3xl p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">
-              Choose a payment method
+              Selecciona un método de pago
             </h2>
             <div className="flex gap-3">
               {paymentMethods.map((method) => {
@@ -84,7 +81,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Payment Form */}
           <div className="glass-checkout-card rounded-3xl p-6">
             {selectedMethod === "card" && (
               <CardPaymentForm
@@ -104,7 +100,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Right Column - Order Summary */}
         <div className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <OrderSummary
             subtotal={subtotal}

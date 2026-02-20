@@ -63,7 +63,7 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold text-foreground">
-        Cryptocurrency Payment
+        Pago con Criptomoneda
       </h2>
 
       {/* Template Notice */}
@@ -72,11 +72,9 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
           <span className="text-xs text-blue-400">i</span>
         </div>
         <div>
-          <p className="text-sm text-blue-300 font-medium">Template Mode</p>
+          <p className="text-sm text-blue-300 font-medium">Modo de Plantilla</p>
           <p className="text-xs text-blue-300/70 mt-1">
-            Cryptocurrency payments are not yet connected to the backend fraud
-            detection system. This UI serves as a design template for future
-            integration.
+            Los pagos con criptomonedas aún no están conectados al sistema de detección de fraude del backend. Esta interfaz sirve como plantilla de diseño para futura integración.
           </p>
         </div>
       </div>
@@ -142,13 +140,13 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">You pay</p>
+            <p className="text-sm text-muted-foreground">A Pagar</p>
             <p className="text-2xl font-bold text-foreground mt-1">
               ${subtotal.toFixed(2)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">Currency</p>
+            <p className="text-sm text-muted-foreground">Moneda</p>
             <p className="text-2xl font-bold mt-1" style={{ color: selected.color }}>
               {selected.symbol}
             </p>
@@ -156,21 +154,21 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
         </div>
         <div className="mt-4 pt-4 border-t border-white/10">
           <p className="text-xs text-muted-foreground">
-            Estimated conversion rate will be shown when this module is
-            connected to the backend.
+            El monto en {selected.name} se calculará al momento del pago según la tasa de cambio actual.
           </p>
         </div>
       </div>
 
       {/* Wallet Address */}
       <div>
-        <label className="checkout-label">Wallet Address</label>
+        <label className="checkout-label">Dirección de Billetera</label>
         <input
           type="text"
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
-          placeholder={`Enter your ${selected.symbol} wallet address`}
+          placeholder={`Ingrese su dirección de billetera ${selected.symbol}`}
           className="checkout-input font-mono text-sm"
+          style={{ minWidth: "350px" }}
         />
       </div>
 
@@ -189,7 +187,7 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
         >
           {selected.icon}
         </span>
-        Pay with {selected.name} (Coming Soon)
+        Pagar con {selected.name} (Próximamente)
       </button>
     </div>
   );
