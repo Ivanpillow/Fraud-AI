@@ -15,7 +15,7 @@ interface ApiResponse<T = unknown> {
   status: number;
 }
 
-async function apiRequest<T = unknown>(
+export async function apiRequest<T = unknown>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {

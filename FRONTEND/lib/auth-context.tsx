@@ -1,19 +1,27 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { apiRequest } from "@/lib/api";
+
+
+interface MeResponse {
+  id: number;
+  email: string;
+  full_name: string;
+  role: string;
+}
 
 interface User {
   id: number;
   email: string;
   name: string;
-  role_id?: number;
+  role: string;
 }
 
 interface AuthContextValue {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -22,48 +30,50 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Restore session from sessionStorage (not localStorage for security)
-    const savedToken = sessionStorage.getItem("auth_token");
-    const savedUser = sessionStorage.getItem("auth_user");
-    if (savedToken && savedUser) {
-      try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      } catch {
-        sessionStorage.removeItem("auth_token");
-        sessionStorage.removeItem("auth_user");
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      const res = await apiRequest<MeResponse>("/auth/me", {
+        method: "GET",
+      });
+
+      if (!res.error && res.data) {
+        setUser({
+          id: res.data.id,
+          email: res.data.email,
+          name: res.data.full_name,
+          role: res.data.role,
+        });
       }
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  };
 
-  const login = useCallback((newToken: string, newUser: User) => {
-    setToken(newToken);
+  const login = (newUser: User) => {
     setUser(newUser);
-    sessionStorage.setItem("auth_token", newToken);
-    sessionStorage.setItem("auth_user", JSON.stringify(newUser));
-  }, []);
+  };
 
-  const logout = useCallback(() => {
-    setToken(null);
+  const logout = async () => {
+    await apiRequest("/auth/logout", { method: "POST" });
     setUser(null);
-    sessionStorage.removeItem("auth_token");
-    sessionStorage.removeItem("auth_user");
-  }, []);
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
         login,
         logout,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
       }}
     >
       {children}
@@ -73,8 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }

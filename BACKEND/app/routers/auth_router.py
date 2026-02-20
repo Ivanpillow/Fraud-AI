@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services.auth_service import login_user
 from app.core.dependencies import get_current_user
 from app.schemas.auth import LoginRequest
+from app.queries.auth_queries import get_auth_user_by_id
+from app.core.security import verify_access_token
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -37,13 +39,21 @@ def logout(response: Response):
 
 
 @router.get("/me")
-def me(user=Depends(get_current_user)):
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("accessToken")
+
+    if not token:
+        raise HTTPException(status_code=401)
+
+    payload = verify_access_token(token) 
+
+    user = get_auth_user_by_id(db, int(payload["sub"]))
+    if not user:
+        raise HTTPException(status_code=401)
+
     return {
-        "userData": {
-            "id": user["sub"],
-            "role": user["role"]
-        },
-        "userAbilityRules": [
-            {"action": "manage", "subject": "all"}
-        ]
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role.name
     }

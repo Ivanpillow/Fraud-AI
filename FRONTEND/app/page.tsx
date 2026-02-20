@@ -51,10 +51,10 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-foreground text-balance">
-              Sign in
+              Inicio de sesión
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Access your admin dashboard securely.
+              Accede a tu panel de control para monitorear y gestionar transacciones.
             </p>
           </div>
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Only verified administrators can access this panel.
+            Solamente para uso de administradores. Si tienes problemas para iniciar sesión, contacta a soporte.
           </p>
         </div>
       </div>

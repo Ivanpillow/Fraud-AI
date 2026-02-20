@@ -9,3 +9,8 @@ def get_auth_user_by_email(db: Session, email: str):
         .filter(AuthUser.email == email)
         .first()
     )
+
+
+def get_auth_user_by_id(db, user_id: int):
+    return db.query(AuthUser).filter(AuthUser.id == user_id).first()
+

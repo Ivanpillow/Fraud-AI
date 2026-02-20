@@ -107,7 +107,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
             )}
           >
             <LayoutDashboard size={16} />
-            <span>Admin Panel</span>
+            <span>Panel de Administración</span>
           </button>
 
           {/* Payment Page Option */}
@@ -122,7 +122,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
             )}
           >
             <CreditCard size={16} />
-            <span>Payment Page</span>
+            <span>Pagos</span>
           </button>
 
           {/* Sign Out Option */}
@@ -136,7 +136,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
             )}
           >
             <LogOut size={16} />
-            <span>Sign Out</span>
+            <span>Cerrar Sesión</span>
           </button>
         </div>
       )}

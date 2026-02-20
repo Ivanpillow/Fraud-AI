@@ -13,6 +13,7 @@ function isValidEmail(email: string): boolean {
   return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
 }
 
+// Funcion para sanitizar inputs y prevenir XSS básico
 function sanitizeInput(input: string): string {
   return input
     .replace(/[<>]/g, "")
@@ -22,9 +23,9 @@ function sanitizeInput(input: string): string {
 }
 
 function validatePassword(password: string): string | null {
-  if (password.length < 8) return "At least 8 characters required";
-  if (!/\d/.test(password)) return "Must contain at least one number";
-  if (!/[a-zA-Z]/.test(password)) return "Must contain at least one letter";
+  if (password.length < 8) return "Se necesitan al menos 8 caracteres";
+  if (!/\d/.test(password)) return "Debe contener al menos un número";
+  if (!/[a-zA-Z]/.test(password)) return "Debe contener al menos una letra";
   return null;
 }
 
@@ -40,18 +41,19 @@ export default function LoginForm() {
     password?: string;
   }>({});
 
+  // Validación de campos antes de enviar
   const validateFields = (): boolean => {
     const errors: { email?: string; password?: string } = {};
     const cleanEmail = sanitizeInput(email);
 
     if (!cleanEmail) {
-      errors.email = "Email is required";
+      errors.email = "Correo electrónico es requerido";
     } else if (!isValidEmail(cleanEmail)) {
-      errors.email = "Please enter a valid email";
+      errors.email = "Por favor ingrese un correo electrónico válido";
     }
 
     if (!password) {
-      errors.password = "Password is required";
+      errors.password = "Contraseña es requerida";
     } else {
       const pwError = validatePassword(password);
       if (pwError) errors.password = pwError;
@@ -61,6 +63,7 @@ export default function LoginForm() {
     return Object.keys(errors).length === 0;
   };
 
+  // Manejo del submit del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -70,31 +73,36 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      if (USE_MOCK) {
-        // Mock login for development
-        await new Promise((res) => setTimeout(res, 1200));
-        login("mock-token-12345", {
-          id: 1,
-          email: sanitizeInput(email),
-          name: "Admin User",
-        });
-        return;
-      }
+      // if (USE_MOCK) {
+      //   // Mock login for development 
+      //   await new Promise((res) => setTimeout(res, 1200));
+      //   login("mock-token-12345", {
+      //     id: 1,
+      //     email: sanitizeInput(email),
+      //     name: "Admin User",
+      //   });
+      //   return;
+      // }
 
       const result = await loginUser(sanitizeInput(email), password);
       if (result.error) {
-        setError(result.error);
+        if (result.status === 401) {
+          setError("Credenciales inválidas. Intente nuevamente.");
+        } else {
+          setError(result.error || "Error desconocido. Por favor intente nuevamente.");
+        }
       } else if (result.data && result.data.userData) {
         // El backend devuelve userData con full_name, convertir a name para el contexto
         const userData = {
           id: result.data.userData.id,
           email: result.data.userData.email,
           name: result.data.userData.full_name,
+          role: result.data.userData.role,
         };
-        login("authenticated", userData);
+        login(userData);
       }
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("Error de red. Por favor intente nuevamente.");
     } finally {
       setIsLoading(false);
     }
@@ -113,13 +121,13 @@ export default function LoginForm() {
           htmlFor="email"
           className="text-sm font-medium text-foreground/80"
         >
-          Email
+          Correo Electrónico
         </label>
         <input
           id="email"
           type="email"
           autoComplete="email"
-          placeholder="admin@company.com"
+          placeholder="Ingrese su correo electrónico"
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -143,13 +151,14 @@ export default function LoginForm() {
           htmlFor="password"
           className="text-sm font-medium text-foreground/80"
         >
-          Password
+          Contraseña
         </label>
         <div className="relative">
           <input
             id="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
+            placeholder="Ingrese su contraseña"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
@@ -165,7 +174,7 @@ export default function LoginForm() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -174,11 +183,8 @@ export default function LoginForm() {
           <p id="password-error" className="text-xs text-destructive animate-fade-in">
             {fieldErrors.password}
           </p>
-        ) : (
-          <p id="password-hint" className="text-xs text-muted-foreground">
-            At least 8 characters and one number.
-          </p>
-        )}
+          ) : null} 
+          {/* Le quite lo de 8 characters at least por que contamina esa madre lol  */}
       </div>
 
       <button
@@ -189,10 +195,10 @@ export default function LoginForm() {
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
             <Loader2 size={16} className="animate-spin" />
-            Signing in...
+            Iniciando sesión...
           </span>
         ) : (
-          "Sign In"
+          "Iniciar sesión"
         )}
       </button>
     </form>
