@@ -46,6 +46,8 @@ def process_qr_transaction(db, tx_data):
             avg_amount_user=user_stats["avg_amount_user"]
         )
 
+        is_international = tx_data["country"].upper() != "MX"
+
         # Features para ML
         features = {
             "amount": tx_data["amount"],
@@ -56,8 +58,13 @@ def process_qr_transaction(db, tx_data):
             "hour": tx_data["hour"],
             "day_of_week": tx_data["day_of_week"],
             "failed_attempts": user_stats["failed_attempts"],
-            "is_international": tx_data["country"] != "MX",
+            "is_international": is_international,
         }
+
+        # Limitar valores extremos para evitar problemas con el modelo 
+        features["transactions_last_24h"] = min(features["transactions_last_24h"], 10)
+        features["card_tx_last_24h"] = min(features["card_tx_last_24h"], 10)
+        features["qr_tx_last_24h"] = min(features["qr_tx_last_24h"], 10)
 
         # Blindaje contra valores que pudieran ser None
         for k, v in features.items():
@@ -70,17 +77,20 @@ def process_qr_transaction(db, tx_data):
         prediction = result["label"]
 
         # Decisión
-        block_threshold = 0.90 if is_new_user else 0.75
+        block_threshold = 0.90 if is_new_user else 0.80
+        review_threshold = 0.55
 
         if prob >= block_threshold:
-            decision = "block"
-        elif prob >= 0.45:
+            # 🔹 No bloquear solo por frecuencia
+            if features["amount_vs_avg"] < 1.2 and features["failed_attempts"] == 0:
+                decision = "review"
+            else:
+                decision = "block"
+
+        elif prob >= review_threshold:
             decision = "review"
         else:
             decision = "allow"
-
-        if is_new_user and decision == "block":
-            decision = "review"
 
         # Guardar predicción
         fraud_pred = FraudPrediction(
@@ -138,6 +148,16 @@ def process_qr_transaction(db, tx_data):
                 user_id=tx_data["user_id"],
                 amount=tx_data["amount"]
             )
+        
+
+        # Regla adicional de estabilidad para evitar bloqueos por picos de probabilidad en usuarios con buen comportamiento histórico
+        if decision == "block":
+            if (
+                features["amount_vs_avg"] < 1.0 and
+                features["failed_attempts"] == 0 and
+                features["transactions_last_24h"] <= 10
+            ):
+                decision = "review"
 
         # Commit final
         db.commit()

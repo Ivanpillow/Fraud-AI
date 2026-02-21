@@ -5,11 +5,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import os
 
+from sklearn.metrics import classification_report, confusion_matrix
+
 BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../../utils/fraud_ai_dataset_v2.csv"
+    "../../utils/fraud_ai_dataset_v3.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)
@@ -52,5 +54,16 @@ model.fit(X_train_scaled, y_train)
 parent_dir = os.path.dirname(BASE_DIR)
 joblib.dump(model, os.path.join(parent_dir, "rf_model.pkl"))
 joblib.dump(scaler, os.path.join(parent_dir, "rf_scaler.pkl"))
+
+
+
+y_pred = model.predict(X_test_scaled)
+
+print("\nMatriz de confusión:")
+print(confusion_matrix(y_test, y_pred))
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
 
 print("Random Forest entrenado y guardado correctamente")

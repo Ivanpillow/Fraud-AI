@@ -160,10 +160,10 @@ interface Props {
 }
 
 export default function CardPaymentForm({ subtotal, onResult }: Props) {
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardName, setCardName] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
+  // const [cardNumber, setCardNumber] = useState("");
+  // const [cardName, setCardName] = useState("");
+  // const [expiry, setExpiry] = useState("");
+  // const [cvv, setCvv] = useState("");
 
   // Fraud-relevant fields
   const [userId, setUserId] = useState("1");
@@ -172,11 +172,31 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
   const [deviceType, setDeviceType] = useState("desktop");
 
   // Shipping info (for model variables - no cost calculation)
-  const [shippingName, setShippingName] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
+  // const [shippingName, setShippingName] = useState("");
+  // const [shippingAddress, setShippingAddress] = useState("");
+  // const [shippingCity, setShippingCity] = useState("");
+  // const [shippingCountry, setShippingCountry] = useState("MX");
+  // const [shippingZip, setShippingZip] = useState("");
+
+
+  // ===========================
+  // ===== DATOS DE PRUEBA =====
+  // ===========================
+  const [cardNumber, setCardNumber] = useState("4111111111111111"); // Visa test
+  const [cardName, setCardName] = useState("JUAN PEREZ");
+  const [expiry, setExpiry] = useState("12/28");
+  const [cvv, setCvv] = useState("123");
+
+  // const [userId, setUserId] = useState("1");
+  // const [merchantCategory, setMerchantCategory] = useState("electronics");
+  // const [country, setCountry] = useState("RU");
+  // const [deviceType, setDeviceType] = useState("mobile");
+
+  const [shippingName, setShippingName] = useState("Juan Perez");
+  const [shippingAddress, setShippingAddress] = useState("Av. Vallarta 1234");
+  const [shippingCity, setShippingCity] = useState("Guadalajara");
   const [shippingCountry, setShippingCountry] = useState("MX");
-  const [shippingZip, setShippingZip] = useState("");
+  const [shippingZip, setShippingZip] = useState("44100");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,26 +219,27 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
   }, [brand, prevBrand]);
 
   const merchantCategories = [
-    { value: "retail", label: "Comercio" },
-    { value: "food", label: "Alimentos y restaurantes" },
+    { value: "grocery", label: "Supermercado" },
+    { value: "electronics", label: "Electrónica" },
+    { value: "fashion", label: "Moda" },
     { value: "travel", label: "Viajes" },
-    { value: "entertainment", label: "Entretenimiento" },
-    { value: "utilities", label: "Servicios públicos" },
+    { value: "gaming", label: "Gaming" },
+    { value: "crypto", label: "Cripto" },
+    { value: "restaurants", label: "Restaurantes" },
+    { value: "gas", label: "Gasolina" },
     { value: "health", label: "Salud" },
-    { value: "education", label: "Educación" },
-    { value: "technology", label: "Tecnología" },
   ];
 
   const countries = [
     { value: "MX", label: "México" },
     { value: "US", label: "Estados Unidos" },
     { value: "CA", label: "Canadá" },
-    { value: "GB", label: "Reino Unido" },
-    { value: "DE", label: "Alemania" },
-    { value: "JP", label: "Japón" },
     { value: "BR", label: "Brasil" },
-    { value: "IN", label: "India" },
+    { value: "ES", label: "España" },
+    { value: "FR", label: "Francia" },
   ];
+
+  const [isPaid, setIsPaid] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +268,8 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
         device_type: deviceType,
       };
 
+      // console.log("PAYLOAD:", payload);
+
       const response = await fetch(`${API_BASE_URL}/transactions/simple`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -261,6 +284,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
 
       const result = await response.json();
       onResult(result);
+      setIsPaid(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Transaction failed");
     } finally {
@@ -322,6 +346,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
             onChange={(e) => setCardName(e.target.value)}
             // placeholder="John Doe"
             className="checkout-input"
+            disabled={isSubmitting || isPaid}
           />
         </div>
         <div>
@@ -336,6 +361,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               }
               // placeholder="1234 5678 9012 3456"
               className="checkout-input pr-20"
+              disabled={isSubmitting || isPaid}
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-300">
               <CardBrandLogo brand={brand} />
@@ -353,6 +379,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               // placeholder="MM/AA"
               maxLength={5}
               className="checkout-input"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
@@ -373,6 +400,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               placeholder={brand === "amex" ? "1234" : "123"}
               maxLength={brandInfo.cvvLength}
               className="checkout-input"
+              disabled={isSubmitting || isPaid}
             />
           </div>
         </div>
@@ -392,6 +420,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               onChange={(e) => setUserId(e.target.value)}
               className="checkout-input"
               min="1"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
@@ -400,10 +429,10 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               value={deviceType}
               onChange={(e) => setDeviceType(e.target.value)}
               className="checkout-input checkout-select"
+              disabled={isSubmitting || isPaid}
             >
               <option value="desktop">Ordenador</option>
               <option value="mobile">Dispositivo Móvil</option>
-              <option value="tablet">Tablet</option>
             </select>
           </div>
           <div>
@@ -412,6 +441,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               value={merchantCategory}
               onChange={(e) => setMerchantCategory(e.target.value)}
               className="checkout-input checkout-select"
+              disabled={isSubmitting || isPaid}
             >
               {merchantCategories.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -426,6 +456,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               value={country}
               onChange={(e) => setCountry(e.target.value)}
               className="checkout-input checkout-select"
+              disabled={isSubmitting || isPaid}
             >
               {countries.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -454,6 +485,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               onChange={(e) => setShippingName(e.target.value)}
               // placeholder="John Doe"
               className="checkout-input"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
@@ -464,6 +496,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
               onChange={(e) => setShippingAddress(e.target.value)}
               // placeholder="123 Main Street"
               className="checkout-input"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -475,6 +508,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
                 onChange={(e) => setShippingCity(e.target.value)}
                 placeholder="Guadalajara"
                 className="checkout-input"
+                disabled={isSubmitting || isPaid}
               />
             </div>
             <div>
@@ -484,6 +518,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
                 onChange={(e) => setShippingCountry(e.target.value)}
                 className="checkout-input checkout-select"
                 style={{ minWidth: "220px" }}
+                disabled={isSubmitting || isPaid}
               >
                 {countries.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -500,6 +535,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
                 onChange={(e) => setShippingZip(e.target.value)}
                 // placeholder="44100"
                 className="checkout-input"
+                disabled={isSubmitting || isPaid}
               />
             </div>
           </div>
@@ -517,14 +553,19 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
       {/* Submit */}
       <button
         type="submit"
-        disabled={isSubmitting || subtotal <= 0}
+        disabled={isSubmitting || subtotal <= 0 || isPaid}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
           "disabled:opacity-40 disabled:cursor-not-allowed"
         )}
       >
-        {isSubmitting ? (
+        {isPaid ? (
+          <>
+            <ShieldCheck size={18} />
+            Pago realizado
+          </>
+        ) : isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
             Analizando transacción...

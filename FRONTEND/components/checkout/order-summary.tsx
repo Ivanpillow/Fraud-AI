@@ -158,7 +158,7 @@ export default function OrderSummary({
       {fraudResult && decisionInfo && DecisionIcon && (
         <div className="border-t border-white/10 pt-5 animate-fade-in">
           <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-4">
-            AI Fraud Analysis
+            Análisis de Fraude
           </h3>
 
           {/* Decision Badge */}
@@ -182,7 +182,7 @@ export default function OrderSummary({
           {/* Probability Bar */}
           <div className="mt-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fraud Probability</span>
+              <span className="text-muted-foreground">Probabilidad de Fraude</span>
               <span
                 className={cn(
                   "font-mono font-bold",
@@ -222,7 +222,7 @@ export default function OrderSummary({
             ) : (
               <ChevronDown size={14} />
             )}
-            <span>Model Scores</span>
+            <span>Puntuaciones de Modelos de IA</span>
           </button>
 
           {showDetails && (
@@ -235,7 +235,7 @@ export default function OrderSummary({
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">
-                  Logistic Regression
+                  Regresión Logística
                 </span>
                 <span className="text-foreground font-mono">
                   {(fraudResult.model_scores.logistic_regression * 100).toFixed(
@@ -245,13 +245,13 @@ export default function OrderSummary({
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">KMeans Anomaly</span>
+                <span className="text-muted-foreground">KMeans</span>
                 <span className="text-foreground font-mono">
                   {(fraudResult.model_scores.kmeans_anomaly * 100).toFixed(2)}%
                 </span>
               </div>
               <div className="flex justify-between text-xs border-t border-white/5 pt-2 mt-2">
-                <span className="text-muted-foreground">Transaction ID</span>
+                <span className="text-muted-foreground">ID de Transacción</span>
                 <span className="text-foreground font-mono">
                   #{fraudResult.transaction_id}
                 </span>

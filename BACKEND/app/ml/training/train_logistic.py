@@ -6,12 +6,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 import os
+from sklearn.metrics import classification_report, confusion_matrix
 
 BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../../utils/fraud_ai_dataset_v2.csv"
+    "../../utils/fraud_ai_dataset_v3.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)
@@ -78,5 +79,13 @@ for channel in ["card", "qr"]:
         y_true = y_test[mask]
         y_pred = model.predict_proba(X_test_scaled[mask])[:,1]
         print(f"ROC {channel.upper()}:", roc_auc_score(y_true, y_pred))
+
+y_pred = model.predict(X_test_scaled)
+
+print("\nMatriz de confusión:")
+print(confusion_matrix(y_test, y_pred))
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
 
 print("Modelo, scaler y background guardados correctamente")

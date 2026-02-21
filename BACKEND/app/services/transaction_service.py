@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pyexpat import features
 from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
 from app.queries.transaction_queries import create_transaction # Se quito esta funcion y la de save para que no se guardaran si ocurria algún error en el proceso, ahora se maneja todo con flush y commit al final
@@ -53,10 +54,18 @@ def process_transaction(db, tx_data):
             "is_international": tx_data["is_international"],
         }
 
+        # Limitar valores extremos para evitar problemas con el modelo 
+        features["transactions_last_24h"] = min(features["transactions_last_24h"], 10)
+        features["card_tx_last_24h"] = min(features["card_tx_last_24h"], 10)
+        features["qr_tx_last_24h"] = min(features["qr_tx_last_24h"], 10)
+
         # Blindaje contra valores que pudieran ser None
         for k, v in features.items():
             if v is None:
                 features[k] = 0
+
+        # print("USER_STATS:", user_stats)
+        # print("FEATURES:", features)
 
         # Predicción de Random Forest + Logistic Regression + KMeans
         result = predict_fraud_combined(features)
@@ -64,17 +73,20 @@ def process_transaction(db, tx_data):
         prob = result["final_score"]
 
         # Decisión
-        block_threshold = 0.90 if is_new_user else 0.75
+        block_threshold = 0.90 if is_new_user else 0.80
+        review_threshold = 0.55
 
         if prob >= block_threshold:
-            decision = "block"
-        elif prob >= 0.45:
+            # 🔹 No bloquear solo por frecuencia
+            if features["amount_vs_avg"] < 1.2 and features["failed_attempts"] == 0:
+                decision = "review"
+            else:
+                decision = "block"
+
+        elif prob >= review_threshold:
             decision = "review"
         else:
             decision = "allow"
-
-        if is_new_user and decision == "block":
-            decision = "review"
 
         # Guardar predicción
         fraud_pred = FraudPrediction(
@@ -134,6 +146,16 @@ def process_transaction(db, tx_data):
                     explanations=explanations
                 )
 
+        # Regla adicional de estabilidad para evitar bloqueos por picos de probabilidad en usuarios con buen comportamiento histórico
+        if decision == "block":
+            if (
+                features["amount_vs_avg"] < 1.0 and
+                features["failed_attempts"] == 0 and
+                features["transactions_last_24h"] <= 10
+            ):
+                decision = "review"
+        
+
         # Commit final después de todo el proceso para asegurar atomicidad
         db.commit()
         return {
@@ -167,19 +189,10 @@ def process_transaction_simple(db, tx_data):
             amount=tx_data["amount"],
             avg_amount_user=user_stats["avg_amount_user"]
         )
+        
+        print("Country:", tx_data["country"])
+        is_international = tx_data["country"].upper() != "MX"
 
-        is_international = tx_data["country"] != "MX"
-
-        # risk_score_rule = calculate_risk_score_rule(
-        #     amount_vs_avg=amount_vs_avg,
-        #     transactions_last_24h=user_stats["transactions_last_24h"],
-        #     failed_attempts=user_stats["failed_attempts"],
-        #     is_international=is_international,
-        #     hour=hour,
-        #     channel="card",
-        #     card_tx_last_24h=user_stats["card_tx_last_24h"],
-        #     qr_tx_last_24h=user_stats["qr_tx_last_24h"]
-        # )
 
         full_tx = {
             **tx_data,
