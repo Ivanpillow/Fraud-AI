@@ -9,14 +9,33 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import GlassCard from "./glass-card";
+import GlassCard from "../glass-card";
 import { mockLocationData } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { fetchTransactionsByCountry } from "@/lib/api";
 
 export default function LocationChart() {
+  const [data, setData] = useState<
+    Array<{ name: string; value: number }>
+  >([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetchTransactionsByCountry();
+      if (res.data) {
+        setData(res.data);
+      } 
+    };
+    load();
+  }, []);
+
   return (
-    <GlassCard title="Location Traffic">
+    <GlassCard title="Ubicación de Usuarios">
+      <p className="text-xs text-muted-foreground mb-2">
+        Distribución geográfica de tus usuarios.
+      </p>
       <ResponsiveContainer width="100%" height={240}>
-        <BarChart data={mockLocationData}>
+        <BarChart data={data}>
           <CartesianGrid
             stroke="rgba(255,255,255,0.04)"
             strokeDasharray="3 3"

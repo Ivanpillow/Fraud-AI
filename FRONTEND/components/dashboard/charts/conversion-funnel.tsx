@@ -13,6 +13,9 @@ import {
 import GlassCard from "../glass-card";
 import { mockAnalyticsChartData } from "@/lib/mock-data";
 
+import { useEffect, useState } from "react";
+import { fetchFraudFunnel } from "@/lib/api";
+
 const COLORS = [
   "hsl(168, 70%, 45%)",
   "hsl(180, 60%, 40%)",
@@ -22,11 +25,34 @@ const COLORS = [
 ];
 
 export default function ConversionFunnel() {
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+  const loadData = async () => {
+    const response = await fetchFraudFunnel();
+
+    if (response.data) {
+      const formatted = [
+        { name: "Total", value: response.data.total },
+        ...response.data.decisions,
+      ];
+
+      setData(formatted);
+    }
+  };
+
+  loadData();
+}, []);
+
+
   return (
-    <GlassCard title="Conversion Funnel">
+    <GlassCard title="Embudo de Conversión de Transacciones">
+      <p className="text-xs text-muted-foreground mb-2">
+        Muestra la cantidad de transacciones en cada etapa del proceso de decisión de fraude. 
+      </p>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart
-          data={mockAnalyticsChartData.conversionFunnel}
+          data={data}
           layout="vertical"
         >
           <CartesianGrid
@@ -66,7 +92,7 @@ export default function ConversionFunnel() {
             }}
           />
           <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={32}>
-            {mockAnalyticsChartData.conversionFunnel.map((_, index) => (
+            {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Bar>

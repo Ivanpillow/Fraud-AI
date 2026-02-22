@@ -1,9 +1,12 @@
 "use client";
 
 import { CheckCircle, XCircle, Clock, DollarSign } from "lucide-react";
-import GlassCard from "./glass-card";
+import GlassCard from "../glass-card";
 import { mockPaymentSummary } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+
+import { useEffect, useState } from "react";
+import { fetchOverviewMetrics } from "@/lib/api";
 
 const items = [
   {
@@ -29,12 +32,60 @@ const items = [
   },
 ];
 
+
+type PaymentSummaryData = {
+  total_payments: number;
+  successful: number;
+  failed: number;
+  pending: number;
+  average_amount: number;
+};
+
+
 export default function PaymentSummary() {
-  const data = mockPaymentSummary;
-  const total = data.total_payments;
+
+  const [data, setData] = useState<PaymentSummaryData | null>(null);
+  useEffect(() => {
+    const load = async () => {
+      const res = await fetchOverviewMetrics();
+      if (res.data) {
+        const decisions = res.data.decisions;
+
+        const total =
+          (decisions.allow || 0) +
+          (decisions.review || 0) +
+          (decisions.block || 0);
+
+        setData({
+          total_payments: total,
+          successful: decisions.allow || 0,
+          pending: decisions.review || 0,
+          failed: decisions.block || 0,
+          average_amount:
+            res.data.stats.total_revenue / (res.data.stats.total_transactions || 1),
+        });
+      }
+    };
+    load();
+  }, []);
+
+  const total = data?.total_payments || 0;
+
+  if (!data) {
+    return (
+      <GlassCard title="Resumen de Pagos">
+        <p className="text-xs text-muted-foreground">
+          Cargando resumen de pagos...
+        </p>
+      </GlassCard>
+    );
+  }
 
   return (
-    <GlassCard title="Payment Summary">
+    <GlassCard title="Resumen de Pagos">
+      <p className="text-xs text-muted-foreground mb-2">
+        Resumen de las transacciones procesadas, mostrando el total de pagos, su estado (exitosos, fallidos, pendientes) y el monto promedio.
+      </p>
       <div className="flex flex-col gap-4">
         {/* Total */}
         <div className="flex items-center justify-between">

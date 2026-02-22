@@ -364,4 +364,58 @@ export async function updateNotificationDecision(
   });
 }
 
+
+
+
+
+// ---- Charts Metrics ----
+
+export async function fetchWeeklyTransactions(token?: string) {
+  return apiRequest<
+    Array<{ date: string; total: number }>
+  >("/metrics/weekly-transactions", { token });
+}
+
+export async function fetchFraudFunnel(token?: string) {
+  return apiRequest<{
+    total: number;
+    decisions: Array<{ name: string; value: number }>;
+  }>("/metrics/fraud-funnel", { token });
+}
+
+export async function fetchTransactionsByCountry(token?: string) {
+  return apiRequest<
+    Array<{ name: string; value: number }>
+  >("/metrics/transactions-by-country", { token });
+}
+
+
+// 
+export async function fetchOverviewMetrics(token?: string) {
+  return apiRequest<{
+    stats: {
+      total_users: number;
+      total_transactions: number;
+      total_revenue: number;
+      active_users: number;
+    };
+    decisions: Record<string, number>;
+    transactions_by_hour: Array<{
+      hour: number;
+      amount: number;
+      count: number;
+    }>;
+  }>("/metrics/overview", { token });
+}
+
+export async function fetchTrends() {
+  return apiRequest<{
+    line: any[];
+    bar: any[];
+    scatter: any[];
+  }>("/metrics/trends");
+}
+
+
+
 export { API_BASE_URL };

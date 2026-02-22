@@ -13,10 +13,38 @@ import {
 import GlassCard from "../glass-card";
 import { mockAnalyticsChartData } from "@/lib/mock-data";
 
+import { useEffect, useState } from "react";
+import { fetchWeeklyTransactions } from "@/lib/api";
+
+
+
 export default function RevenueComparison() {
+  
+const [data, setData] = useState<any[]>([]);
+
+useEffect(() => {
+  const loadData = async () => {
+    const response = await fetchWeeklyTransactions();
+
+    if (response.data) {
+      const formatted = response.data.map((d) => ({
+        name: d.date,
+        current: d.total,
+        previous: 0, // Logica para obtener datos de la semana anterior 
+      }));
+
+      setData(formatted);
+    }
+  };
+
+  loadData();
+}, []);
+
+
+
   return (
     <GlassCard
-      title="Revenue"
+      title="Comparación Semanal de Ingresos"
       action={
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
@@ -31,7 +59,7 @@ export default function RevenueComparison() {
       }
     >
       <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={mockAnalyticsChartData.revenue}>
+        <LineChart data={data}>
           <CartesianGrid
             stroke="rgba(255,255,255,0.04)"
             strokeDasharray="3 3"

@@ -9,6 +9,8 @@ import {
 } from "recharts";
 import GlassCard from "../glass-card";
 import { mockAnalyticsChartData } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { fetchTransactionsByCountry } from "@/lib/api";
 
 const COLORS = [
   "hsl(168, 70%, 45%)",
@@ -19,11 +21,27 @@ const COLORS = [
 ];
 
 export default function RevenueByLocation() {
-  const data = mockAnalyticsChartData.topLocations;
+
+  const [data, setData] = useState<any[]>([]);
+  useEffect(() => {
+    const loadData = async () => {
+      const response = await fetchTransactionsByCountry();
+
+      if (response.data) {
+        setData(response.data);
+      }
+    };
+
+    loadData();
+  }, []);
+
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <GlassCard title="Revenue by Location">
+    <GlassCard title="Ingresos por Ubicación">
+      <p className="text-xs text-muted-foreground mb-2">
+        Distribución de ingresos por ubicación geográfica..
+      </p>
       <div className="flex flex-col md:flex-row items-center gap-6">
         <div className="w-[200px] h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
