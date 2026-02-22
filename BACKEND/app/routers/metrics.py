@@ -178,7 +178,7 @@ def trends(db: Session = Depends(get_db)):
         .all()
     )
 
-    # Device distribution
+    # Transacciones por tipo de dispositivo
     device = (
         db.query(
             Transaction.device_type,
@@ -188,7 +188,7 @@ def trends(db: Session = Depends(get_db)):
         .all()
     )
 
-    # Scatter (hour vs amount)
+    # Scatter de monto vs hora del día para detectar patrones de comportamiento
     scatter = (
         db.query(
             Transaction.hour,

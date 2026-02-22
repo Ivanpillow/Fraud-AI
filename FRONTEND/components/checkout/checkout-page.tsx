@@ -10,9 +10,23 @@ import { cn } from "@/lib/utils";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
+type TaxCode = "MX" | "US" | "EU";
+
+const TAX_OPTIONS: Record<"MX" | "US" | "EU", number> = {
+  MX: 0.16,
+  US: 0.08,
+  EU: 0.20,
+};
+
 export default function CheckoutPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("card");
   const [subtotal, setSubtotal] = useState<number>(0);
+  const [selectedTax, setSelectedTax] = useState<TaxCode | null>(null);
+
+  const taxRate = selectedTax ? TAX_OPTIONS[selectedTax] : 0;
+  const taxAmount = subtotal * taxRate;
+  const total = subtotal + taxAmount;
+
   const [fraudResult, setFraudResult] = useState<{
     transaction_id: number;
     fraud_probability: number;
@@ -84,9 +98,9 @@ export default function CheckoutPage() {
           <div className="glass-checkout-card rounded-3xl p-6">
             {selectedMethod === "card" && (
               <CardPaymentForm
-                subtotal={subtotal}
-                onResult={handleTransactionResult}
-              />
+              amount={total}
+              onResult={handleTransactionResult}
+            />
             )}
             {selectedMethod === "qr" && (
               <QRPaymentForm
@@ -103,6 +117,11 @@ export default function CheckoutPage() {
         <div className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <OrderSummary
             subtotal={subtotal}
+            taxRate={taxRate}
+            taxAmount={taxAmount}
+            total={total}
+            selectedTax={selectedTax}
+            onTaxChange={setSelectedTax}
             onSubtotalChange={setSubtotal}
             fraudResult={fraudResult}
           />

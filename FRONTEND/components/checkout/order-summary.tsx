@@ -26,8 +26,15 @@ interface FraudResult {
   explanations?: unknown;
 }
 
+type TaxCode = "MX" | "US" | "EU";
+
 interface Props {
   subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  selectedTax: TaxCode | null;
+  onTaxChange: (value: TaxCode | null) => void;
   onSubtotalChange: (value: number) => void;
   fraudResult: FraudResult | null;
 }
@@ -73,14 +80,17 @@ function getDecisionInfo(decision: string) {
 
 export default function OrderSummary({
   subtotal,
+  taxRate,
+  taxAmount,
+  total,
   onSubtotalChange,
   fraudResult,
+  selectedTax,
+  onTaxChange,
 }: Props) {
   const [showDetails, setShowDetails] = useState(false);
   const discount = 0;
   const shipping = 0;
-  const tax = subtotal * 0.16; // IVA 16%
-  const total = subtotal - discount + shipping + tax;
 
   const decisionInfo = fraudResult ? getDecisionInfo(fraudResult.decision) : null;
   const DecisionIcon = decisionInfo?.icon;
@@ -119,6 +129,28 @@ export default function OrderSummary({
         </div>
       </div>
 
+      <div className="flex gap-2 mt-2">
+        {Object.entries({ MX: 0.16, US: 0.08, EU: 0.20 }).map(([key, rate]) => {
+          const active = selectedTax === key;
+
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onTaxChange(active ? null : key as TaxCode)}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs transition-all duration-300 border",
+                active
+                  ? "bg-green-500/20 border-green-400 text-green-300"
+                  : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10"
+              )}
+            >
+              {key} {(rate * 100).toFixed(0)}%
+            </button>
+          );
+        })}
+      </div>
+
       {/* Discounts (show only) */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -141,9 +173,11 @@ export default function OrderSummary({
       <div className="flex items-center justify-between border-t border-white/10 pt-4">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Receipt size={16} />
-          <span className="text-sm">Impuesto (IVA 16%)</span>
+          <span className="text-sm">
+            Impuesto ({(taxRate * 100).toFixed(0)}%)
+          </span>
         </div>
-        <span className="text-sm text-foreground">${tax.toFixed(2)}</span>
+        <span className="text-sm text-foreground">${taxAmount.toFixed(2)}</span>
       </div>
 
       {/* Total */}

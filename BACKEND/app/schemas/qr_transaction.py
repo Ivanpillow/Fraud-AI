@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class QRTransactionCreate(BaseModel):
-    transaction_id: int
+    transaction_id: Optional[int] = None
     user_id: int
     amount: float
 
@@ -20,7 +20,7 @@ class QRTransactionCreate(BaseModel):
 
 
 class QRTransactionRawCreate(BaseModel):
-    transaction_id: int
+    transaction_id: Optional[int] = None
     user_id: int
     amount: float
 

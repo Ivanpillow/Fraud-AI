@@ -21,9 +21,12 @@ def process_qr_transaction(db, tx_data):
         user_stats = get_user_stats(db, tx_data["user_id"])
         is_new_user = user_stats["transactions_last_24h"] < 3
 
+        # nuevo transaction_id
+        transaction_id = int(datetime.utcnow().timestamp() * 1_000_000) # ID único basado en timestamp para evitar colisiones
+
         # Guardar QR sin commit para evitar inconsistencias si algo falla después
         qr_tx = QRTransaction(
-            transaction_id=tx_data["transaction_id"],
+            transaction_id=transaction_id,
             user_id=tx_data["user_id"],
             merchant_id=tx_data["merchant_id"],
             amount=tx_data["amount"],

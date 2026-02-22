@@ -18,10 +18,12 @@ from app.services.user_behavior_service import (
 def process_transaction(db, tx_data):
 
     try:
+        #nueva transaction_id
+        transaction_id = int(datetime.utcnow().timestamp() * 1_000_000) # ID único basado en timestamp para evitar colisiones
 
         # Guardar transacción sin commit para evitar inconsistencias si algo falla después
         transaction = Transaction(
-            transaction_id=tx_data["transaction_id"],
+            transaction_id=transaction_id,
             user_id=tx_data["user_id"],
             merchant_id=1,
             amount=tx_data["amount"],

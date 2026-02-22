@@ -101,6 +101,20 @@ function formatExpiry(value: string): string {
   return digits;
 }
 
+function isExpiryValid(expiry: string): boolean {
+  if (!expiry.includes("/")) return false;
+
+  const [monthStr, yearStr] = expiry.split("/");
+  const month = parseInt(monthStr, 10);
+  const year = parseInt("20" + yearStr, 10);
+
+  if (month < 1 || month > 12) return false;
+
+  const now = new Date();
+  const expiryDate = new Date(year, month);
+  return expiryDate > now;
+}
+
 /* ── Card brand logos SVG-like components ── */
 function CardBrandLogo({ brand }: { brand: CardBrand }) {
   const info = CARD_BRANDS[brand];
@@ -145,7 +159,7 @@ function CardBrandLogo({ brand }: { brand: CardBrand }) {
 
 /* ── Component ── */
 interface Props {
-  subtotal: number;
+  amount: number;
   onResult: (result: {
     transaction_id: number;
     fraud_probability: number;
@@ -159,7 +173,7 @@ interface Props {
   } | null) => void;
 }
 
-export default function CardPaymentForm({ subtotal, onResult }: Props) {
+export default function CardPaymentForm({ amount, onResult }: Props) {
   // const [cardNumber, setCardNumber] = useState("");
   // const [cardName, setCardName] = useState("");
   // const [expiry, setExpiry] = useState("");
@@ -240,6 +254,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
   ];
 
   const [isPaid, setIsPaid] = useState(false);
+  const [useShipping, setUseShipping] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,21 +265,39 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
       setError("Por favor complete todos los campos de la tarjeta");
       return;
     }
-    if (subtotal <= 0) {
+    if (amount <= 0) {
       setError("Por favor ingrese un monto válido en el resumen del pedido");
+      return;
+    }
+
+    const digits = cardNumber.replace(/\D/g, "");
+    if (!brandInfo.lengths.includes(digits.length)) {
+      setError("Número de tarjeta inválido");
+      return;
+    }
+
+    if (!isExpiryValid(expiry)) {
+      setError("Tarjeta vencida o fecha inválida");
+      return;
+    }
+
+    if (!/^[A-Z\s]{3,}$/.test(cardName.toUpperCase())) {
+      setError("Nombre inválido");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const txId = Math.floor(Math.random() * 900000) + 100000;
+      // const txId = Math.floor(Math.random() * 900000) + 100000;
+      const finalCountry = useShipping ? shippingCountry : country;
+
       const payload = {
-        transaction_id: txId,
+        // transaction_id: txId,
         user_id: parseInt(userId) || 1,
-        amount: subtotal,
+        amount: amount,
         merchant_category: merchantCategory,
-        country: country,
+        country: finalCountry,
         device_type: deviceType,
       };
 
@@ -468,79 +501,91 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
         </div>
       </div>
 
+      <div className="flex items-center gap-3 mb-4">
+        <label className="text-sm">Usar dirección de envío</label>
+        <input className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          type="checkbox"
+          checked={useShipping}
+          onChange={() => setUseShipping(!useShipping)}
+          disabled={isSubmitting || isPaid}
+        />
+      </div>
+
       {/* ── Shipping Address (for model variables, no cost) ── */}
-      <div className="border-t border-white/10 pt-5">
-        <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-1">
-          Dirección de Envío
-        </h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Requerida para análisis de fraude — no se calculará costo de envío ni se validará dirección.
-        </p>
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <label className="checkout-label">Nombre Completo</label>
-            <input
-              type="text"
-              value={shippingName}
-              onChange={(e) => setShippingName(e.target.value)}
-              // placeholder="John Doe"
-              className="checkout-input"
-              disabled={isSubmitting || isPaid}
-            />
-          </div>
-          <div>
-            <label className="checkout-label">Dirección</label>
-            <input
-              type="text"
-              value={shippingAddress}
-              onChange={(e) => setShippingAddress(e.target.value)}
-              // placeholder="123 Main Street"
-              className="checkout-input"
-              disabled={isSubmitting || isPaid}
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
+      {useShipping && (
+        <div className="border-t border-white/10 pt-5">
+          <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-1">
+            Dirección de Envío
+          </h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Requerida para análisis de fraude — no se calculará costo de envío ni se validará dirección.
+          </p>
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="checkout-label">Ciudad</label>
+              <label className="checkout-label">Nombre Completo</label>
               <input
                 type="text"
-                value={shippingCity}
-                onChange={(e) => setShippingCity(e.target.value)}
-                placeholder="Guadalajara"
+                value={shippingName}
+                onChange={(e) => setShippingName(e.target.value)}
+                // placeholder="John Doe"
                 className="checkout-input"
                 disabled={isSubmitting || isPaid}
               />
             </div>
             <div>
-              <label className="checkout-label">País</label>
-              <select
-                value={shippingCountry}
-                onChange={(e) => setShippingCountry(e.target.value)}
-                className="checkout-input checkout-select"
-                style={{ minWidth: "220px" }}
-                disabled={isSubmitting || isPaid}
-              >
-                {countries.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="checkout-label">Código Postal</label>
+              <label className="checkout-label">Dirección</label>
               <input
                 type="text"
-                value={shippingZip}
-                onChange={(e) => setShippingZip(e.target.value)}
-                // placeholder="44100"
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                // placeholder="123 Main Street"
                 className="checkout-input"
                 disabled={isSubmitting || isPaid}
               />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="checkout-label">Ciudad</label>
+                <input
+                  type="text"
+                  value={shippingCity}
+                  onChange={(e) => setShippingCity(e.target.value)}
+                  placeholder="Guadalajara"
+                  className="checkout-input"
+                  disabled={isSubmitting || isPaid}
+                />
+              </div>
+              <div>
+                <label className="checkout-label">País</label>
+                <select
+                  value={shippingCountry}
+                  onChange={(e) => setShippingCountry(e.target.value)}
+                  className="checkout-input checkout-select"
+                  style={{ minWidth: "220px" }}
+                  disabled={isSubmitting || isPaid}
+                >
+                  {countries.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="checkout-label">Código Postal</label>
+                <input
+                  type="text"
+                  value={shippingZip}
+                  onChange={(e) => setShippingZip(e.target.value)}
+                  // placeholder="44100"
+                  className="checkout-input"
+                  disabled={isSubmitting || isPaid}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -553,7 +598,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
       {/* Submit */}
       <button
         type="submit"
-        disabled={isSubmitting || subtotal <= 0 || isPaid}
+        disabled={isSubmitting || amount <= 0 || isPaid}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
@@ -573,7 +618,7 @@ export default function CardPaymentForm({ subtotal, onResult }: Props) {
         ) : (
           <>
             <ShieldCheck size={18} />
-            Pagar ${subtotal.toFixed(2)} & Analizar
+            Pagar ${amount.toFixed(2)} & Analizar
           </>
         )}
       </button>

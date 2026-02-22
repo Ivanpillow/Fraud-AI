@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class TransactionCreate(BaseModel):
-    transaction_id: int
+    transaction_id: Optional[int] = None
     user_id: int
     amount: float
     hour: int
@@ -19,7 +19,7 @@ class TransactionResponse(TransactionCreate):
 
 
 class TransactionRawCreate(BaseModel):
-    transaction_id: int
+    transaction_id: Optional[int] = None
     user_id: int
     amount: float
     merchant_category: str
