@@ -26,7 +26,7 @@ interface Transaction {
 
 export default function ReviewPage() {
   const searchParams = useSearchParams();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,8 +38,8 @@ export default function ReviewPage() {
 
   useEffect(() => {
     async function loadTransactions() {
-      if (token) {
-        const res = await fetchNotifications(token);
+      if (isAuthenticated) {
+        const res = await fetchNotifications();
         if (res.data) {
           const txns = res.data.map(notif => ({
             id: notif.id,
@@ -68,7 +68,7 @@ export default function ReviewPage() {
       setIsLoading(false);
     }
     loadTransactions();
-  }, [token, specifiedTransactionId, specifiedChannel]);
+  }, [isAuthenticated, specifiedTransactionId, specifiedChannel]);
 
   const filtered =
     filter === "all"
@@ -81,21 +81,21 @@ export default function ReviewPage() {
     block: transactions.filter((t) => t.status === "block").length,
   };
 
-  const handleAction = (id: string, action: "approve" | "block") => {
+  const handleAction = (id: string) => {
     setTransactions((prev) =>
       prev.filter((t) => t.id !== id)
     );
   };
 
   const filters: { key: StatusFilter; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "review", label: "Review" },
-    { key: "block", label: "Blocked" },
+    { key: "all", label: "Todas" },
+    { key: "review", label: "En Revisión" },
+    { key: "block", label: "Bloqueadas" },
   ];
 
   return (
     <div className="flex flex-col min-h-screen">
-      <DashboardHeader title="Review" breadcrumb="Fraud Review" />
+      <DashboardHeader title="Revisar Transacciones" breadcrumb="Revisión de Fraude" />
 
       <div className="flex-1 p-4 md:p-6 flex flex-col gap-5">
         {isLoading ? (
@@ -109,7 +109,7 @@ export default function ReviewPage() {
               <GlassCard>
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Total Flagged
+                    Total Señaladas
                   </p>
                   <p className="text-2xl font-bold text-foreground">
                     {counts.all}
@@ -119,7 +119,7 @@ export default function ReviewPage() {
               <GlassCard>
                 <div className="text-center">
                   <p className="text-xs text-[hsl(var(--warning))] uppercase tracking-wider mb-1">
-                    Under Review
+                    En Revisión
                   </p>
                   <p className="text-2xl font-bold text-foreground">
                     {counts.review}
@@ -129,7 +129,7 @@ export default function ReviewPage() {
               <GlassCard>
                 <div className="text-center">
                   <p className="text-xs text-destructive uppercase tracking-wider mb-1">
-                    Blocked
+                    Bloqueadas
                   </p>
                   <p className="text-2xl font-bold text-foreground">
                     {counts.block}
@@ -167,7 +167,7 @@ export default function ReviewPage() {
             <div className="flex flex-col gap-2 stagger-children">
               {filtered.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <p className="text-sm">No transactions in this filter</p>
+                  <p className="text-sm">No hay transacciones en este filtro</p>
                 </div>
               ) : (
                 filtered.map((txn) => (
@@ -181,7 +181,6 @@ export default function ReviewPage() {
                     <TransactionRow
                       transaction={txn}
                       onAction={handleAction}
-                      token={token}
                     />
                   </div>
                 ))

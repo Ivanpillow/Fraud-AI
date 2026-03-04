@@ -331,7 +331,7 @@ export async function updateTransactionStatus(
   };
 }
 // ---- Notifications Endpoint ----
-export async function fetchNotifications() {
+export async function fetchNotifications(token?: string) {
   return apiRequest<Array<{
     id: string;
     prediction_id: number;
@@ -344,6 +344,7 @@ export async function fetchNotifications() {
     fraud_probability: number;
   }>>("/notifications", {
     method: "GET",
+    token,
   });
 }
 // ---- Update Notification Decision ----

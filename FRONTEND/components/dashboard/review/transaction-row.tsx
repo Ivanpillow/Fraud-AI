@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   ShieldCheck,
   ShieldX,
-  MapPin,
   Clock,
   ChevronDown,
   ChevronUp,
@@ -29,14 +28,13 @@ interface Transaction {
 
 interface TransactionRowProps {
   transaction: Transaction;
-  onAction: (id: string, action: "approve" | "block") => void;
-  token?: string;
+  onAction: (id: string) => void;
 }
 
 function formatDate(ts: string): string {
   try {
     const date = new Date(ts);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("es-MX", {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -50,24 +48,22 @@ function formatDate(ts: string): string {
 export default function TransactionRow({
   transaction: tx,
   onAction,
-  token,
 }: TransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const handleAction = async (action: "approve" | "block") => {
+  const handleAction = async (action: "approve" | "block" | "review") => {
     setActionLoading(action);
     try {
       // Llamar al backend para actualizar la decisión
       const result = await updateNotificationDecision(
         tx.prediction_id,
-        action,
-        token
+        action
       );
       
       if (result.data) {
         // Si la actualización fue exitosa, notificar al padre para remover de la lista
-        onAction(tx.id, action);
+        onAction(tx.id);
       } else {
         console.error("Error updating decision:", result.error);
         alert("Error al actualizar la decisión. Por favor intenta de nuevo.");
@@ -122,11 +118,11 @@ export default function TransactionRow({
                   : "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]"
               )}
             >
-              {tx.status}
+              {tx.status === "block" ? "Bloqueada" : "En Revisión"}
             </span>
           </div>
           <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {tx.user_email}
+            {tx.message || `Canal: ${tx.channel?.toUpperCase() || "N/A"}`}
           </p>
         </div>
 
@@ -150,15 +146,23 @@ export default function TransactionRow({
               <span>{formatDate(tx.timestamp)}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <MapPin size={12} />
-              <span>{tx.location}</span>
+              <span className="font-medium">Probabilidad:</span>
+              <span className="text-foreground font-mono">
+                {((tx.fraud_probability || 0) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">Canal:</span>
+              <span className="text-foreground uppercase">
+                {tx.channel || "N/A"}
+              </span>
             </div>
           </div>
 
           <div className="glass rounded-lg p-3 mb-4">
             <p className="text-xs text-muted-foreground">
-              <span className="text-foreground font-medium">Reason: </span>
-              {tx.reason}
+              <span className="text-foreground font-medium">Mensaje: </span>
+              {tx.message || "Transacción sospechosa detectada"}
             </p>
           </div>
 
@@ -173,7 +177,19 @@ export default function TransactionRow({
               ) : (
                 <ShieldCheck size={14} />
               )}
-              Approve
+              Aprobar
+            </button>
+            <button
+              onClick={() => handleAction("review")}
+              disabled={actionLoading !== null}
+              className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--warning))]/10 px-4 py-2 text-xs font-medium text-[hsl(var(--warning))] hover:bg-[hsl(var(--warning))]/20 transition-all active:scale-[0.97] disabled:opacity-50"
+            >
+              {actionLoading === "review" ? (
+                <span className="h-3 w-3 animate-spin rounded-full border border-[hsl(var(--warning))] border-t-transparent" />
+              ) : (
+                <Clock size={14} />
+              )}
+              En Revisión
             </button>
             <button
               onClick={() => handleAction("block")}
@@ -185,7 +201,7 @@ export default function TransactionRow({
               ) : (
                 <ShieldX size={14} />
               )}
-              Block
+              Rechazar
             </button>
           </div>
         </div>
