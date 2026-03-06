@@ -74,7 +74,10 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
 
       const response = await fetch(`${API_BASE_URL}/qr-transactions/simple`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json", 
+          "X-API-Key": "sk_test_demo_merchant"
+         },
         body: JSON.stringify(payload),
         credentials: "include",
       });

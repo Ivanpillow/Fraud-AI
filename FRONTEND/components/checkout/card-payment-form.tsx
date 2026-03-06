@@ -305,10 +305,14 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
 
       const response = await fetch(`${API_BASE_URL}/transactions/simple`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-API-Key": "sk_test_demo_merchant"
+         },
         body: JSON.stringify(payload),
         credentials: "include",
       });
+      // Para probar en un segundo comercio, usar "Prueba_Comercio_2" en X-API-Key
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({ detail: "Transaction failed" }));

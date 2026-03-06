@@ -15,7 +15,7 @@ from app.ml.utils.qr_feature_engineering import build_qr_features
 from app.ml.utils.explainability import explain_transaction
 from app.queries.fraud_explanation_queries import save_explanations
 
-def process_qr_transaction(db, tx_data):
+def process_qr_transaction(db, tx_data, merchant_id):
     try:
         # Obtener user stats antes de guardar para tener datos consistentes
         user_stats = get_user_stats(db, tx_data["user_id"])
@@ -28,7 +28,7 @@ def process_qr_transaction(db, tx_data):
         qr_tx = QRTransaction(
             transaction_id=transaction_id,
             user_id=tx_data["user_id"],
-            merchant_id=tx_data["merchant_id"],
+            merchant_id=merchant_id,
             amount=tx_data["amount"],
             country=tx_data["country"],
             latitude=tx_data.get("latitude"),
@@ -98,6 +98,7 @@ def process_qr_transaction(db, tx_data):
         # Guardar predicción
         fraud_pred = FraudPrediction(
             transaction_id=qr_tx.transaction_id,
+            merchant_id=merchant_id,
             channel="qr",
             model_version="RF_LG_v1",
             fraud_probability=prob,
@@ -185,7 +186,7 @@ def process_qr_transaction(db, tx_data):
 
 
 
-def process_qr_transaction_simple(db, tx_data):
+def process_qr_transaction_simple(db, tx_data, merchant_id):
     try:
         now = datetime.now(timezone.utc)
 
@@ -200,7 +201,7 @@ def process_qr_transaction_simple(db, tx_data):
         }
 
 
-        return process_qr_transaction(db, full_tx)
+        return process_qr_transaction(db, full_tx, merchant_id)
 
     except Exception as e:
         db.rollback()
