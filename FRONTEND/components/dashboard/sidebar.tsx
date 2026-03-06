@@ -42,10 +42,9 @@ export default function Sidebar() {
         collapsed ? "w-[72px]" : "w-[240px]"
       )}
     >
-      {/* Profile Dropdown */}
+      {/* Menu desplegable de perfil */}
       <ProfileDropdown collapsed={collapsed} />
 
-      {/* Navigation */}
       <nav className="flex-1 p-3 flex flex-col gap-1 mt-2">
         {navItems.map((item) => {
           const isActive =
@@ -75,7 +74,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom Actions */}
       <div className="p-3 border-t border-white/5 flex flex-col gap-1">
         <button
           onClick={() => setCollapsed(!collapsed)}

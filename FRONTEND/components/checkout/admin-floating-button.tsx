@@ -10,7 +10,7 @@ export default function AdminFloatingButton() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleNavigate = () => {
-    router.push("/");
+    router.push("/login");
   };
 
   return (

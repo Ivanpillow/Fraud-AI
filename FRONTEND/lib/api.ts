@@ -50,7 +50,7 @@ export async function apiRequest<T = unknown>(
   }
 }
 
-// ---- Auth Endpoints ----
+// Endpoint para login
 export async function loginUser(email: string, password: string) {
   return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string } }>(
     "/auth/login",
@@ -67,7 +67,7 @@ export async function logoutUser() {
   });
 }
 
-// ---- Metrics Endpoints ----
+// Endpoint para metricas generales del dashboard
 export async function fetchMetrics(token?: string) {
   return apiRequest<{
     global: {
@@ -83,7 +83,7 @@ export async function fetchMetrics(token?: string) {
   }>("/metrics", { token });
 }
 
-// ---- Transaction Endpoints ----
+// Endpoints para crear transacciones (usados en el simulador de transacciones)
 export async function createTransaction(
   transactionData: {
     user_id: number;
@@ -121,7 +121,7 @@ export async function createSimpleTransaction(
   });
 }
 
-// ---- QR Transaction Endpoints ----
+// Endpoint para crear transaccion a través de QR pero tiene datos adicionales para análisis
 export async function createQRTransaction(
   qrData: {
     user_id: number;
@@ -161,7 +161,7 @@ export async function createSimpleQRTransaction(
   });
 }
 
-// ---- Fraud Feedback Endpoints ----
+// Retroalimentación de fraude
 export async function submitFraudFeedback(
   feedbackData: {
     prediction_id: number;
@@ -177,7 +177,7 @@ export async function submitFraudFeedback(
   });
 }
 
-// ---- Dashboard/Stats Endpoint ----
+// Endpoint para estadisticas del dashboard
 export async function fetchDashboardStats(token?: string) {
   return apiRequest<{
     total_users: number;
@@ -220,8 +220,9 @@ export async function fetchChartData(
   };
 }
 
+// De momento esto es de prueba
+
 export async function fetchDeviceTraffic(token?: string) {
-  // Placeholder - puedes implementar esto en el backend más adelante
   return {
     data: [
       { name: "Desktop", value: 45 },
@@ -264,13 +265,15 @@ export async function fetchTransactionsByHour(token?: string) {
   return {
     data: fraud_by_hour.map(item => ({
       hour: `${item.hour}:00`,
-      amount: item.count * 100, // Estimación
+      amount: item.count * 100, 
       count: item.count,
     })),
     error: null,
     status: 200,
   };
 }
+
+// Aqui terminan los endpoints de prueba
 
 export async function fetchPaymentSummary(token?: string) {
   const metricsResponse = await fetchMetrics(token);
@@ -300,17 +303,16 @@ export async function fetchPaymentSummary(token?: string) {
       successful: approved,
       failed: declined,
       pending: pending,
-      average_amount: 0, // Placeholder
+      average_amount: 0, 
     },
     error: null,
     status: 200,
   };
 }
 
-// ---- Review / Fraud Endpoints (Placeholder) ----
+// Endpoint para obtener transacciones marcadas para revisión o bloqueo (lo de la sección de review)
 export async function fetchFlaggedTransactions(token?: string, status?: "block" | "review") {
-  // Este endpoint necesitaría ser implementado en el backend
-  // Por ahora devolvemos un array vacío
+  // Falta implementacion en el backend
   return {
     data: [],
     error: null,
@@ -330,7 +332,7 @@ export async function updateTransactionStatus(
     status: 200,
   };
 }
-// ---- Notifications Endpoint ----
+// Endpoint para obtener las notificaciones
 export async function fetchNotifications(token?: string) {
   return apiRequest<Array<{
     id: string;
@@ -347,7 +349,7 @@ export async function fetchNotifications(token?: string) {
     token,
   });
 }
-// ---- Update Notification Decision ----
+// Endpoint para actualizacion de decision dentro de la notifiacion (Falta implementar)
 export async function updateNotificationDecision(
   predictionId: number,
   decision: "approve" | "block" | "review",
@@ -369,7 +371,7 @@ export async function updateNotificationDecision(
 
 
 
-// ---- Charts Metrics ----
+// Endpoints para métricas específicas del dashboard (usados en las cards y gráficos individuales)
 
 export async function fetchWeeklyTransactions(token?: string) {
   return apiRequest<

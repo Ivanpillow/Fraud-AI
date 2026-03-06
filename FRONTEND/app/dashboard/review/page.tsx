@@ -54,10 +54,9 @@ export default function ReviewPage() {
           }));
           setTransactions(txns);
 
-          // Si hay una transacción específica, destacarla
+          // Si hay una transacción específica se destaca y se filtra por su estado
           if (specifiedTransactionId && specifiedChannel) {
             setHighlightedId(`${specifiedChannel}-${specifiedTransactionId}`);
-            // Auto-filtrar al estado de la transacción
             const txn = txns.find(t => t.transaction_id === parseInt(specifiedTransactionId));
             if (txn) {
               setFilter(txn.status === "block" ? "block" : "review");
@@ -104,7 +103,6 @@ export default function ReviewPage() {
           </div>
         ) : (
           <>
-            {/* Summary Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
               <GlassCard>
                 <div className="text-center">
@@ -138,7 +136,7 @@ export default function ReviewPage() {
               </GlassCard>
             </div>
 
-            {/* Filters */}
+            {/* Filtros */}
             <div className="flex items-center gap-3">
               <Filter size={16} className="text-muted-foreground" />
               <div className="flex items-center rounded-xl glass p-1 gap-0.5">
@@ -163,7 +161,7 @@ export default function ReviewPage() {
               </div>
             </div>
 
-            {/* Transactions List */}
+            {/* Lista de transacciones */}
             <div className="flex flex-col gap-2 stagger-children">
               {filtered.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">

@@ -12,7 +12,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Para manejar el cierre del dropdown del perfil
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -35,7 +35,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
   const handleLogout = () => {
     logout();
     setIsOpen(false);
-    router.push("/");
+    router.push("/checkout");
   };
 
   const handleAdminPanel = () => {
@@ -46,9 +46,6 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
   const handlePaymentPage = () => {
     setIsOpen(false);
     router.push("/checkout");
-    setTimeout(() => {
-      logout();
-    }, 100);
   };
 
   return (
@@ -56,7 +53,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
       ref={dropdownRef}
       className="relative"
     >
-      {/* Profile Button */}
+      {/* Botón del perfil */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
@@ -92,10 +89,10 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
         )}
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Menu desplegable */}
       {isOpen && !collapsed && (
         <div className="absolute left-0 right-0 top-full mt-2 bg-card border border-white/10 rounded-lg shadow-lg z-40 overflow-hidden min-w-max">
-          {/* Admin Panel Option */}
+          {/* Opción de administrador */}
           <button
             onClick={handleAdminPanel}
             className={cn(
@@ -125,7 +122,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
             <span>Pagos</span>
           </button>
 
-          {/* Sign Out Option */}
+          {/* Opción de cerrar sesión */}
           <button
             onClick={handleLogout}
             className={cn(
