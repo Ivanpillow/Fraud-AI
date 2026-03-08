@@ -23,7 +23,8 @@ def login_user(db, email: str, password: str):
 
     token = create_access_token({
         "sub": str(user.id),
-        "role": user.role.name
+        "role": user.role.name,
+        "merchant_id": user.merchant_id
     })
 
     return {
@@ -32,6 +33,7 @@ def login_user(db, email: str, password: str):
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
-            "role": user.role.name
+            "role": user.role.name,
+            "merchant_id": user.merchant_id
         }
     }
