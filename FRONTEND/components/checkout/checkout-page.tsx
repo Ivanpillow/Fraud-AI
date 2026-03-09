@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("card");
   const [subtotal, setSubtotal] = useState<number>(0);
   const [selectedTax, setSelectedTax] = useState<TaxCode | null>(null);
+  const [resetTrigger, setResetTrigger] = useState(0);
 
   const taxRate = selectedTax ? TAX_OPTIONS[selectedTax] : 0;
   const taxAmount = subtotal * taxRate;
@@ -45,6 +46,14 @@ export default function CheckoutPage() {
     },
     []
   );
+
+  const handleNewTransaction = useCallback(() => {
+    setFraudResult(null);
+    setSubtotal(0);
+    setSelectedTax(null);
+    setSelectedMethod("card");
+    setResetTrigger((prev) => prev + 1);
+  }, []);
 
   const paymentMethods = [
     { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },
@@ -98,9 +107,10 @@ export default function CheckoutPage() {
           <div className="glass-checkout-card rounded-3xl p-6">
             {selectedMethod === "card" && (
               <CardPaymentForm
-              amount={total}
-              onResult={handleTransactionResult}
-            />
+                amount={total}
+                resetTrigger={resetTrigger}
+                onResult={handleTransactionResult}
+              />
             )}
             {selectedMethod === "qr" && (
               <QRPaymentForm
@@ -124,6 +134,7 @@ export default function CheckoutPage() {
             onTaxChange={setSelectedTax}
             onSubtotalChange={setSubtotal}
             fraudResult={fraudResult}
+            onNewTransaction={handleNewTransaction}
           />
         </div>
       </div>
