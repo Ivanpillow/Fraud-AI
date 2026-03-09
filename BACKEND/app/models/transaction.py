@@ -9,7 +9,12 @@ class Transaction(Base):
 
     transaction_id = Column(BigInteger, primary_key=True)
     user_id = Column(BigInteger, ForeignKey("users.user_id"))
-    merchant_id = Column(BigInteger)
+    merchant_id = Column(
+        BigInteger,
+        ForeignKey("merchants.merchant_id"),
+        nullable=False,
+        index=True
+    )
 
     amount = Column(Numeric(14,2))
     currency = Column(String(5))

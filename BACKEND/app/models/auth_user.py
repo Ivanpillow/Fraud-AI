@@ -20,6 +20,13 @@ class AuthUser(Base):
         nullable=False
     )
 
+    merchant_id = Column(
+        BigInteger,
+        ForeignKey("merchants.merchant_id"),
+        nullable=False,
+        index=True
+    )
+
     is_active = Column(Boolean, default=True)
 
     created_at = Column(TIMESTAMP)

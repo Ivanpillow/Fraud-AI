@@ -15,7 +15,7 @@ from app.services.user_behavior_service import (
     calculate_risk_score_rule,
 )
 
-def process_transaction(db, tx_data):
+def process_transaction(db, tx_data, merchant_id):
 
     try:
         #nueva transaction_id
@@ -25,7 +25,7 @@ def process_transaction(db, tx_data):
         transaction = Transaction(
             transaction_id=transaction_id,
             user_id=tx_data["user_id"],
-            merchant_id=1,
+            merchant_id=merchant_id,    
             amount=tx_data["amount"],
             currency="MXN",
             timestamp=datetime.now(timezone.utc),
@@ -93,6 +93,7 @@ def process_transaction(db, tx_data):
         # Guardar predicción
         fraud_pred = FraudPrediction(
             transaction_id=transaction.transaction_id,
+            merchant_id=merchant_id,
             channel="card",
             model_version="RF_LG_v1",
             fraud_probability=prob,
@@ -177,7 +178,7 @@ def process_transaction(db, tx_data):
         raise e
 
 
-def process_transaction_simple(db, tx_data):
+def process_transaction_simple(db, tx_data, merchant_id):
     try:
 
         now = datetime.now(timezone.utc)
@@ -207,7 +208,7 @@ def process_transaction_simple(db, tx_data):
             "is_international": is_international
         }
 
-        return process_transaction(db, full_tx)
+        return process_transaction(db, full_tx, merchant_id)
     except Exception as e:
         db.rollback()
         raise e

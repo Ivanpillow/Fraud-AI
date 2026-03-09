@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, BigInteger, Numeric, String,
+    Column, BigInteger, ForeignKey, Numeric, String,
     Boolean, TIMESTAMP
 )
 from sqlalchemy.sql import func
@@ -9,6 +9,12 @@ class FraudPrediction(Base):
     __tablename__ = "fraud_predictions"
 
     prediction_id = Column(BigInteger, primary_key=True)
+    merchant_id = Column(
+        BigInteger,
+        ForeignKey("merchants.merchant_id"),
+        nullable=False,
+        index=True
+    )
     transaction_id = Column(BigInteger, nullable=False)  # ID de transacción (card o QR)
     channel = Column(String(10), nullable=False)  # "card" o "qr" - indica de cuál tabla es
 

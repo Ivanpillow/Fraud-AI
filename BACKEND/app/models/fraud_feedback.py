@@ -13,6 +13,12 @@ class FraudFeedback(Base):
     __tablename__ = "fraud_feedback"
 
     feedback_id = Column(BigInteger, primary_key=True, index=True)
+    merchant_id = Column(
+        BigInteger,
+        ForeignKey("merchants.merchant_id"),
+        nullable=False,
+        index=True
+    )
     prediction_id = Column(
         BigInteger,
         ForeignKey("fraud_predictions.prediction_id", ondelete="CASCADE"),

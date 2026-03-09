@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from app.core.auth import get_current_merchant_from_user
 from app.db.session import get_db
 from app.services.metrics_service import collect_metrics, get_dashboard_metrics
 
@@ -24,7 +25,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
 # Transacciones últimos 7 días
 @router.get("/weekly-transactions")
-def weekly_transactions(db: Session = Depends(get_db)):
+def weekly_transactions(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
 
     today = datetime.utcnow()
     last_7_days = today - timedelta(days=7)
@@ -35,6 +36,7 @@ def weekly_transactions(db: Session = Depends(get_db)):
             func.sum(Transaction.amount).label("total_amount")
         )
         .filter(Transaction.timestamp >= last_7_days)
+        .filter(Transaction.merchant_id == merchant_id)
         .group_by(func.date(Transaction.timestamp))
         .order_by(func.date(Transaction.timestamp))
         .all()
@@ -51,15 +53,20 @@ def weekly_transactions(db: Session = Depends(get_db)):
 
 # Funnel - Transacciones totales vs decisiones del modelo (aceptada, rechazada, revisión) 
 @router.get("/fraud-funnel")
-def fraud_funnel(db: Session = Depends(get_db)):
+def fraud_funnel(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
 
-    total = db.query(func.count(Transaction.transaction_id)).scalar()
+    total = (
+        db.query(func.count(Transaction.transaction_id))
+        .filter(Transaction.merchant_id == merchant_id)
+        .scalar()
+    )
 
     decisions = (
         db.query(
             FraudPrediction.decision,
             func.count(FraudPrediction.prediction_id)
         )
+        .filter(FraudPrediction.merchant_id == merchant_id)
         .group_by(FraudPrediction.decision)
         .all()
     )
@@ -75,13 +82,14 @@ def fraud_funnel(db: Session = Depends(get_db)):
 
 # Transacciones por país
 @router.get("/transactions-by-country")
-def transactions_by_country(db: Session = Depends(get_db)):
+def transactions_by_country(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
 
     results = (
         db.query(
             Transaction.country,
             func.sum(Transaction.amount).label("total_amount")
         )
+        .filter(Transaction.merchant_id == merchant_id)
         .group_by(Transaction.country)
         .order_by(func.sum(Transaction.amount).desc())
         .limit(5)
@@ -98,19 +106,36 @@ def transactions_by_country(db: Session = Depends(get_db)):
 
 
 @router.get("/overview")
-def overview_metrics(db: Session = Depends(get_db)):
+def overview_metrics(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
 
     # Usuarios totales 
-    total_users = db.query(func.count(User.user_id)).scalar()
+    total_users = (
+        db.query(func.count(func.distinct(Transaction.user_id)))
+        .filter(Transaction.merchant_id == merchant_id)
+        .scalar()
+    )
 
     # Transacciones totales 
-    total_transactions = db.query(func.count(Transaction.transaction_id)).scalar()
+    total_transactions = (
+        db.query(func.count(Transaction.transaction_id))
+        .filter(Transaction.merchant_id == merchant_id)
+        .scalar()
+    )
 
     # Ingresos totales (considerando solo transacciones permitidas)
-    total_revenue = db.query(func.sum(Transaction.amount)).scalar() or 0
+    total_revenue = (
+        db.query(func.sum(Transaction.amount))
+        .filter(Transaction.merchant_id == merchant_id)
+        .scalar()
+    ) or 0
 
     # Tasa de fraude (bloqueos vs total)
-    fraud_count = db.query(func.count()).filter(FraudPrediction.decision == "block").scalar()
+    fraud_count = (
+        db.query(func.count())
+        .filter(FraudPrediction.decision == "block")
+        .filter(FraudPrediction.merchant_id == merchant_id)
+        .scalar()
+    )
     fraud_rate = (
         (fraud_count / total_transactions) * 100
         if total_transactions > 0 else 0
@@ -120,6 +145,7 @@ def overview_metrics(db: Session = Depends(get_db)):
     # Decisiones antifraude
     decisions = (
         db.query(FraudPrediction.decision, func.count())
+        .filter(FraudPrediction.merchant_id == merchant_id)
         .group_by(FraudPrediction.decision)
         .all()
     )
@@ -132,6 +158,7 @@ def overview_metrics(db: Session = Depends(get_db)):
             func.sum(Transaction.amount),
             func.count(Transaction.transaction_id)
         )
+        .filter(Transaction.merchant_id == merchant_id)
         .group_by(Transaction.hour)
         .all()
     )
@@ -157,7 +184,7 @@ def overview_metrics(db: Session = Depends(get_db)):
 
 
 @router.get("/trends")
-def trends(db: Session = Depends(get_db)):
+def trends(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
 
     from sqlalchemy import func
     from datetime import datetime, timedelta
@@ -173,6 +200,7 @@ def trends(db: Session = Depends(get_db)):
             func.sum(Transaction.amount)
         )
         .filter(Transaction.timestamp >= last_7_days)
+        .filter(Transaction.merchant_id == merchant_id)
         .group_by(func.date(Transaction.timestamp))
         .order_by(func.date(Transaction.timestamp))
         .all()
@@ -184,6 +212,7 @@ def trends(db: Session = Depends(get_db)):
             Transaction.device_type,
             func.count(Transaction.transaction_id)
         )
+        .filter(Transaction.merchant_id == merchant_id)
         .group_by(Transaction.device_type)
         .all()
     )
@@ -195,6 +224,7 @@ def trends(db: Session = Depends(get_db)):
             func.sum(Transaction.amount),
             func.count(Transaction.transaction_id)
         )
+        .filter(Transaction.merchant_id == merchant_id)
         .group_by(Transaction.hour)
         .all()
     )
