@@ -61,7 +61,7 @@
   }
 }
 
-/* Liquid Glass Utilities */
+/* Utilidades con un estilo de liquid glass */
 .glass {
   background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(180%);
@@ -171,7 +171,6 @@
   animation: pulse-glow 2s infinite;
 }
 
-/* Staggered children animation */
 .stagger-children > * {
   opacity: 0;
   animation: fade-in 0.4s ease-out forwards;
@@ -185,7 +184,7 @@
 .stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
 .stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
 
-/* Custom scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -202,8 +201,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CHECKOUT PAGE — Glassmorphism & Liquid Glass Styles
-   Inspired by iOS 26 depth, rounded corners, blur layers
+   PAGINA DE CHECKOUT
    ═══════════════════════════════════════════════════════════ */
 
 /* Page background with subtle gradient */
@@ -214,7 +212,7 @@
     hsl(220, 20%, 7%);
 }
 
-/* ── Main Glass Cards ── */
+/* Tarjetas tipo glass principales */
 .glass-checkout-card {
   background: rgba(255, 255, 255, 0.035);
   backdrop-filter: blur(40px) saturate(180%);
@@ -236,7 +234,7 @@
     0 -1px 0 rgba(0, 0, 0, 0.15) inset;
 }
 
-/* ── Order Summary (right column) ── */
+/* Checkout al finalizar (el de la derecha) */
 .glass-checkout-summary {
   background: linear-gradient(
     135deg,
@@ -317,23 +315,104 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* ── Selects inherit glass style ── */
+.checkout-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.checkout-input[type="number"]::-webkit-outer-spin-button,
+.checkout-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.checkout-input[type="number"] {
+  position: relative;
+}
+
+/* Estilo tipo glass el cual se hereda en los components */
 .checkout-select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 1rem;
-  padding-right: 2.5rem;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  color: hsl(210, 20%, 95%);
+  font-size: 0.875rem;
   cursor: pointer;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.15) inset,
+    0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.checkout-select:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.checkout-select:focus {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: hsla(168, 70%, 45%, 0.5);
+  box-shadow:
+    0 0 0 4px hsla(168, 70%, 45%, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.15) inset,
+    0 0 20px hsla(168, 70%, 45%, 0.05);
+  outline: none;
 }
 
 .checkout-select option {
-  background: hsl(220, 15%, 14%);
+  background: hsl(220, 13%, 20%);
   color: hsl(210, 20%, 95%);
+  padding: 0.75rem 0.5rem;
+  margin: 0.25rem 0;
 }
 
-/* ── Labels ── */
+/* ── Custom Select Dropdown (Glassmorphism) ── */
+.bg-glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* .bg-glass-opaque {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+} */
+
+.checkout-dropdown-panel {
+  background:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.01) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    ),
+    hsl(220 12% 14% / 0.88) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.border-glass {
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.border-1\.5 {
+  border-width: 1.5px;
+}
+
+/* Labels */
 .checkout-label {
   display: block;
   font-size: 0.75rem;
@@ -344,7 +423,7 @@
   margin-bottom: 0.5rem;
 }
 
-/* ── Primary button — iOS-like depth ── */
+/* Boton primario */
 .checkout-button-primary {
   background: linear-gradient(
     135deg,
@@ -375,7 +454,7 @@
     0 -1px 0 hsla(168, 70%, 30%, 0.4) inset;
 }
 
-/* ── Card Preview — Animated depth ── */
+/* Preview de las tarjetas */
 .glass-card-preview {
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.5),
@@ -403,7 +482,7 @@
   animation: card-brand-pulse 0.6s ease-out;
 }
 
-/* ── QR Container ── */
+/* Contedor del QR */
 .glass-qr-container {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px);
@@ -422,7 +501,7 @@
     0 0 40px hsla(168, 70%, 45%, 0.06);
 }
 
-/* ── Crypto Cards ── */
+/* Tarjetas para las cryptos */
 .glass-crypto-card {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(16px);

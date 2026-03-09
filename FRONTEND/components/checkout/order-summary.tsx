@@ -37,6 +37,7 @@ interface Props {
   onTaxChange: (value: TaxCode | null) => void;
   onSubtotalChange: (value: number) => void;
   fraudResult: FraudResult | null;
+  onNewTransaction: () => void;
 }
 
 function getDecisionInfo(decision: string) {
@@ -87,6 +88,7 @@ export default function OrderSummary({
   fraudResult,
   selectedTax,
   onTaxChange,
+  onNewTransaction,
 }: Props) {
   const [showDetails, setShowDetails] = useState(false);
   const discount = 0;
@@ -292,6 +294,19 @@ export default function OrderSummary({
               </div>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={onNewTransaction}
+            className={cn(
+              "mt-5 w-full rounded-2xl px-4 py-3 text-sm font-semibold",
+              "bg-white/5 border border-white/15 text-foreground",
+              "backdrop-blur-md transition-all duration-300",
+              "hover:bg-white/10 hover:border-white/25"
+            )}
+          >
+            Hacer nueva transacción
+          </button>
         </div>
       )}
     </div>

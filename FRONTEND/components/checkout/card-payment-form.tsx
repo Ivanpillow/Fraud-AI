@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createSimpleTransaction, API_BASE_URL } from "@/lib/api";
+import CustomSelect from "./custom-select";
 
-/* ── Card brand detection ── */
+/* Deteccion de marcas de tarjeta */
 type CardBrand = "visa" | "mastercard" | "amex" | "discover" | "unknown";
 
 interface CardBrandInfo {
@@ -86,7 +87,7 @@ function detectCardBrand(number: string): CardBrand {
 function formatCardNumber(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 19);
   const brand = detectCardBrand(digits);
-  // Amex: 4-6-5, others: 4-4-4-4
+  // Amex es 4-6-5, otras 4-4-4-4
   if (brand === "amex") {
     return digits.replace(/(\d{4})(\d{0,6})(\d{0,5})/, (_, a, b, c) =>
       [a, b, c].filter(Boolean).join(" ")
@@ -115,7 +116,6 @@ function isExpiryValid(expiry: string): boolean {
   return expiryDate > now;
 }
 
-/* ── Card brand logos SVG-like components ── */
 function CardBrandLogo({ brand }: { brand: CardBrand }) {
   const info = CARD_BRANDS[brand];
 
@@ -157,9 +157,10 @@ function CardBrandLogo({ brand }: { brand: CardBrand }) {
   );
 }
 
-/* ── Component ── */
+/* Component */
 interface Props {
   amount: number;
+  resetTrigger?: number;
   onResult: (result: {
     transaction_id: number;
     fraud_probability: number;
@@ -173,7 +174,7 @@ interface Props {
   } | null) => void;
 }
 
-export default function CardPaymentForm({ amount, onResult }: Props) {
+export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: Props) {
   // const [cardNumber, setCardNumber] = useState("");
   // const [cardName, setCardName] = useState("");
   // const [expiry, setExpiry] = useState("");
@@ -193,24 +194,16 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
   // const [shippingZip, setShippingZip] = useState("");
 
 
-  // ===========================
-  // ===== DATOS DE PRUEBA =====
-  // ===========================
-  const [cardNumber, setCardNumber] = useState("4111111111111111"); // Visa test
-  const [cardName, setCardName] = useState("JUAN PEREZ");
-  const [expiry, setExpiry] = useState("12/28");
-  const [cvv, setCvv] = useState("123");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvv, setCvv] = useState("");
 
-  // const [userId, setUserId] = useState("1");
-  // const [merchantCategory, setMerchantCategory] = useState("electronics");
-  // const [country, setCountry] = useState("RU");
-  // const [deviceType, setDeviceType] = useState("mobile");
-
-  const [shippingName, setShippingName] = useState("Juan Perez");
-  const [shippingAddress, setShippingAddress] = useState("Av. Vallarta 1234");
-  const [shippingCity, setShippingCity] = useState("Guadalajara");
+  const [shippingName, setShippingName] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [shippingCity, setShippingCity] = useState("");
   const [shippingCountry, setShippingCountry] = useState("MX");
-  const [shippingZip, setShippingZip] = useState("44100");
+  const [shippingZip, setShippingZip] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -231,6 +224,25 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
       }
     }
   }, [brand, prevBrand]);
+
+  useEffect(() => {
+    setCardNumber("");
+    setCardName("");
+    setExpiry("");
+    setCvv("");
+    setUserId("1");
+    setMerchantCategory("retail");
+    setCountry("MX");
+    setDeviceType("desktop");
+    setShippingName("");
+    setShippingAddress("");
+    setShippingCity("");
+    setShippingCountry("MX");
+    setShippingZip("");
+    setUseShipping(false);
+    setIsPaid(false);
+    setError(null);
+  }, [resetTrigger]);
 
   const merchantCategories = [
     { value: "grocery", label: "Supermercado" },
@@ -329,7 +341,7 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold text-foreground">Información de la Tarjeta</h2>
 
-      {/* ── Animated Card Preview ── */}
+      {/* Animación de la tarjeta */}
       <div
         ref={cardRef}
         className={cn(
@@ -369,7 +381,7 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
         </div>
       </div>
 
-      {/* ── Card Fields ── */}
+      {/* Campos para la tarjeta */}
       <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="checkout-label">Nombre en la Tarjeta</label>
@@ -377,8 +389,8 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
             type="text"
             value={cardName}
             onChange={(e) => setCardName(e.target.value)}
-            // placeholder="John Doe"
-            className="checkout-input"
+            placeholder="JUAN PÉREZ"
+            className="checkout-input placeholder:text-muted-foreground/40"
             disabled={isSubmitting || isPaid}
           />
         </div>
@@ -392,8 +404,8 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
               onChange={(e) =>
                 setCardNumber(e.target.value.replace(/\D/g, "").slice(0, 19))
               }
-              // placeholder="1234 5678 9012 3456"
-              className="checkout-input pr-20"
+              placeholder="1234 5678 9012 3456"
+              className="checkout-input pr-20 placeholder:text-muted-foreground/40"
               disabled={isSubmitting || isPaid}
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-300">
@@ -409,9 +421,9 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
               inputMode="numeric"
               value={expiry}
               onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-              // placeholder="MM/AA"
               maxLength={5}
-              className="checkout-input"
+              placeholder="12/28"
+              className="checkout-input placeholder:text-muted-foreground/40"
               disabled={isSubmitting || isPaid}
             />
           </div>
@@ -432,14 +444,14 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
               }
               placeholder={brand === "amex" ? "1234" : "123"}
               maxLength={brandInfo.cvvLength}
-              className="checkout-input"
+              className="checkout-input placeholder:text-muted-foreground/40"
               disabled={isSubmitting || isPaid}
             />
           </div>
         </div>
       </div>
 
-      {/* ── Fraud Detection Variables ── */}
+      {/* Variables para el análisis de fraude */}
       <div className="border-t border-white/10 pt-5">
         <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-4">
           Detalles de la Transacción (para análisis de fraude)
@@ -451,52 +463,41 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
               type="number"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              className="checkout-input"
+              placeholder="1"
+              className="checkout-input placeholder:text-muted-foreground/40"
               min="1"
               disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
             <label className="checkout-label">Tipo de Dispositivo</label>
-            <select
+            <CustomSelect
               value={deviceType}
-              onChange={(e) => setDeviceType(e.target.value)}
-              className="checkout-input checkout-select"
+              onChange={setDeviceType}
+              options={[
+                { value: "desktop", label: "Ordenador" },
+                { value: "mobile", label: "Dispositivo Móvil" },
+              ]}
               disabled={isSubmitting || isPaid}
-            >
-              <option value="desktop">Ordenador</option>
-              <option value="mobile">Dispositivo Móvil</option>
-            </select>
+            />
           </div>
           <div>
             <label className="checkout-label">Categoría</label>
-            <select
+            <CustomSelect
               value={merchantCategory}
-              onChange={(e) => setMerchantCategory(e.target.value)}
-              className="checkout-input checkout-select"
+              onChange={setMerchantCategory}
+              options={merchantCategories}
               disabled={isSubmitting || isPaid}
-            >
-              {merchantCategories.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div>
             <label className="checkout-label">País</label>
-            <select
+            <CustomSelect
               value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="checkout-input checkout-select"
+              onChange={setCountry}
+              options={countries}
               disabled={isSubmitting || isPaid}
-            >
-              {countries.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
       </div>
@@ -511,7 +512,7 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
         />
       </div>
 
-      {/* ── Shipping Address (for model variables, no cost) ── */}
+      {/* Variables de envio, pero no afectan el costo */}
       {useShipping && (
         <div className="border-t border-white/10 pt-5">
           <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-1">
@@ -527,8 +528,8 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
                 type="text"
                 value={shippingName}
                 onChange={(e) => setShippingName(e.target.value)}
-                // placeholder="John Doe"
-                className="checkout-input"
+                placeholder="Juan Pérez García"
+                className="checkout-input placeholder:text-muted-foreground/40"
                 disabled={isSubmitting || isPaid}
               />
             </div>
@@ -538,8 +539,8 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
                 type="text"
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
-                // placeholder="123 Main Street"
-                className="checkout-input"
+                placeholder="Av. Vallarta 1234, Col. Centro"
+                className="checkout-input placeholder:text-muted-foreground/40"
                 disabled={isSubmitting || isPaid}
               />
             </div>
@@ -551,25 +552,18 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
                   value={shippingCity}
                   onChange={(e) => setShippingCity(e.target.value)}
                   placeholder="Guadalajara"
-                  className="checkout-input"
+                  className="checkout-input placeholder:text-muted-foreground/40"
                   disabled={isSubmitting || isPaid}
                 />
               </div>
               <div>
                 <label className="checkout-label">País</label>
-                <select
+                <CustomSelect
                   value={shippingCountry}
-                  onChange={(e) => setShippingCountry(e.target.value)}
-                  className="checkout-input checkout-select"
-                  style={{ minWidth: "220px" }}
+                  onChange={setShippingCountry}
+                  options={countries}
                   disabled={isSubmitting || isPaid}
-                >
-                  {countries.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="checkout-label">Código Postal</label>
@@ -577,8 +571,8 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
                   type="text"
                   value={shippingZip}
                   onChange={(e) => setShippingZip(e.target.value)}
-                  // placeholder="44100"
-                  className="checkout-input"
+                  placeholder="44100"
+                  className="checkout-input placeholder:text-muted-foreground/40"
                   disabled={isSubmitting || isPaid}
                 />
               </div>
@@ -595,7 +589,7 @@ export default function CardPaymentForm({ amount, onResult }: Props) {
         </div>
       )}
 
-      {/* Submit */}
+      {/* Boton para enviar */}
       <button
         type="submit"
         disabled={isSubmitting || amount <= 0 || isPaid}
