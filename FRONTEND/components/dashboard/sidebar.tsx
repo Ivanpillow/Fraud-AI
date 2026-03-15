@@ -9,25 +9,32 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileDropdown from "@/components/dashboard/profile-dropdown";
 
 const navItems = [
   {
-    label: "Overview",
+    label: "Resumen",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
+  // {
+  //   label: "Charts",
+  //   href: "/dashboard/charts",
+  //   icon: BarChart3,
+  // },
   {
-    label: "Charts",
-    href: "/dashboard/charts",
-    icon: BarChart3,
-  },
-  {
-    label: "Review",
+    label: "Revisiones",
     href: "/dashboard/review",
     icon: ShieldAlert,
+  },
+
+  {
+    label: "Gestión de Usuarios",
+    href: "/dashboard/users",
+    icon: Users,
   },
 ];
 
@@ -78,14 +85,14 @@ export default function Sidebar() {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-all duration-200 w-full"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expandir menu" : "Contraer menu"}
         >
           {collapsed ? (
             <ChevronRight size={20} className="shrink-0" />
           ) : (
             <>
               <ChevronLeft size={20} className="shrink-0" />
-              <span>Collapse</span>
+              <span>Contraer</span>
             </>
           )}
         </button>

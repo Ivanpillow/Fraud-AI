@@ -24,7 +24,7 @@ export default function DashboardHeader({
 
       <div className="flex items-center gap-3">
         {/* Search */}
-        <div className="relative hidden sm:block">
+        {/* <div className="relative hidden sm:block">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -36,7 +36,7 @@ export default function DashboardHeader({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="glass-input rounded-lg pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none w-[180px] focus:w-[240px] transition-all duration-300"
           />
-        </div>
+        </div> */}
 
         {/* Actions */}
         <button

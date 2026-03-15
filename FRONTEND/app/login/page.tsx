@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Shield } from "lucide-react";
 import LoginForm from "@/components/login/login-form";
 import Testimonial from "@/components/login/testimonial";
+import FraudOverview from "@/components/login/fraud-overview";
 import CheckoutFloatingButton from "@/components/checkout/checkout-floating-button";
 
 export default function LoginPage() {
@@ -31,7 +32,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen">
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] p-4">
-        <Testimonial />
+        <FraudOverview />
       </div>
 
       <div className="flex w-full lg:w-1/2 xl:w-[45%] flex-col items-center justify-center px-6 py-12 md:px-16">
