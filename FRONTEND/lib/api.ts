@@ -420,5 +420,127 @@ export async function fetchTrends() {
 }
 
 
+// ==============================
+// Gestionar usuarios
+// ==============================
+
+
+export type User = {
+  id: number
+  email: string
+  full_name: string
+  role: string
+  merchant: string
+  is_active: boolean
+  is_admin: boolean
+}
+
+// Obtener usuarios del merchant
+export async function fetchMerchantUsers(): Promise<User[]> {
+  const response = await apiRequest<{ data: User[] }>("/users")
+
+  if (response.error || !response.data) {
+    throw new Error(response.error || "Failed to load users")
+  }
+
+  return response.data.data
+}
+
+
+  // Endpoint para crear un nuevo usuario
+  export async function createUser(data: {
+    email: string
+    full_name: string
+    password: string
+    role: string
+  }) {
+    return apiRequest("/users", {
+      method: "POST",
+      body: JSON.stringify(data)
+    })
+  }
+
+
+  export async function toggleUser(userId: number) {
+    return apiRequest(`/users/${userId}/toggle`, {
+      method: "PATCH"
+    })
+  }
+
+
+  // Endpoint para actualizar un usuario existente
+  export async function updateUser(
+    userId: number,
+    data: {
+      email: string
+      full_name: string
+      role: string
+    }
+  ) {
+    return apiRequest(`/users/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(data)
+    })
+  }
+
+  // Endpoint para eliminar un usuario
+  export async function deleteUser(userId: number) {
+    return apiRequest(`/users/${userId}`, {
+      method: "DELETE"
+    })
+  }
+
+
+
+
+
+// ============================
+// Roles
+// ============================
+
+// Endpoint para obtener roles de la empresa
+export async function fetchRoles() {
+  const res = await apiRequest<{ 
+    data: { role_id: number; name: string; is_admin: boolean }[] 
+  }>("/roles")
+
+  if (res.error || !res.data) {
+    throw new Error(res.error || "Failed to load roles")
+  }
+
+  return res.data.data
+}
+
+// Endpoint para crear un nuevo rol
+export async function createRole(name: string) {
+  return apiRequest("/roles", {
+    method: "POST",
+    body: JSON.stringify({ name })
+  })
+}
+
+// Endpoint para actualizar un rol existente
+export async function updateRole(roleId: number, name: string) {
+  return apiRequest(`/roles/${roleId}`, {
+    method: "PUT",
+    body: JSON.stringify({ name })
+  })
+}
+
+
+// Endpoint para eliminar un rol
+export async function deleteRole(roleId: number) {
+
+  const res = await apiRequest(`/roles/${roleId}`, {
+    method: "DELETE"
+  })
+
+  if (res.error) {
+    throw new Error(res.error)
+  }
+
+  return res.data
+}
+
 
 export { API_BASE_URL };

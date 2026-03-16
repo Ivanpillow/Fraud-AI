@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, BigInteger, String, Text,
-    Boolean, TIMESTAMP, ForeignKey
+    Boolean, TIMESTAMP, ForeignKey, func
 )
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -29,7 +29,8 @@ class AuthUser(Base):
 
     is_active = Column(Boolean, default=True)
 
-    created_at = Column(TIMESTAMP)
-    updated_at = Column(TIMESTAMP)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
-    role = relationship("Role")
+    role = relationship("Role", back_populates="users")
+    merchant = relationship("Merchant", back_populates="users")

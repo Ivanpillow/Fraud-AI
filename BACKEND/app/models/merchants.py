@@ -1,6 +1,7 @@
 from sqlalchemy import Column, BigInteger, String, TIMESTAMP
 from sqlalchemy.sql import func
 from app.db.base import Base
+from sqlalchemy.orm import relationship
 
 
 class Merchant(Base):
@@ -15,3 +16,6 @@ class Merchant(Base):
     plan_type = Column(String(20), default="basic")
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    users = relationship("AuthUser", back_populates="merchant")
+    roles = relationship("Role", back_populates="merchant")

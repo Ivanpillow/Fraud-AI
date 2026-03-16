@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  UserCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileDropdown from "@/components/dashboard/profile-dropdown";
@@ -35,6 +36,13 @@ const navItems = [
     label: "Gestión de Usuarios",
     href: "/dashboard/users",
     icon: Users,
+  },
+
+  
+  {
+    label: "Roles de la Empresa",
+    href: "/dashboard/roles",
+    icon: UserCog,
   },
 ];
 
