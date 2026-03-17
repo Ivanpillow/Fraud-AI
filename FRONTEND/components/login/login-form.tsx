@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/auth-context";
 import { loginUser } from "@/lib/api";
 import { USE_MOCK } from "@/lib/mock-data";
 
-// Validation helpers
 function isValidEmail(email: string): boolean {
   return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
 }
@@ -73,16 +72,6 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      // if (USE_MOCK) {
-      //   // Mock login for development 
-      //   await new Promise((res) => setTimeout(res, 1200));
-      //   login("mock-token-12345", {
-      //     id: 1,
-      //     email: sanitizeInput(email),
-      //     name: "Admin User",
-      //   });
-      //   return;
-      // }
 
       const result = await loginUser(sanitizeInput(email), password);
       if (result.error) {
@@ -98,6 +87,7 @@ export default function LoginForm() {
           email: result.data.userData.email,
           name: result.data.userData.full_name,
           role: result.data.userData.role,
+          is_superadmin: result.data.userData.is_superadmin,
         };
         login(userData);
       }

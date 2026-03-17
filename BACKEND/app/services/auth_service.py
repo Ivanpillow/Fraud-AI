@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.queries.auth_queries import get_auth_user_by_email
 from app.core.security import create_access_token
+from app.core.authorization import is_superadmin_email
 
 ph = PasswordHasher()
 
@@ -24,7 +25,8 @@ def login_user(db, email: str, password: str):
     token = create_access_token({
         "sub": str(user.id),
         "role": user.role.name,
-        "merchant_id": user.merchant_id
+        "merchant_id": user.merchant_id,
+        "is_superadmin": is_superadmin_email(user.email),
     })
 
     return {
@@ -34,6 +36,7 @@ def login_user(db, email: str, password: str):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role.name,
-            "merchant_id": user.merchant_id
+            "merchant_id": user.merchant_id,
+            "is_superadmin": is_superadmin_email(user.email),
         }
     }

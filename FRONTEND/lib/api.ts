@@ -52,7 +52,7 @@ export async function apiRequest<T = unknown>(
 
 // Endpoint para login
 export async function loginUser(email: string, password: string) {
-  return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string } }>(
+  return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string; is_superadmin?: boolean } }>(
     "/auth/login",
     {
       method: "POST",
@@ -349,7 +349,7 @@ export async function fetchNotifications(token?: string) {
     token,
   });
 }
-// Endpoint para actualizacion de decision dentro de la notifiacion (Falta implementar)
+// Endpoint para actualizacion de decision dentro de la notificacion (Falta implementar)
 export async function updateNotificationDecision(
   predictionId: number,
   decision: "approve" | "block" | "review",

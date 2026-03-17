@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { QrCode, Loader2, AlertTriangle, ShieldCheck, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
+import CustomSelect from "./custom-select";
 
 interface Props {
   subtotal: number;
@@ -185,17 +186,11 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
           </div>
           <div>
             <label className="checkout-label">País</label>
-            <select
+            <CustomSelect
               value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="checkout-input checkout-select"
-            >
-              {countries.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+              onChange={setCountry}
+              options={countries}
+            />
           </div>
           <div className="flex items-center gap-3">
             <label className="checkout-label mb-0">¿Es dispositivo nuevo?</label>

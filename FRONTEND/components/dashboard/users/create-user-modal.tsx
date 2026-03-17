@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { createUser, updateUser } from "@/lib/api"
 import { fetchRoles } from "@/lib/api"
+import CustomSelect from "@/components/checkout/custom-select"
 
 type Props = {
   onClose: () => void
@@ -201,23 +202,16 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
 
           )}
 
-          <select
+          <CustomSelect
             value={form.role}
-            className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary"
-            onChange={e =>
-              setForm({ ...form, role: e.target.value })
+            onChange={(value) =>
+              setForm({ ...form, role: value })
             }
-          >
-
-            {roles.map(role => (
-
-              <option key={role.role_id} value={role.name}>
-                {role.name}
-              </option>
-
-            ))}
-
-          </select>
+            options={roles.map((role) => ({
+              value: role.name,
+              label: role.name,
+            }))}
+          />
 
           <div className="flex justify-end gap-2 mt-4">
 

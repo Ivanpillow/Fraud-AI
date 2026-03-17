@@ -67,7 +67,7 @@ def toggle_user(
 
     merchant_id = current_user["merchant_id"]
 
-    user = toggle_user_status_service(db, user_id, merchant_id)
+    user = toggle_user_status_service(db, user_id, merchant_id, current_user)
 
     return {"data": user}
 
@@ -96,7 +96,7 @@ def delete_user(
 
     merchant_id = current_user["merchant_id"]
 
-    result = delete_user_service(db, user_id, merchant_id)
+    result = delete_user_service(db, user_id, merchant_id, current_user)
 
     return {"data": result}
 

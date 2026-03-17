@@ -7,6 +7,7 @@ from app.core.dependencies import get_current_user
 from app.schemas.auth import LoginRequest
 from app.queries.auth_queries import get_auth_user_by_id
 from app.core.security import verify_access_token
+from app.core.authorization import is_superadmin_email
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -55,5 +56,6 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
-        "role": user.role.name
+        "role": user.role.name,
+        "is_superadmin": is_superadmin_email(user.email),
     }

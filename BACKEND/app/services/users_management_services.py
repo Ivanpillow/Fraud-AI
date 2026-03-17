@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from argon2 import PasswordHasher
 from app.models import AuthUser
+from app.core.authorization import is_superadmin_email
 
 from app.queries.users_management_queries import (
     get_users_by_merchant,
@@ -23,13 +24,14 @@ def list_users_by_merchant(db: Session, merchant_id: int):
 
     return [
         {
-            "id": u.id,
-            "email": u.email,
-            "full_name": u.full_name,
-            "role": u.role.name,
-            "merchant": u.merchant.name,
-            "is_active": u.is_active,
-            "is_admin": u.role.is_admin
+            "id": getattr(u, "id"),
+            "email": getattr(u, "email"),
+            "full_name": getattr(u, "full_name"),
+            "role": getattr(u.role, "name"),
+            "merchant": getattr(u.merchant, "name"),
+            "is_active": bool(getattr(u, "is_active")),
+            "is_admin": bool(getattr(u.role, "is_admin")),
+            "is_superadmin": is_superadmin_email(getattr(u, "email", None))
         }
         for u in users
 ]
@@ -78,23 +80,30 @@ def create_user_service(db: Session, payload, merchant_id: int):
 # ============================
 # Toggle activo/inactivo
 # ============================
-def toggle_user_status_service(db: Session, user_id: int, merchant_id: int):
+def toggle_user_status_service(db: Session, user_id: int, merchant_id: int, current_user: dict):
     user = get_user_by_id(db, user_id)
+    actor = get_user_by_id(db, int(current_user["sub"]))
 
-    if not user or user.merchant_id != merchant_id:
+    if user is None or getattr(user, "merchant_id") != merchant_id:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # No permitir desactivar un admin
-    if getattr(user, "is_admin", False):
-        raise HTTPException(status_code=403, detail="Cannot deactivate an admin user")
+    if actor is None:
+        raise HTTPException(status_code=401, detail="Current user not found")
 
-    user.is_active = not user.is_active
+    # Solo superadmins permitidos pueden modificar admins
+    if bool(getattr(user.role, "is_admin")) and not is_superadmin_email(getattr(actor, "email", None)):
+        raise HTTPException(status_code=403, detail="Only superadmins can deactivate an admin user")
+
+    if getattr(actor, "id") == getattr(user, "id"):
+        raise HTTPException(status_code=403, detail="Cannot change your own active status")
+
+    setattr(user, "is_active", not bool(getattr(user, "is_active")))
     db.commit()
     db.refresh(user)
 
     return {
-        "id": user.id,
-        "is_active": user.is_active
+        "id": getattr(user, "id"),
+        "is_active": bool(getattr(user, "is_active"))
     }
 
 
@@ -104,7 +113,7 @@ def toggle_user_status_service(db: Session, user_id: int, merchant_id: int):
 def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
     user = get_user_by_id(db, user_id)
 
-    if not user or user.merchant_id != merchant_id:
+    if user is None or getattr(user, "merchant_id") != merchant_id:
         raise HTTPException(status_code=404, detail="User not found")
 
     # No permitir cambiar correo de usuario existente
@@ -120,7 +129,7 @@ def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
         user,
         payload.email,  # aunque no cambia, se mantiene
         payload.full_name,
-        role.role_id
+        getattr(role, "role_id")
     )
 
     return {
@@ -135,15 +144,22 @@ def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
 # ============================
 # Eliminar usuario
 # ============================
-def delete_user_service(db: Session, user_id: int, merchant_id: int):
+def delete_user_service(db: Session, user_id: int, merchant_id: int, current_user: dict):
     user = get_user_by_id(db, user_id)
+    actor = get_user_by_id(db, int(current_user["sub"]))
 
-    if not user or user.merchant_id != merchant_id:
+    if user is None or getattr(user, "merchant_id") != merchant_id:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # No permitir eliminar admins
-    if getattr(user, "is_admin", False):
-        raise HTTPException(status_code=403, detail="Cannot delete an admin user")
+    if actor is None:
+        raise HTTPException(status_code=401, detail="Current user not found")
+
+    if getattr(actor, "id") == getattr(user, "id"):
+        raise HTTPException(status_code=403, detail="Cannot delete your own user")
+
+    # Solo superadmins permitidos pueden eliminar admins
+    if bool(getattr(user.role, "is_admin")) and not is_superadmin_email(getattr(actor, "email", None)):
+        raise HTTPException(status_code=403, detail="Only superadmins can delete an admin user")
 
     delete_user_db(db, user)
 

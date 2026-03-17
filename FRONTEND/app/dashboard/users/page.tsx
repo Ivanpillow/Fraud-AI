@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import DashboardHeader from "@/components/dashboard/header";
 import GlassCard from "@/components/dashboard/glass-card";
 import CreateUserModal from "@/components/dashboard/users/create-user-modal";
+import CustomSelect from "@/components/checkout/custom-select";
+import { useAuth } from "@/lib/auth-context";
 import { fetchMerchantUsers, toggleUser, deleteUser } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
@@ -15,10 +17,12 @@ type User = {
   role: string;
   merchant: string;
   is_active: boolean;
-  is_admin: boolean; 
+  is_admin: boolean;
+  is_superadmin?: boolean;
 };
 
 export default function UsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -43,8 +47,15 @@ export default function UsersPage() {
     loadUsers();
   }, []);
 
+  function canManageAdmin(targetUser: User) {
+    const isSelf = currentUser?.id === targetUser.id;
+    if (isSelf) return false;
+    if (!targetUser.is_admin) return true;
+    return !!currentUser?.is_superadmin;
+  }
+
   async function handleToggle(user: User) {
-    if (user.is_admin) return; 
+    if (!canManageAdmin(user)) return;
     await toggleUser(user.id);
     setUsers((prev) =>
       prev.map((u) =>
@@ -54,7 +65,7 @@ export default function UsersPage() {
   }
 
   async function handleDeleteUser(user: User) {
-    if (user.is_admin) return;
+    if (!canManageAdmin(user)) return;
     try {
       await deleteUser(user.id);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
@@ -157,17 +168,16 @@ export default function UsersPage() {
                   />
                 </div>
 
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary"
-                >
-                  {roles.map((r) => (
-                    <option key={r} value={r}>
-                      {r === "all" ? "Todos los roles" : r}
-                    </option>
-                  ))}
-                </select>
+                <div className="min-w-[220px]">
+                  <CustomSelect
+                    value={roleFilter}
+                    onChange={setRoleFilter}
+                    options={roles.map((r) => ({
+                      value: r,
+                      label: r === "all" ? "Todos los roles" : r,
+                    }))}
+                  />
+                </div>
               </div>
 
               <button
@@ -192,7 +202,7 @@ export default function UsersPage() {
                       <th className="text-left py-3">Email</th>
                       <th className="text-left py-3">Rol</th>
                       <th className="text-left py-3">Estado</th>
-                      <th className="text-right py-3">Acciones</th>
+                      <th className="py-3 text-center">Acciones</th>
                     </tr>
                   </thead>
 
@@ -214,41 +224,55 @@ export default function UsersPage() {
                             {user.is_active ? "Activo" : "Inactivo"}
                           </span>
                         </td>
-                        <td className="py-3 text-right flex justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="text-xs px-3 py-1 border rounded-md hover:bg-white/5"
-                          >
-                            Editar
-                          </button>
+                        <td className="py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(user)}
+                              className="w-24 text-xs px-3 py-1 border rounded-md hover:bg-white/5"
+                            >
+                              Editar
+                            </button>
 
-                          <button
-                            disabled={user.is_admin}
-                            title={user.is_admin ? "No se puede desactivar un administrador" : ""}
-                            onClick={() => handleToggle(user)}
-                            className={cn(
-                              "text-xs px-3 py-1 border rounded-md",
-                              user.is_admin
-                                ? "opacity-40 cursor-not-allowed"
-                                : "hover:bg-white/5"
-                            )}
-                          >
-                            {user.is_active ? "Desactivar" : "Activar"}
-                          </button>
+                            <button
+                              disabled={!canManageAdmin(user)}
+                              title={
+                                currentUser?.id === user.id
+                                  ? "No puedes desactivar tu propio usuario"
+                                  : user.is_admin && !currentUser?.is_superadmin
+                                  ? "Solo los superadmins pueden desactivar administradores"
+                                  : ""
+                              }
+                              onClick={() => handleToggle(user)}
+                              className={cn(
+                                "w-24 text-xs px-3 py-1 border rounded-md",
+                                !canManageAdmin(user)
+                                  ? "opacity-40 cursor-not-allowed"
+                                  : "hover:bg-white/5"
+                              )}
+                            >
+                              {user.is_active ? "Desactivar" : "Activar"}
+                            </button>
 
-                          <button
-                            disabled={user.is_admin}
-                            title={user.is_admin ? "No se puede eliminar un administrador" : ""}
-                            onClick={() => setUserToDelete(user)}
-                            className={cn(
-                              "text-xs px-3 py-1 border rounded-md text-red-400",
-                              user.is_admin
-                                ? "opacity-40 cursor-not-allowed"
-                                : "hover:bg-red-500/10"
-                            )}
-                          >
-                            Eliminar
-                          </button>
+                            <button
+                              disabled={!canManageAdmin(user)}
+                              title={
+                                currentUser?.id === user.id
+                                  ? "No puedes eliminar tu propio usuario"
+                                  : user.is_admin && !currentUser?.is_superadmin
+                                  ? "Solo los superadmins pueden eliminar administradores"
+                                  : ""
+                              }
+                              onClick={() => setUserToDelete(user)}
+                              className={cn(
+                                "w-24 text-xs px-3 py-1 border rounded-md text-red-400",
+                                !canManageAdmin(user)
+                                  ? "opacity-40 cursor-not-allowed"
+                                  : "hover:bg-red-500/10"
+                              )}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
