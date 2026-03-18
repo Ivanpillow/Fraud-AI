@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createUser, updateUser } from "@/lib/api"
 import { fetchRoles } from "@/lib/api"
 import CustomSelect from "@/components/checkout/custom-select"
+import { isValidEmail, sanitizeInput, validatePassword } from "@/lib/auth-validation"
 
 type Props = {
   onClose: () => void
@@ -43,6 +44,13 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
     password: "",
     role: ""
   })
+  const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string
+    full_name?: string
+    password?: string
+    role?: string
+  }>({})
 
   const editing = !!user
 
@@ -105,25 +113,72 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
   async function handleSubmit(e: React.FormEvent) {
 
     e.preventDefault()
+    setError(null)
+
+    const errors: {
+      email?: string
+      full_name?: string
+      password?: string
+      role?: string
+    } = {}
+
+    const cleanName = sanitizeInput(form.full_name)
+    const cleanEmail = sanitizeInput(form.email)
+
+    if (!cleanName) {
+      errors.full_name = "Nombre completo es requerido"
+    }
+
+    if (!cleanEmail) {
+      errors.email = "Correo electrónico es requerido"
+    } else if (!isValidEmail(cleanEmail)) {
+      errors.email = "Por favor ingrese un correo electrónico válido"
+    }
+
+    if (!form.role) {
+      errors.role = "Rol es requerido"
+    }
+
+    if (!editing) {
+      if (!form.password) {
+        errors.password = "Contraseña es requerida"
+      } else {
+        const pwError = validatePassword(form.password)
+        if (pwError) errors.password = pwError
+      }
+    }
+
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
 
     try {
 
       if (editing && user) {
 
-        await updateUser(user.id, {
-          email: form.email,
-          full_name: form.full_name,
+        const res = await updateUser(user.id, {
+          email: cleanEmail,
+          full_name: cleanName,
           role: form.role
         })
+
+        if (res.error) {
+          setError(res.error)
+          return
+        }
 
       } else {
 
-        await createUser({
-          email: form.email,
-          full_name: form.full_name,
+        const res = await createUser({
+          email: cleanEmail,
+          full_name: cleanName,
           password: form.password,
           role: form.role
         })
+
+        if (res.error) {
+          setError(res.error)
+          return
+        }
 
       }
 
@@ -132,6 +187,7 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
 
     } catch (error) {
 
+      setError("Error al guardar usuario. Intente nuevamente.")
       console.error("Error saving user", error)
 
     }
@@ -168,37 +224,62 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
 
+          {error && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive">
+              {error}
+            </div>
+          )}
+
           <input
             placeholder="Nombre completo"
             value={form.full_name}
-            className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary"
+            className={`rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary ${
+              fieldErrors.full_name ? "border-destructive" : ""
+            }`}
             onChange={e =>
               setForm({ ...form, full_name: e.target.value })
             }
           />
+          {fieldErrors.full_name && (
+            <p className="text-xs text-destructive">{fieldErrors.full_name}</p>
+          )}
 
           <input
             placeholder="Correo Electrónico"
             value={form.email}
             disabled={editing} 
             className={`rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary
-                ${editing ? "opacity-50 cursor-not-allowed" : ""}`}
+                ${editing ? "opacity-50 cursor-not-allowed" : ""}
+                ${fieldErrors.email ? "border-destructive" : ""}`}
             onChange={e =>
                 setForm({ ...form, email: e.target.value })
             }
           />
+          {fieldErrors.email && (
+            <p className="text-xs text-destructive">{fieldErrors.email}</p>
+          )}
 
           {!editing && (
 
-            <input
-              placeholder="Contraseña"
-              type="password"
-              value={form.password}
-              className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary"
-              onChange={e =>
-                setForm({ ...form, password: e.target.value })
-              }
-            />
+            <>
+              <input
+                placeholder="Contraseña"
+                type="password"
+                value={form.password}
+                className={`rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary ${
+                  fieldErrors.password ? "border-destructive" : ""
+                }`}
+                onChange={e =>
+                  setForm({ ...form, password: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground margin-left-10">
+                Debe tener al menos 8 caracteres, incluir un número y una letra.
+              </p>
+              {fieldErrors.password && (
+                <p className="text-xs text-destructive">{fieldErrors.password}</p>
+              )}
+            </>
 
           )}
 
@@ -212,6 +293,9 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
               label: role.name,
             }))}
           />
+          {fieldErrors.role && (
+            <p className="text-xs text-destructive">{fieldErrors.role}</p>
+          )}
 
           <div className="flex justify-end gap-2 mt-4">
 

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Shield } from "lucide-react";
 import LoginForm from "@/components/login/login-form";
-import Testimonial from "@/components/login/testimonial";
 import FraudOverview from "@/components/login/fraud-overview";
 import CheckoutFloatingButton from "@/components/checkout/checkout-floating-button";
 

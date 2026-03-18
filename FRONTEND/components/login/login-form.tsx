@@ -7,26 +7,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { loginUser } from "@/lib/api";
 import { USE_MOCK } from "@/lib/mock-data";
-
-function isValidEmail(email: string): boolean {
-  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
-}
-
-// Funcion para sanitizar inputs y prevenir XSS básico
-function sanitizeInput(input: string): string {
-  return input
-    .replace(/[<>]/g, "")
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
-    .trim();
-}
-
-function validatePassword(password: string): string | null {
-  if (password.length < 8) return "Se necesitan al menos 8 caracteres";
-  if (!/\d/.test(password)) return "Debe contener al menos un número";
-  if (!/[a-zA-Z]/.test(password)) return "Debe contener al menos una letra";
-  return null;
-}
+import { isValidEmail, sanitizeInput, validatePassword } from "@/lib/auth-validation";
 
 export default function LoginForm() {
   const { login } = useAuth();
