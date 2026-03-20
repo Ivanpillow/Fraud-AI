@@ -543,4 +543,95 @@ export async function deleteRole(roleId: number) {
 }
 
 
+// ============================
+// Gestionar Comercios (Merchants)
+// ============================
+
+export type APIKey = {
+  api_key_id: number;
+  key_hash: string;
+  label: string | null;
+  status: string;
+  created_at: string;
+};
+
+export type Merchant = {
+  merchant_id: number;
+  name: string;
+  status: string;
+  plan_type: string;
+  created_at: string;
+  api_keys: APIKey[];
+};
+
+// Obtener todos los comercios
+export async function fetchMerchants() {
+  const res = await apiRequest<{ data: Merchant[] }>("/merchants")
+
+  if (res.error || !res.data) {
+    throw new Error(res.error || "Failed to load merchants")
+  }
+
+  return res.data.data
+}
+
+// Crear un nuevo comercio
+export async function createMerchant(data: {
+  name: string;
+  status: string;
+  plan_type: string;
+  key: string;
+}) {
+  return apiRequest("/merchants", {
+    method: "POST",
+    body: JSON.stringify(data)
+  })
+}
+
+// Obtener un comercio específico
+export async function getMerchant(merchantId: number) {
+  return apiRequest(`/merchants/${merchantId}`, {
+    method: "GET"
+  })
+}
+
+// Actualizar comercio
+export async function updateMerchant(
+  merchantId: number,
+  data: {
+    name: string;
+    label?: string;
+  }
+){
+  return apiRequest(`/merchants/${merchantId}`, {
+    method: "PUT",
+    body: JSON.stringify(data)
+  })
+}
+
+// Cambiar estado de comercio
+export async function toggleMerchantStatus(
+  merchantId: number,
+  status: string
+) {
+  return apiRequest(`/merchants/${merchantId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status })
+  })
+}
+
+// Eliminar comercio
+export async function deleteMerchant(merchantId: number) {
+  const res = await apiRequest(`/merchants/${merchantId}`, {
+    method: "DELETE"
+  })
+
+  if (res.error) {
+    throw new Error(res.error)
+  }
+
+  return res.data
+}
+
+
 export { API_BASE_URL };

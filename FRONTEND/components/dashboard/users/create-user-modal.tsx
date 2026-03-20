@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { createUser, updateUser } from "@/lib/api"
 import { fetchRoles } from "@/lib/api"
 import CustomSelect from "@/components/checkout/custom-select"
-import { isValidEmail, sanitizeInput, validatePassword } from "@/lib/auth-validation"
+import { isValidEmail, sanitizeInput, validateFullName, validatePassword } from "@/lib/auth-validation"
 
 type Props = {
   onClose: () => void
@@ -125,8 +125,9 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
     const cleanName = sanitizeInput(form.full_name)
     const cleanEmail = sanitizeInput(form.email)
 
-    if (!cleanName) {
-      errors.full_name = "Nombre completo es requerido"
+    const fullNameError = validateFullName(cleanName)
+    if (fullNameError) {
+      errors.full_name = fullNameError
     }
 
     if (!cleanEmail) {

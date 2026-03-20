@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import DashboardHeader from "@/components/dashboard/header";
 import GlassCard from "@/components/dashboard/glass-card";
 import { fetchRoles, createRole, updateRole, deleteRole } from "@/lib/api";
+import { sanitizeInput, validateRoleName } from "@/lib/auth-validation";
 
 type Role = {
   role_id: number;
@@ -64,17 +65,32 @@ export default function RolesPage() {
 
   async function handleCreateRole() {
 
-    if (!newRole.trim()) return;
+    setErrorMessage(null)
+
+    const cleanRoleName = sanitizeInput(newRole).replace(/\s+/g, " ")
+    const roleError = validateRoleName(cleanRoleName)
+
+    if (roleError) {
+      setErrorMessage(roleError)
+      return
+    }
 
     try {
 
-      await createRole(newRole);
+      const response = await createRole(cleanRoleName);
+
+      if (response.error) {
+        setErrorMessage(response.error)
+        return
+      }
 
       setNewRole("");
 
       loadRoles();
 
-    } catch (error) {
+    } catch (error: any) {
+
+      setErrorMessage(error?.message || "Error creando rol")
 
       console.error("Error creating role", error);
 
@@ -84,14 +100,35 @@ export default function RolesPage() {
 
   async function handleSaveEdit(role_id: number) {
 
-    if (!editingName.trim()) return
+    setErrorMessage(null)
 
-    await updateRole(role_id, editingName)
+    const cleanRoleName = sanitizeInput(editingName).replace(/\s+/g, " ")
+    const roleError = validateRoleName(cleanRoleName)
 
-    setEditingRoleId(null)
-    setEditingName("")
+    if (roleError) {
+      setErrorMessage(roleError)
+      return
+    }
 
-    loadRoles()
+    try {
+
+      const response = await updateRole(role_id, cleanRoleName)
+
+      if (response.error) {
+        setErrorMessage(response.error)
+        return
+      }
+
+      setEditingRoleId(null)
+      setEditingName("")
+
+      loadRoles()
+
+    } catch (error: any) {
+
+      setErrorMessage(error?.message || "Error actualizando rol")
+
+    }
 
   }
 
@@ -107,9 +144,7 @@ export default function RolesPage() {
 
     } catch (error: any) {
 
-        setErrorMessage(
-        "No se puede eliminar este rol porque hay usuarios asignados a él."
-        )
+      setErrorMessage(error?.message || "No se pudo eliminar el rol")
 
     }
 
@@ -163,6 +198,7 @@ export default function RolesPage() {
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     placeholder="Nombre del rol..."
+                    maxLength={50}
                     className="glass rounded-lg px-3 py-2 text-sm outline-none"
                   />
 
@@ -241,6 +277,7 @@ export default function RolesPage() {
                                 <input
                                     value={editingName}
                                     onChange={(e) => setEditingName(e.target.value)}
+                                  maxLength={50}
                                     className="glass rounded-md px-2 py-1 text-sm outline-none"
                                 />
 

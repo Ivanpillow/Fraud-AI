@@ -1,11 +1,16 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
+import re
 
 from app.models.auth_user import  AuthUser as User
 from app.db.session import get_db
 from app.core.dependencies import get_current_user
 from app.models.role import Role
+
+from fastapi import HTTPException
+
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
 
@@ -13,6 +18,8 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 class RoleRequest(BaseModel):
     name: str
 
+
+ROLE_NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÿ0-9 _\-]+$")
 
 @router.get("/")
 def list_roles(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -45,8 +52,18 @@ def create_role(
 ):
 
     merchant_id = current_user["merchant_id"]
+    role_name = _validate_role_name(payload.name)
 
-    role = Role(name=payload.name, merchant_id=merchant_id)
+    existing_role = (
+        db.query(Role)
+        .filter(Role.merchant_id == merchant_id, func.lower(Role.name) == role_name.lower())
+        .first()
+    )
+
+    if existing_role:
+        raise HTTPException(status_code=400, detail="Ya existe un rol con ese nombre")
+
+    role = Role(name=role_name, merchant_id=merchant_id)
 
     db.add(role)
     db.commit()
@@ -64,6 +81,7 @@ def update_role(
 ):
 
     merchant_id = current_user["merchant_id"]
+    role_name = _validate_role_name(payload.name)
 
     role = (
         db.query(Role)
@@ -71,7 +89,26 @@ def update_role(
         .first()
     )
 
-    role.name = payload.name
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    if role.is_admin:
+        raise HTTPException(status_code=400, detail="Admin role cannot be modified")
+
+    duplicate_role = (
+        db.query(Role)
+        .filter(
+            Role.merchant_id == merchant_id,
+            func.lower(Role.name) == role_name.lower(),
+            Role.role_id != role_id,
+        )
+        .first()
+    )
+
+    if duplicate_role:
+        raise HTTPException(status_code=400, detail="Ya existe un rol con ese nombre")
+
+    role.name = role_name
 
     db.commit()
     db.refresh(role)
@@ -79,8 +116,6 @@ def update_role(
     return {"data": {"role_id": role.role_id, "name": role.name}}
 
 
-
-from fastapi import HTTPException
 
 @router.delete("/{role_id}")
 def delete_role(
@@ -122,3 +157,34 @@ def delete_role(
     db.commit()
 
     return {"message": "Role deleted"}
+
+
+
+
+
+def _sanitize_text(value: str) -> str:
+    return (
+        value.strip()
+        .replace("<", "")
+        .replace(">", "")
+        .replace("javascript:", "")
+    )
+
+
+def _validate_role_name(name: str) -> str:
+    clean_name = " ".join(_sanitize_text(name).split())
+
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Nombre del rol es requerido")
+
+    if len(clean_name) < 2:
+        raise HTTPException(status_code=400, detail="Nombre del rol demasiado corto")
+
+    if len(clean_name) > 50:
+        raise HTTPException(status_code=400, detail="Nombre del rol demasiado largo")
+
+    if not ROLE_NAME_REGEX.match(clean_name):
+        raise HTTPException(status_code=400, detail="Nombre del rol inválido")
+
+    return clean_name
+

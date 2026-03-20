@@ -1,0 +1,3 @@
+*.pyc
+*.pyc
+/BACKEND/app/ml/__pycache__
