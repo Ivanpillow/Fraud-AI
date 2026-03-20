@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { QrCode, Loader2, AlertTriangle, ShieldCheck, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
@@ -8,6 +8,7 @@ import CustomSelect from "./custom-select";
 
 interface Props {
   subtotal: number;
+  resetTrigger?: number;
   onResult: (result: {
     transaction_id: number;
     fraud_probability: number;
@@ -21,31 +22,96 @@ interface Props {
   } | null) => void;
 }
 
-export default function QRPaymentForm({ subtotal, onResult }: Props) {
+type CountryOption = {
+  value: string;
+  label: string;
+  defaultLat: string;
+  defaultLon: string;
+};
+
+const COUNTRIES: CountryOption[] = [
+  { value: "MX", label: "México", defaultLat: "19.4326", defaultLon: "-99.1332" },
+  { value: "US", label: "Estados Unidos", defaultLat: "38.9072", defaultLon: "-77.0369" },
+  { value: "CA", label: "Canadá", defaultLat: "45.4215", defaultLon: "-75.6972" },
+  { value: "GB", label: "Reino Unido", defaultLat: "51.5074", defaultLon: "-0.1278" },
+  { value: "DE", label: "Alemania", defaultLat: "52.5200", defaultLon: "13.4050" },
+  { value: "JP", label: "Japón", defaultLat: "35.6762", defaultLon: "139.6503" },
+  { value: "BR", label: "Brasil", defaultLat: "-15.7939", defaultLon: "-47.8828" },
+  { value: "IN", label: "India", defaultLat: "28.6139", defaultLon: "77.2090" },
+];
+
+function buildStableQrPattern(seed: number): boolean[] {
+  return Array.from({ length: 81 }, (_, i) => {
+    const row = Math.floor(i / 9);
+    const col = i % 9;
+    const inTopLeft = row <= 2 && col <= 2;
+    const inTopRight = row <= 2 && col >= 6;
+    const inBottomLeft = row >= 6 && col <= 2;
+    if (inTopLeft || inTopRight || inBottomLeft) {
+      return true;
+    }
+
+    const mixed = Math.abs(Math.sin(seed * 0.001 + i * 12.9898) * 43758.5453);
+    return (mixed - Math.floor(mixed)) > 0.56;
+  });
+}
+
+export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: Props) {
   const [userId, setUserId] = useState("1");
   const [merchantId, setMerchantId] = useState("1");
   const [country, setCountry] = useState("MX");
-  const [latitude, setLatitude] = useState("20.6597");
-  const [longitude, setLongitude] = useState("-103.3496");
+  const [latitude, setLatitude] = useState("19.4326");
+  const [longitude, setLongitude] = useState("-99.1332");
+  const [hasCustomCoordinates, setHasCustomCoordinates] = useState(false);
   const [deviceChange, setDeviceChange] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [qrGenerated, setQrGenerated] = useState(false);
+  const [qrSeed, setQrSeed] = useState<number | null>(null);
 
-  const countries = [
-    { value: "MX", label: "México" },
-    { value: "US", label: "Estados Unidos" },
-    { value: "CA", label: "Canadá" },
-    { value: "GB", label: "Reino Unido" },
-    { value: "DE", label: "Alemania" },
-    { value: "JP", label: "Japón" },
-    { value: "BR", label: "Brasil" },
-    { value: "IN", label: "India" },
-  ];
+  const qrPattern = useMemo(() => {
+    if (qrSeed === null) return [];
+    return buildStableQrPattern(qrSeed);
+  }, [qrSeed]);
+
+  useEffect(() => {
+    setUserId("1");
+    setMerchantId("1");
+    setCountry("MX");
+    setLatitude("19.4326");
+    setLongitude("-99.1332");
+    setHasCustomCoordinates(false);
+    setDeviceChange(false);
+    setIsSubmitting(false);
+    setIsPaid(false);
+    setError(null);
+    setQrSeed(null);
+  }, [resetTrigger]);
+
+  useEffect(() => {
+    if (hasCustomCoordinates) return;
+    const selected = COUNTRIES.find((item) => item.value === country);
+    if (!selected) return;
+    setLatitude(selected.defaultLat);
+    setLongitude(selected.defaultLon);
+  }, [country, hasCustomCoordinates]);
+
+  const handleApplyCountryCoordinates = () => {
+    const selected = COUNTRIES.find((item) => item.value === country);
+    if (!selected) return;
+    setLatitude(selected.defaultLat);
+    setLongitude(selected.defaultLon);
+    setHasCustomCoordinates(false);
+  };
 
   const handleGenerateQR = () => {
-    setQrGenerated(true);
+    if (subtotal <= 0) {
+      setError("Primero ingresa un monto válido en el resumen del pedido.");
+      return;
+    }
+    setError(null);
+    setQrSeed(Date.now());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,18 +124,45 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
       return;
     }
 
+    if (qrSeed === null) {
+      setError("Genera el código QR antes de realizar el pago.");
+      return;
+    }
+
+    const parsedUserId = parseInt(userId, 10);
+    const parsedMerchantId = parseInt(merchantId, 10);
+    const parsedLat = parseFloat(latitude);
+    const parsedLon = parseFloat(longitude);
+
+    if (!Number.isFinite(parsedUserId) || parsedUserId <= 0) {
+      setError("ID de usuario inválido.");
+      return;
+    }
+    if (!Number.isFinite(parsedMerchantId) || parsedMerchantId <= 0) {
+      setError("ID del comerciante inválido.");
+      return;
+    }
+    if (!Number.isFinite(parsedLat) || parsedLat < -90 || parsedLat > 90) {
+      setError("La latitud debe estar entre -90 y 90.");
+      return;
+    }
+    if (!Number.isFinite(parsedLon) || parsedLon < -180 || parsedLon > 180) {
+      setError("La longitud debe estar entre -180 y 180.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const txId = Math.floor(Math.random() * 900000) + 100000;
       const payload = {
         transaction_id: txId,
-        user_id: parseInt(userId) || 1,
+        user_id: parsedUserId,
         amount: subtotal,
-        merchant_id: parseInt(merchantId) || 1,
+        merchant_id: parsedMerchantId,
         country: country,
-        latitude: parseFloat(latitude) || 20.6597,
-        longitude: parseFloat(longitude) || -103.3496,
+        latitude: parsedLat,
+        longitude: parsedLon,
         device_change_flag: deviceChange,
       };
 
@@ -90,6 +183,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
 
       const result = await response.json();
       onResult(result);
+      setIsPaid(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "QR Transaction failed");
     } finally {
@@ -107,27 +201,20 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
           className={cn(
             "glass-qr-container w-52 h-52 rounded-3xl flex items-center justify-center",
             "transition-all duration-500",
-            qrGenerated && "glass-qr-active"
+            qrSeed !== null && "glass-qr-active"
           )}
         >
-          {qrGenerated ? (
+          {qrSeed !== null ? (
             <div className="relative">
-              {/* Simulated QR pattern */}
+              {/* QR visual estable para evitar regeneración por re-renders */}
               <div className="w-36 h-36 grid grid-cols-9 gap-[2px] p-2">
-                {Array.from({ length: 81 }).map((_, i) => {
-                  const isCorner =
-                    (i < 3 || (i >= 6 && i < 9)) && (Math.floor(i / 9) < 3) ||
-                    (i % 9 < 3 || i % 9 >= 6) && Math.floor(i / 9) < 3 ||
-                    (i % 9 < 3) && Math.floor(i / 9) >= 6;
-                  const isRandom = Math.random() > 0.5;
+                {qrPattern.map((isDark, i) => {
                   return (
                     <div
                       key={i}
                       className={cn(
                         "rounded-sm transition-all duration-300",
-                        isCorner || isRandom
-                          ? "bg-foreground/90"
-                          : "bg-transparent"
+                        isDark ? "bg-foreground/90" : "bg-transparent"
                       )}
                       style={{ animationDelay: `${i * 10}ms` }}
                     />
@@ -144,14 +231,15 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             <button
               type="button"
               onClick={handleGenerateQR}
+              disabled={isSubmitting || isPaid}
               className="flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
             >
               <QrCode size={48} className="opacity-40" />
-              <span className="text-sm font-medium">Generate QR Code</span>
+              <span className="text-sm font-medium">Generar código QR</span>
             </button>
           )}
         </div>
-        {qrGenerated && (
+        {qrSeed !== null && (
           <p className="text-xs text-muted-foreground animate-fade-in">
             Escanea el código QR con tu aplicación bancaria para completar el pago.
           </p>
@@ -172,6 +260,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
               onChange={(e) => setUserId(e.target.value)}
               className="checkout-input"
               min="1"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
@@ -182,6 +271,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
               onChange={(e) => setMerchantId(e.target.value)}
               className="checkout-input"
               min="1"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
@@ -189,7 +279,8 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             <CustomSelect
               value={country}
               onChange={setCountry}
-              options={countries}
+              options={COUNTRIES.map((item) => ({ value: item.value, label: item.label }))}
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div className="flex items-center gap-3">
@@ -197,6 +288,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             <button
               type="button"
               onClick={() => setDeviceChange(!deviceChange)}
+              disabled={isSubmitting || isPaid}
               className={cn(
                 "relative w-12 h-7 rounded-full transition-all duration-300",
                 deviceChange
@@ -224,7 +316,7 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
           Datos de Ubicación
         </h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Usado para análisis de fraude basado en geolocalización
+          Usa coordenadas reales aproximadas del lugar de pago. Latitud: -90 a 90, Longitud: -180 a 180.
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -232,9 +324,13 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             <input
               type="text"
               value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
-              placeholder="20.6597"
+              onChange={(e) => {
+                setLatitude(e.target.value);
+                setHasCustomCoordinates(true);
+              }}
+              placeholder="19.4326"
               className="checkout-input"
+              disabled={isSubmitting || isPaid}
             />
           </div>
           <div>
@@ -242,11 +338,26 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
             <input
               type="text"
               value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
-              placeholder="-103.3496"
+              onChange={(e) => {
+                setLongitude(e.target.value);
+                setHasCustomCoordinates(true);
+              }}
+              placeholder="-99.1332"
               className="checkout-input"
+              disabled={isSubmitting || isPaid}
             />
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span>Ejemplo México (CDMX): 19.4326, -99.1332</span>
+          <button
+            type="button"
+            onClick={handleApplyCountryCoordinates}
+            disabled={isSubmitting || isPaid}
+            className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+          >
+            Usar coordenadas sugeridas del país
+          </button>
         </div>
       </div>
 
@@ -261,22 +372,27 @@ export default function QRPaymentForm({ subtotal, onResult }: Props) {
       {/* Submit */}
       <button
         type="submit"
-        disabled={isSubmitting || subtotal <= 0}
+        disabled={isSubmitting || subtotal <= 0 || isPaid || qrSeed === null}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
           "disabled:opacity-40 disabled:cursor-not-allowed"
         )}
       >
-        {isSubmitting ? (
+        {isPaid ? (
+          <>
+            <ShieldCheck size={18} />
+            Pago realizado
+          </>
+        ) : isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Analyzing QR Transaction...
+            Analizando transacción QR...
           </>
         ) : (
           <>
             <ShieldCheck size={18} />
-            Pay ${subtotal.toFixed(2)} via QR
+            Pagar ${subtotal.toFixed(2)} y analizar con QR
           </>
         )}
       </button>

@@ -433,7 +433,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
           </div>
           <div>
             <label className="checkout-label">
-              {brand === "amex" ? "CID (4 digits)" : "CVV"}
+              {brand === "amex" ? "CID (4 dígitos)" : "CVV"}
             </label>
             <input
               type="text"

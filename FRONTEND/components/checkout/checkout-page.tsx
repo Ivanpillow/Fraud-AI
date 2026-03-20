@@ -115,6 +115,7 @@ export default function CheckoutPage() {
             {selectedMethod === "qr" && (
               <QRPaymentForm
                 subtotal={subtotal}
+                resetTrigger={resetTrigger}
                 onResult={handleTransactionResult}
               />
             )}
