@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { createMerchant, updateMerchant } from "@/lib/api"
 import CustomSelect from "@/components/checkout/custom-select"
-import { sanitizeInput } from "@/lib/auth-validation"
+import { sanitizeInput, validateMerchantName } from "@/lib/auth-validation"
 
 type Props = {
   onClose: () => void
@@ -71,13 +71,18 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
     e.preventDefault()
     setError(null)
 
-    const errors: any = {}
+    const errors: {
+      name?: string
+      status?: string
+      key?: string
+    } = {}
 
     const cleanName = sanitizeInput(form.name).replace(/\s+/g, " ")
-    const cleanKey = form.key.trim()
+    const cleanKey = sanitizeInput(form.key).replace(/\s+/g, "")
 
-    if (!cleanName || cleanName.length < 2) {
-      errors.name = "Nombre inválido (mínimo 2 caracteres)"
+    const merchantNameError = validateMerchantName(cleanName)
+    if (merchantNameError) {
+      errors.name = merchantNameError
     }
 
     if (!editing) {
@@ -87,6 +92,16 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
         errors.key = "La llave no puede contener espacios"
       } else if (cleanKey.length < 6) {
         errors.key = "La llave debe tener al menos 6 caracteres"
+      } else if (cleanKey.length > 120) {
+        errors.key = "La llave es demasiado larga"
+      }
+    } else if (cleanKey) {
+      if (/\s/.test(cleanKey)) {
+        errors.key = "La llave no puede contener espacios"
+      } else if (cleanKey.length < 6) {
+        errors.key = "La llave debe tener al menos 6 caracteres"
+      } else if (cleanKey.length > 120) {
+        errors.key = "La llave es demasiado larga"
       }
     }
 
@@ -101,7 +116,10 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
 
       if (editing && merchant) {
 
-        const payload: any = {
+        const payload: {
+          name: string
+          label?: string
+        } = {
           name: cleanName
         }
 

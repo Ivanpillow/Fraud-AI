@@ -52,7 +52,7 @@ export async function apiRequest<T = unknown>(
 
 // Endpoint para login
 export async function loginUser(email: string, password: string) {
-  return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string; is_superadmin?: boolean } }>(
+  return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string; is_admin?: boolean; is_superadmin?: boolean } }>(
     "/auth/login",
     {
       method: "POST",
@@ -435,9 +435,17 @@ export type User = {
   is_admin: boolean
 }
 
+function withMerchantQuery(endpoint: string, merchantId?: number): string {
+  if (merchantId === undefined || merchantId === null) {
+    return endpoint
+  }
+
+  return `${endpoint}?merchant_id=${merchantId}`
+}
+
 // Obtener usuarios del merchant
-export async function fetchMerchantUsers(): Promise<User[]> {
-  const response = await apiRequest<{ data: User[] }>("/users")
+export async function fetchMerchantUsers(merchantId?: number): Promise<User[]> {
+  const response = await apiRequest<{ data: User[] }>(withMerchantQuery("/users", merchantId))
 
   if (response.error || !response.data) {
     throw new Error(response.error || "Failed to load users")
@@ -453,16 +461,16 @@ export async function fetchMerchantUsers(): Promise<User[]> {
     full_name: string
     password: string
     role: string
-  }) {
-    return apiRequest("/users", {
+  }, merchantId?: number) {
+    return apiRequest(withMerchantQuery("/users", merchantId), {
       method: "POST",
       body: JSON.stringify(data)
     })
   }
 
 
-  export async function toggleUser(userId: number) {
-    return apiRequest(`/users/${userId}/toggle`, {
+  export async function toggleUser(userId: number, merchantId?: number) {
+    return apiRequest(withMerchantQuery(`/users/${userId}/toggle`, merchantId), {
       method: "PATCH"
     })
   }
@@ -475,17 +483,18 @@ export async function fetchMerchantUsers(): Promise<User[]> {
       email: string
       full_name: string
       role: string
-    }
+    },
+    merchantId?: number
   ) {
-    return apiRequest(`/users/${userId}`, {
+    return apiRequest(withMerchantQuery(`/users/${userId}`, merchantId), {
       method: "PUT",
       body: JSON.stringify(data)
     })
   }
 
   // Endpoint para eliminar un usuario
-  export async function deleteUser(userId: number) {
-    return apiRequest(`/users/${userId}`, {
+  export async function deleteUser(userId: number, merchantId?: number) {
+    return apiRequest(withMerchantQuery(`/users/${userId}`, merchantId), {
       method: "DELETE"
     })
   }
@@ -499,10 +508,10 @@ export async function fetchMerchantUsers(): Promise<User[]> {
 // ============================
 
 // Endpoint para obtener roles de la empresa
-export async function fetchRoles() {
+export async function fetchRoles(merchantId?: number) {
   const res = await apiRequest<{ 
     data: { role_id: number; name: string; is_admin: boolean }[] 
-  }>("/roles")
+  }>(withMerchantQuery("/roles", merchantId))
 
   if (res.error || !res.data) {
     throw new Error(res.error || "Failed to load roles")
@@ -512,16 +521,16 @@ export async function fetchRoles() {
 }
 
 // Endpoint para crear un nuevo rol
-export async function createRole(name: string) {
-  return apiRequest("/roles", {
+export async function createRole(name: string, merchantId?: number) {
+  return apiRequest(withMerchantQuery("/roles", merchantId), {
     method: "POST",
     body: JSON.stringify({ name })
   })
 }
 
 // Endpoint para actualizar un rol existente
-export async function updateRole(roleId: number, name: string) {
-  return apiRequest(`/roles/${roleId}`, {
+export async function updateRole(roleId: number, name: string, merchantId?: number) {
+  return apiRequest(withMerchantQuery(`/roles/${roleId}`, merchantId), {
     method: "PUT",
     body: JSON.stringify({ name })
   })
@@ -529,9 +538,9 @@ export async function updateRole(roleId: number, name: string) {
 
 
 // Endpoint para eliminar un rol
-export async function deleteRole(roleId: number) {
+export async function deleteRole(roleId: number, merchantId?: number) {
 
-  const res = await apiRequest(`/roles/${roleId}`, {
+  const res = await apiRequest(withMerchantQuery(`/roles/${roleId}`, merchantId), {
     method: "DELETE"
   })
 

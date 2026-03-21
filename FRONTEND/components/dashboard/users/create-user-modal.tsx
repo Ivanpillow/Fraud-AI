@@ -10,6 +10,7 @@ type Props = {
   onClose: () => void
   onCreated: () => void
   user?: User | null
+  selectedMerchantId?: number
 }
 
 type User = {
@@ -32,7 +33,7 @@ type FormState = {
   role: string
 }
 
-export default function CreateUserModal({ onClose, onCreated, user }: Props) {
+export default function CreateUserModal({ onClose, onCreated, user, selectedMerchantId }: Props) {
 
   const [open, setOpen] = useState(false)
 
@@ -62,7 +63,7 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
 
       try {
 
-        const data = await fetchRoles()
+        const data = await fetchRoles(selectedMerchantId)
 
         setRoles(data)
 
@@ -85,7 +86,7 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
 
     loadRoles()
 
-  }, [])
+  }, [selectedMerchantId])
 
   useEffect(() => {
 
@@ -160,7 +161,7 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
           email: cleanEmail,
           full_name: cleanName,
           role: form.role
-        })
+        }, selectedMerchantId)
 
         if (res.error) {
           setError(res.error)
@@ -174,7 +175,7 @@ export default function CreateUserModal({ onClose, onCreated, user }: Props) {
           full_name: cleanName,
           password: form.password,
           role: form.role
-        })
+        }, selectedMerchantId)
 
         if (res.error) {
           setError(res.error)

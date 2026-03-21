@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/header";
 import GlassCard from "@/components/dashboard/glass-card";
 import CustomSelect from "@/components/checkout/custom-select";
@@ -12,7 +13,8 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
-import { sanitizeInput } from "@/lib/auth-validation";
+import { sanitizeInput, validateMerchantName } from "@/lib/auth-validation";
+import { useAuth } from "@/lib/auth-context";
 
 import CreateMerchantModal from "@/components/dashboard/merchants/create_merchant_modal";
 
@@ -34,6 +36,10 @@ type Merchant = {
 };
 
 export default function MerchantsPage() {
+  const router = useRouter();
+  const { user: currentUser, isLoading: authLoading } = useAuth();
+  const isSuperadmin = !!currentUser?.is_superadmin;
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
 
@@ -52,6 +58,11 @@ export default function MerchantsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  function showSuperadminOnlyMessage(action: string) {
+    setSuccessMessage(null);
+    setErrorMessage(`Solo los superadmins pueden ${action} comercios.`);
+  }
+
   async function loadMerchants() {
     try {
       setLoading(true);
@@ -67,8 +78,21 @@ export default function MerchantsPage() {
   }
 
   useEffect(() => {
+    if (!authLoading && currentUser && !isSuperadmin) {
+      router.replace("/dashboard?denied=merchants");
+      return;
+    }
+
+    if (!currentUser || !isSuperadmin) {
+      return;
+    }
+
     loadMerchants();
-  }, []);
+  }, [authLoading, currentUser, isSuperadmin, router]);
+
+  if (!authLoading && currentUser && !isSuperadmin) {
+    return null;
+  }
 
   async function handleEditMerchant(merchant: Merchant) {
     setEditingMerchantId(merchant.merchant_id);
@@ -77,13 +101,30 @@ export default function MerchantsPage() {
   }
 
   async function handleSaveEdit(merchant_id: number) {
+    if (!isSuperadmin) {
+      showSuperadminOnlyMessage("editar");
+      return;
+    }
+
     const cleanName = sanitizeInput(editingName).replace(/\s+/g, " ");
-    if (!cleanName) return;
+    const merchantNameError = validateMerchantName(cleanName);
+
+    if (merchantNameError) {
+      setSuccessMessage(null);
+      setErrorMessage(merchantNameError);
+      return;
+    }
 
     try {
-      await updateMerchant(merchant_id, {
+      const res = await updateMerchant(merchant_id, {
         name: cleanName
       });
+
+      if (res.error) {
+        setSuccessMessage(null);
+        setErrorMessage(res.error);
+        return;
+      }
 
       setEditingMerchantId(null);
       setErrorMessage(null);
@@ -97,6 +138,11 @@ export default function MerchantsPage() {
   }
 
   function handleCreate() {
+    if (!isSuperadmin) {
+      showSuperadminOnlyMessage("agregar");
+      return;
+    }
+
     setEditingMerchant(null);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -104,6 +150,11 @@ export default function MerchantsPage() {
   }
 
     function handleEdit(merchant: Merchant) {
+    if (!isSuperadmin) {
+      showSuperadminOnlyMessage("editar");
+      return;
+    }
+
     setErrorMessage(null);
     setSuccessMessage(null);
     setEditingMerchant(merchant);
@@ -111,9 +162,21 @@ export default function MerchantsPage() {
   }
 
   async function handleToggleStatus(merchant: Merchant) {
+    if (!isSuperadmin) {
+      showSuperadminOnlyMessage("cambiar el estado de");
+      return;
+    }
+
     const newStatus = merchant.status === "active" ? "inactive" : "active";
     try {
-      await toggleMerchantStatus(merchant.merchant_id, newStatus);
+      const res = await toggleMerchantStatus(merchant.merchant_id, newStatus);
+
+      if (res.error) {
+        setSuccessMessage(null);
+        setErrorMessage(res.error);
+        return;
+      }
+
       setErrorMessage(null);
       setSuccessMessage(
         newStatus === "active"
@@ -129,6 +192,11 @@ export default function MerchantsPage() {
   }
 
   async function handleDeleteMerchant(merchant_id: number) {
+    if (!isSuperadmin) {
+      showSuperadminOnlyMessage("eliminar");
+      return;
+    }
+
     try {
       await deleteMerchant(merchant_id);
       setMerchantToDelete(null);
@@ -150,10 +218,14 @@ export default function MerchantsPage() {
     return ["all", ...Array.from(unique)];
   }, [merchants]);
 
-  const statuses = useMemo(() => {
-    const unique = new Set(merchants.map((m) => m.status));
-    return ["all", ...Array.from(unique)];
-  }, [merchants]);
+  const statuses = useMemo(
+    () => [
+      { value: "all", label: "Todos los estados" },
+      { value: "active", label: "Activos" },
+      { value: "inactive", label: "Inactivos" },
+    ],
+    []
+  );
 
   const filteredMerchants = useMemo(() => {
     return merchants.filter((merchant) => {
@@ -177,7 +249,13 @@ export default function MerchantsPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : (
-          <>
+          <div className="flex flex-col gap-5 stagger-children">
+            {!isSuperadmin && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                Solo los superadmins pueden agregar, editar, activar/desactivar o eliminar comercios.
+              </div>
+            )}
+
             {errorMessage && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                 {errorMessage}
@@ -203,7 +281,7 @@ export default function MerchantsPage() {
             </GlassCard>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
               <GlassCard>
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
@@ -249,23 +327,25 @@ export default function MerchantsPage() {
                   <CustomSelect
                     value={statusFilter}
                     onChange={setStatusFilter}
-                    options={statuses.map((s) => ({
-                      value: s,
-                      label: s === "all" ? "Todos los estados" : s,
-                    }))}
+                    options={statuses}
                   />
                 </div>
               </div>
 
               <button 
                 onClick={handleCreate}
-                className="text-xs px-4 py-2 rounded-lg bg-primary/15 text-primary font-medium hover:bg-primary/25 transition">
+                disabled={!isSuperadmin}
+                title={!isSuperadmin ? "Solo los superadmins pueden agregar comercios" : ""}
+                className={cn(
+                  "text-xs px-4 py-2 rounded-lg bg-primary/15 text-primary font-medium transition",
+                  isSuperadmin ? "hover:bg-primary/25" : "opacity-40 cursor-not-allowed"
+                )}>
                 Agregar Comercio
               </button>
             </div>
 
             {/* Tabla */}
-            <GlassCard>
+            <GlassCard className="animate-fade-in">
               <div className="flex justify-between mb-4">
                 <h3 className="text-lg font-semibold">Comercios</h3>
               </div>
@@ -276,8 +356,8 @@ export default function MerchantsPage() {
                     <tr>
                       <th className="text-left py-3">Nombre</th>
                       <th className="text-left py-3">Estado</th>
-                      <th className="text-left py-3">Label</th>
-                      <th className="text-left py-3">Creado</th>
+                      <th className="text-left py-3">Etiqueta</th>
+                      <th className="text-left py-3">Fecha de Creación</th>
                       <th className="py-3 text-center">Acciones</th>
                     </tr>
                   </thead>
@@ -345,21 +425,42 @@ export default function MerchantsPage() {
                                 <>
                                   <button
                                     onClick={() => handleEdit(merchant)}
-                                    className="w-24 text-xs px-3 py-1 border rounded-md hover:bg-white/5"
+                                    disabled={!isSuperadmin}
+                                    title={!isSuperadmin ? "Solo los superadmins pueden editar comercios" : ""}
+                                    className={cn(
+                                      "w-24 text-xs px-3 py-1 border rounded-md",
+                                      isSuperadmin ? "hover:bg-white/5" : "opacity-40 cursor-not-allowed"
+                                    )}
                                   >
                                     Editar
                                   </button>
 
                                   <button
                                     onClick={() => handleToggleStatus(merchant)}
-                                    className="w-24 text-xs px-3 py-1 border rounded-md hover:bg-white/5"
+                                    disabled={!isSuperadmin}
+                                    title={!isSuperadmin ? "Solo los superadmins pueden cambiar estado de comercios" : ""}
+                                    className={cn(
+                                      "w-24 text-xs px-3 py-1 border rounded-md",
+                                      isSuperadmin ? "hover:bg-white/5" : "opacity-40 cursor-not-allowed"
+                                    )}
                                   >
                                     {merchant.status === "active" ? "Desactivar" : "Activar"}
                                   </button>
 
                                   <button
-                                    onClick={() => setMerchantToDelete(merchant)}
-                                    className="w-24 text-xs px-3 py-1 border rounded-md text-red-400 hover:bg-red-500/10"
+                                    onClick={() => {
+                                      if (!isSuperadmin) {
+                                        showSuperadminOnlyMessage("eliminar");
+                                        return;
+                                      }
+                                      setMerchantToDelete(merchant);
+                                    }}
+                                    disabled={!isSuperadmin}
+                                    title={!isSuperadmin ? "Solo los superadmins pueden eliminar comercios" : ""}
+                                    className={cn(
+                                      "w-24 text-xs px-3 py-1 border rounded-md text-red-400",
+                                      isSuperadmin ? "hover:bg-red-500/10" : "opacity-40 cursor-not-allowed"
+                                    )}
                                   >
                                     Eliminar
                                   </button>
@@ -374,7 +475,7 @@ export default function MerchantsPage() {
                 </table>
               </div>
             </GlassCard>
-          </>
+          </div>
         )}
       </div>
 

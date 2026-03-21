@@ -1,6 +1,5 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
 import hashlib
 import re
 
@@ -223,10 +222,13 @@ def _validate_name(name: str) -> str:
     clean = " ".join(_sanitize(name).split())
 
     if not clean:
-        raise HTTPException(status_code=400, detail="Nombre requerido")
+        raise HTTPException(status_code=400, detail="Nombre del comercio es requerido")
 
     if len(clean) < 2:
-        raise HTTPException(status_code=400, detail="Nombre muy corto")
+        raise HTTPException(status_code=400, detail="Nombre del comercio demasiado corto")
+
+    if len(clean) > 120:
+        raise HTTPException(status_code=400, detail="Nombre del comercio demasiado largo")
 
     return clean
 
@@ -242,20 +244,32 @@ def _validate_plan(plan: str) -> str:
     if not plan:
         return "basic"
 
-    return _sanitize(plan)
+    clean_plan = _sanitize(plan)
+    if not clean_plan:
+        return "basic"
+
+    if len(clean_plan) > 50:
+        raise HTTPException(status_code=400, detail="Plan inválido")
+
+    return clean_plan
 
 
 def _validate_key(key: str) -> str:
-    if not key:
+    clean_key = _sanitize(key)
+
+    if not clean_key:
         raise HTTPException(status_code=400, detail="API key requerida")
 
-    if len(key) < 6:
+    if len(clean_key) < 6:
         raise HTTPException(status_code=400, detail="API key muy corta")
 
-    if re.search(r"\s", key):
+    if len(clean_key) > 120:
+        raise HTTPException(status_code=400, detail="API key demasiado larga")
+
+    if re.search(r"\s", clean_key):
         raise HTTPException(status_code=400, detail="API key inválida")
 
-    return key
+    return clean_key
 
 
 def _hash_key(key: str) -> str:

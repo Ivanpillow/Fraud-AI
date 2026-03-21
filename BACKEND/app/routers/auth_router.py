@@ -57,5 +57,6 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
         "email": user.email,
         "full_name": user.full_name,
         "role": user.role.name,
+        "is_admin": bool(user.role.is_admin),
         "is_superadmin": is_superadmin_email(user.email),
     }

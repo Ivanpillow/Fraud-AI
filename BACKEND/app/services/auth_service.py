@@ -12,20 +12,22 @@ def login_user(db, email: str, password: str):
     user = get_auth_user_by_email(db, email)
 
     if not user:
-        raise HTTPException(status_code=401)
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-    if not user.is_active:
-        raise HTTPException(status_code=403)
+    # Solo bloquear cuando esté explícitamente desactivado.
+    if user.is_active is False:
+        raise HTTPException(status_code=403, detail="Tu usuario está desactivado")
 
     try:
         ph.verify(user.password_hash, password)
     except VerifyMismatchError:
-        raise HTTPException(status_code=401)
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
     token = create_access_token({
         "sub": str(user.id),
         "role": user.role.name,
         "merchant_id": user.merchant_id,
+        "is_admin": bool(user.role.is_admin),
         "is_superadmin": is_superadmin_email(user.email),
     })
 
@@ -37,6 +39,7 @@ def login_user(db, email: str, password: str):
             "full_name": user.full_name,
             "role": user.role.name,
             "merchant_id": user.merchant_id,
+            "is_admin": bool(user.role.is_admin),
             "is_superadmin": is_superadmin_email(user.email),
         }
     }

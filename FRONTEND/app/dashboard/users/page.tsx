@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/header";
 import GlassCard from "@/components/dashboard/glass-card";
 import CreateUserModal from "@/components/dashboard/users/create-user-modal";
 import CustomSelect from "@/components/checkout/custom-select";
 import { useAuth } from "@/lib/auth-context";
-import { fetchMerchantUsers, toggleUser, deleteUser } from "@/lib/api";
+import { fetchMerchantUsers, toggleUser, deleteUser, fetchMerchants, fetchRoles } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 
@@ -21,20 +22,45 @@ type User = {
   is_superadmin?: boolean;
 };
 
+type MerchantOption = {
+  merchant_id: number;
+  name: string;
+};
+
+type RoleOption = {
+  role_id: number;
+  name: string;
+  is_admin: boolean;
+};
+
 export default function UsersPage() {
-  const { user: currentUser } = useAuth();
+  const router = useRouter();
+  const { user: currentUser, isLoading: authLoading } = useAuth();
+  const isSuperadmin = !!currentUser?.is_superadmin;
+  const canAccessManagement = isSuperadmin || !!currentUser?.is_admin;
+
   const [users, setUsers] = useState<User[]>([]);
+  const [merchants, setMerchants] = useState<MerchantOption[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [selectedMerchantId, setSelectedMerchantId] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   async function loadUsers() {
+    if (!currentUser || !canAccessManagement) return;
+
+    if (isSuperadmin && selectedMerchantId === undefined) {
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await fetchMerchantUsers();
+      const data = await fetchMerchantUsers(isSuperadmin ? selectedMerchantId : undefined);
       setUsers(data);
     } catch (error) {
       console.error("Error loading users", error);
@@ -44,8 +70,73 @@ export default function UsersPage() {
   }
 
   useEffect(() => {
+    if (!authLoading && currentUser && !canAccessManagement) {
+      router.replace("/dashboard?denied=users");
+      return;
+    }
+
+    if (!canAccessManagement) {
+      return;
+    }
+
+    if (!currentUser) return;
+
+    if (isSuperadmin) {
+      setSelectedMerchantId((prev) => (prev === undefined ? 0 : prev));
+      return;
+    }
+
+    setSelectedMerchantId(undefined);
+  }, [authLoading, currentUser, isSuperadmin, canAccessManagement, router]);
+
+  useEffect(() => {
+    if (!currentUser || !isSuperadmin || !canAccessManagement) return;
+
+    async function loadMerchants() {
+      try {
+        const data = await fetchMerchants();
+        const mapped = data.map((merchant) => ({
+          merchant_id: merchant.merchant_id,
+          name: merchant.name,
+        }));
+
+        setMerchants(mapped);
+      } catch (error) {
+        console.error("Error loading merchants", error);
+      }
+    }
+
+    loadMerchants();
+  }, [currentUser, isSuperadmin]);
+
+  useEffect(() => {
+    if (!currentUser || !canAccessManagement) return;
+
+    async function loadRoles() {
+      try {
+        const data = await fetchRoles(isSuperadmin ? selectedMerchantId : undefined);
+        setRoles(data);
+      } catch (error) {
+        console.error("Error loading roles", error);
+        setRoles([]);
+      }
+    }
+
+    loadRoles();
+  }, [currentUser, isSuperadmin, selectedMerchantId]);
+
+  useEffect(() => {
+    setRoleFilter("all");
+  }, [selectedMerchantId]);
+
+  useEffect(() => {
+    if (!canAccessManagement) return;
     loadUsers();
-  }, []);
+  }, [currentUser, isSuperadmin, selectedMerchantId, canAccessManagement]);
+
+  if (!authLoading && currentUser && !canAccessManagement) {
+    return null;
+  }
 
   function canManageAdmin(targetUser: User) {
     const isSelf = currentUser?.id === targetUser.id;
@@ -56,7 +147,7 @@ export default function UsersPage() {
 
   async function handleToggle(user: User) {
     if (!canManageAdmin(user)) return;
-    await toggleUser(user.id);
+    await toggleUser(user.id, isSuperadmin ? selectedMerchantId : undefined);
     setUsers((prev) =>
       prev.map((u) =>
         u.id === user.id ? { ...u, is_active: !u.is_active } : u
@@ -67,7 +158,7 @@ export default function UsersPage() {
   async function handleDeleteUser(user: User) {
     if (!canManageAdmin(user)) return;
     try {
-      await deleteUser(user.id);
+      await deleteUser(user.id, isSuperadmin ? selectedMerchantId : undefined);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (error) {
       console.error("Error deleting user", error);
@@ -84,12 +175,39 @@ export default function UsersPage() {
     setShowCreateModal(true);
   }
 
-  const merchantName = users.length > 0 ? users[0].merchant : "Merchant";
+  const merchantOptions = useMemo(() => {
+    const uniqueById = new Map<number, MerchantOption>();
+    merchants.forEach((merchant) => {
+      uniqueById.set(merchant.merchant_id, merchant);
+    });
 
-  const roles = useMemo(() => {
-    const unique = new Set(users.map((u) => u.role));
-    return ["all", ...Array.from(unique)];
-  }, [users]);
+    return Array.from(uniqueById.values()).sort((a, b) => a.merchant_id - b.merchant_id);
+  }, [merchants]);
+
+  const merchantName = useMemo(() => {
+    if (!isSuperadmin) {
+      return users.length > 0 ? users[0].merchant : "Merchant";
+    }
+
+    const selected = merchantOptions.find((m) => m.merchant_id === selectedMerchantId);
+    return selected?.name || "Merchant";
+  }, [isSuperadmin, users, merchantOptions, selectedMerchantId]);
+
+  const roleFilterOptions = useMemo(() => {
+    return [
+      { value: "all", label: "Todos los roles" },
+      ...roles.map((role) => ({ value: role.name, label: role.name })),
+    ];
+  }, [roles]);
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "Todos los estados" },
+      { value: "active", label: "Activos" },
+      { value: "inactive", label: "Inactivos" },
+    ],
+    []
+  );
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -97,9 +215,13 @@ export default function UsersPage() {
         user.full_name.toLowerCase().includes(search.toLowerCase()) ||
         user.email.toLowerCase().includes(search.toLowerCase());
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
-      return matchesSearch && matchesRole;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && user.is_active) ||
+        (statusFilter === "inactive" && !user.is_active);
+      return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [users, search, roleFilter]);
+  }, [users, search, roleFilter, statusFilter]);
 
   const activeCount = users.filter((u) => u.is_active).length;
   const inactiveCount = users.length - activeCount;
@@ -114,7 +236,7 @@ export default function UsersPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : (
-          <>
+          <div className="flex flex-col gap-5 stagger-children">
             {/* Merchant */}
             <GlassCard>
               <div className="flex flex-col gap-1">
@@ -126,7 +248,7 @@ export default function UsersPage() {
             </GlassCard>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
               <GlassCard>
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
@@ -168,16 +290,34 @@ export default function UsersPage() {
                   />
                 </div>
 
-                <div className="min-w-[220px]">
-                  <CustomSelect
-                    value={roleFilter}
-                    onChange={setRoleFilter}
-                    options={roles.map((r) => ({
-                      value: r,
-                      label: r === "all" ? "Todos los roles" : r,
-                    }))}
-                  />
-                </div>
+                {isSuperadmin && (
+    <div className="min-w-[180px]">
+      <CustomSelect
+        value={String(selectedMerchantId ?? 0)}
+        onChange={(value) => setSelectedMerchantId(Number(value))}
+        options={merchantOptions.map((merchant) => ({
+          value: String(merchant.merchant_id),
+          label: merchant.name,
+        }))}
+      />
+    </div>
+  )}
+
+  <div className="min-w-[180px]">
+    <CustomSelect
+      value={roleFilter}
+      onChange={setRoleFilter}
+      options={roleFilterOptions}
+    />
+  </div>
+
+  <div className="min-w-[180px]">
+    <CustomSelect
+      value={statusFilter}
+      onChange={setStatusFilter}
+      options={statusFilterOptions}
+    />
+  </div>
               </div>
 
               <button
@@ -189,7 +329,7 @@ export default function UsersPage() {
             </div>
 
             {/* Users table */}
-            <GlassCard>
+            <GlassCard className="animate-fade-in">
               <div className="flex justify-between mb-4">
                 <h3 className="text-lg font-semibold">Usuarios</h3>
               </div>
@@ -280,12 +420,13 @@ export default function UsersPage() {
                 </table>
               </div>
             </GlassCard>
-          </>
+          </div>
         )}
       </div>
 
       {showCreateModal && (
         <CreateUserModal
+          selectedMerchantId={isSuperadmin ? selectedMerchantId : undefined}
           user={editingUser}
           onClose={() => {
             setShowCreateModal(false);

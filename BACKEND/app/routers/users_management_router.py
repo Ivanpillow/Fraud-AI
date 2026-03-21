@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -31,12 +31,32 @@ class UpdateUserRequest(BaseModel):
 router = APIRouter(prefix="/users", tags=["Users Management"])
 
 
-@router.get("/")
-def get_users(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    
-    merchant_id = current_user["merchant_id"]
+def _resolve_merchant_scope(current_user: dict, merchant_id: int | None) -> int:
+        user_merchant_id = int(current_user["merchant_id"])
+        is_superadmin = bool(current_user.get("is_superadmin"))
 
-    users = list_users_by_merchant(db, merchant_id)
+        if merchant_id is None:
+            return user_merchant_id
+
+        if is_superadmin:
+            return merchant_id
+
+        if merchant_id != user_merchant_id:
+            raise HTTPException(status_code=403, detail="No puedes operar sobre otro comercio")
+
+        return user_merchant_id
+
+
+@router.get("/")
+def get_users(
+    merchant_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
+
+    users = list_users_by_merchant(db, merchant_scope)
 
     return {
         "data": users
@@ -47,13 +67,14 @@ def get_users(db: Session = Depends(get_db), current_user=Depends(get_current_us
 @router.post("/")
 def create_user(
     payload: CreateUserRequest,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
-    user = create_user_service(db, payload, merchant_id)
+    user = create_user_service(db, payload, merchant_scope)
 
     return {"data": user}
 
@@ -61,13 +82,14 @@ def create_user(
 @router.patch("/{user_id}/toggle")
 def toggle_user(
     user_id: int,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
-    user = toggle_user_status_service(db, user_id, merchant_id, current_user)
+    user = toggle_user_status_service(db, user_id, merchant_scope, current_user)
 
     return {"data": user}
 
@@ -76,13 +98,14 @@ def toggle_user(
 def update_user(
     user_id: int,
     payload: UpdateUserRequest,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
-    user = update_user_service(db, user_id, payload, merchant_id)
+    user = update_user_service(db, user_id, payload, merchant_scope)
 
     return {"data": user}
 
@@ -90,13 +113,14 @@ def update_user(
 @router.delete("/{user_id}")
 def delete_user(
     user_id: int,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
-    result = delete_user_service(db, user_id, merchant_id, current_user)
+    result = delete_user_service(db, user_id, merchant_scope, current_user)
 
     return {"data": result}
 

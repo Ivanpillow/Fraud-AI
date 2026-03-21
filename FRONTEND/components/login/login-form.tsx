@@ -58,6 +58,8 @@ export default function LoginForm() {
       if (result.error) {
         if (result.status === 401) {
           setError("Credenciales inválidas. Intente nuevamente.");
+        } else if (result.status === 403) {
+          setError("Tu usuario está desactivado. Contacta a un administrador.");
         } else {
           setError(result.error || "Error desconocido. Por favor intente nuevamente.");
         }
@@ -68,6 +70,7 @@ export default function LoginForm() {
           email: result.data.userData.email,
           name: result.data.userData.full_name,
           role: result.data.userData.role,
+          is_admin: result.data.userData.is_admin,
           is_superadmin: result.data.userData.is_superadmin,
         };
         login(userData);

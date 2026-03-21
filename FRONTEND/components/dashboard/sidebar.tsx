@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   LayoutDashboard,
-  BarChart3,
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
@@ -13,10 +12,10 @@ import {
   Users,
   Key,
   Store,
-  icons
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileDropdown from "@/components/dashboard/profile-dropdown";
+import { useAuth } from "@/lib/auth-context";
 
 
 const navItems = [
@@ -46,14 +45,14 @@ const navItems = [
         icon: Store,
       },
       {
-        label: "Gestión de Usuarios",
-        href: "/dashboard/users",
-        icon: Users,
-      },
-      {
         label: "Roles de la Empresa",
         href: "/dashboard/roles",
         icon: Key,
+      },
+      {
+        label: "Gestión de Usuarios",
+        href: "/dashboard/users",
+        icon: Users,
       },
     ],
   },
@@ -61,9 +60,37 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const isSuperadmin = !!user?.is_superadmin;
+  const isMerchantAdmin = !!user?.is_admin;
+  const canAccessAdministration = isSuperadmin || isMerchantAdmin;
   const [collapsed, setCollapsed] = useState(false);
   
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  const visibleNavItems = navItems
+    .map((item) => {
+      if (!item.children) return item;
+
+      return {
+        ...item,
+        children: item.children.filter((sub) => {
+          if (sub.href === "/dashboard/merchants") {
+            return isSuperadmin;
+          }
+
+          if (
+            sub.href === "/dashboard/users" ||
+            sub.href === "/dashboard/roles"
+          ) {
+            return canAccessAdministration;
+          }
+
+          return true;
+        }),
+      };
+    })
+    .filter((item) => !item.children || item.children.length > 0);
 
   return (
     <aside
@@ -76,7 +103,7 @@ export default function Sidebar() {
       <ProfileDropdown collapsed={collapsed} />
 
       <nav className="flex-1 p-3 flex flex-col gap-1 mt-2">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"

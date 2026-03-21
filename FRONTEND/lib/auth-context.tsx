@@ -9,6 +9,7 @@ interface MeResponse {
   email: string;
   full_name: string;
   role: string;
+  is_admin?: boolean;
   is_superadmin?: boolean;
 }
 
@@ -17,6 +18,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  is_admin?: boolean;
   is_superadmin?: boolean;
 }
 
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: res.data.email,
           name: res.data.full_name,
           role: res.data.role,
+          is_admin: res.data.is_admin,
           is_superadmin: res.data.is_superadmin,
         });
       }

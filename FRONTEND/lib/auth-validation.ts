@@ -33,6 +33,16 @@ export function validateRoleName(roleName: string): string | null {
   return null;
 }
 
+export function validateMerchantName(merchantName: string): string | null {
+  const cleanMerchantName = merchantName.trim().replace(/\s+/g, " ");
+
+  if (!cleanMerchantName) return "Nombre del comercio es requerido";
+  if (cleanMerchantName.length < 2) return "Nombre del comercio demasiado corto";
+  if (cleanMerchantName.length > 120) return "Nombre del comercio demasiado largo";
+
+  return null;
+}
+
 export function validatePassword(password: string): string | null {
   if (password.length < 8) return "Se necesitan al menos 8 caracteres";
   if (password.length > 72) return "Contraseña demasiado larga";

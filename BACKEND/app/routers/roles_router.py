@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
@@ -21,14 +21,34 @@ class RoleRequest(BaseModel):
 
 ROLE_NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÿ0-9 _\-]+$")
 
-@router.get("/")
-def list_roles(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
 
-    merchant_id = current_user["merchant_id"]
+def _resolve_merchant_scope(current_user: dict, merchant_id: int | None) -> int:
+    user_merchant_id = int(current_user["merchant_id"])
+    is_superadmin = bool(current_user.get("is_superadmin"))
+
+    if merchant_id is None:
+        return user_merchant_id
+
+    if is_superadmin:
+        return merchant_id
+
+    if merchant_id != user_merchant_id:
+        raise HTTPException(status_code=403, detail="No puedes operar sobre otro comercio")
+
+    return user_merchant_id
+
+@router.get("/")
+def list_roles(
+    merchant_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
     roles = (
         db.query(Role)
-        .filter(Role.merchant_id == merchant_id)
+        .filter(Role.merchant_id == merchant_scope)
         .order_by(Role.role_id)
         .all()
     )
@@ -47,23 +67,24 @@ def list_roles(db: Session = Depends(get_db), current_user=Depends(get_current_u
 @router.post("/")
 def create_role(
     payload: RoleRequest,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
     role_name = _validate_role_name(payload.name)
 
     existing_role = (
         db.query(Role)
-        .filter(Role.merchant_id == merchant_id, func.lower(Role.name) == role_name.lower())
+        .filter(Role.merchant_id == merchant_scope, func.lower(Role.name) == role_name.lower())
         .first()
     )
 
     if existing_role:
         raise HTTPException(status_code=400, detail="Ya existe un rol con ese nombre")
 
-    role = Role(name=role_name, merchant_id=merchant_id)
+    role = Role(name=role_name, merchant_id=merchant_scope)
 
     db.add(role)
     db.commit()
@@ -76,16 +97,17 @@ def create_role(
 def update_role(
     role_id: int,
     payload: RoleRequest,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
     role_name = _validate_role_name(payload.name)
 
     role = (
         db.query(Role)
-        .filter(Role.role_id == role_id, Role.merchant_id == merchant_id)
+        .filter(Role.role_id == role_id, Role.merchant_id == merchant_scope)
         .first()
     )
 
@@ -98,7 +120,7 @@ def update_role(
     duplicate_role = (
         db.query(Role)
         .filter(
-            Role.merchant_id == merchant_id,
+            Role.merchant_id == merchant_scope,
             func.lower(Role.name) == role_name.lower(),
             Role.role_id != role_id,
         )
@@ -120,15 +142,16 @@ def update_role(
 @router.delete("/{role_id}")
 def delete_role(
     role_id: int,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
 
-    merchant_id = current_user["merchant_id"]
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
     role = (
         db.query(Role)
-        .filter(Role.role_id == role_id, Role.merchant_id == merchant_id)
+        .filter(Role.role_id == role_id, Role.merchant_id == merchant_scope)
         .first()
     )
 

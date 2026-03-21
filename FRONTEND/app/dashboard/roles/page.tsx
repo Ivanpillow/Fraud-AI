@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardHeader from "@/components/dashboard/header";
 import GlassCard from "@/components/dashboard/glass-card";
-import { fetchRoles, createRole, updateRole, deleteRole } from "@/lib/api";
+import CustomSelect from "@/components/checkout/custom-select";
+import { fetchRoles, createRole, updateRole, deleteRole, fetchMerchants } from "@/lib/api";
 import { sanitizeInput, validateRoleName } from "@/lib/auth-validation";
+import { useAuth } from "@/lib/auth-context";
 
 type Role = {
   role_id: number;
@@ -12,9 +15,20 @@ type Role = {
   is_admin: boolean;
 };
 
+type MerchantOption = {
+  merchant_id: number;
+  name: string;
+};
+
 export default function RolesPage() {
+  const router = useRouter()
+  const { user: currentUser, isLoading: authLoading } = useAuth();
+  const isSuperadmin = !!currentUser?.is_superadmin;
+  const canAccessManagement = isSuperadmin || !!currentUser?.is_admin;
 
   const [roles, setRoles] = useState<Role[]>([]);
+  const [merchants, setMerchants] = useState<MerchantOption[]>([]);
+  const [selectedMerchantId, setSelectedMerchantId] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   const [newRole, setNewRole] = useState("");
@@ -25,6 +39,21 @@ export default function RolesPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null)
+
+  const merchantOptions = useMemo(() => {
+    const uniqueById = new Map<number, MerchantOption>()
+    merchants.forEach((merchant) => {
+      uniqueById.set(merchant.merchant_id, merchant)
+    })
+
+    return Array.from(uniqueById.values()).sort((a, b) => a.merchant_id - b.merchant_id)
+  }, [merchants])
+
+  const merchantName = useMemo(() => {
+    if (!isSuperadmin) return "Tu empresa"
+    const selected = merchantOptions.find((m) => m.merchant_id === selectedMerchantId)
+    return selected?.name || "Merchant"
+  }, [isSuperadmin, merchantOptions, selectedMerchantId])
 
   useEffect(() => {
     if (!errorMessage) return
@@ -37,11 +66,17 @@ export default function RolesPage() {
 
   async function loadRoles() {
 
+    if (!currentUser || !canAccessManagement) return
+
+    if (isSuperadmin && selectedMerchantId === undefined) {
+      return
+    }
+
     try {
 
       setLoading(true);
 
-      const data = await fetchRoles();
+      const data = await fetchRoles(isSuperadmin ? selectedMerchantId : undefined);
 
       setRoles(data);
 
@@ -58,10 +93,53 @@ export default function RolesPage() {
   }
 
   useEffect(() => {
+    if (!authLoading && currentUser && !canAccessManagement) {
+      router.replace("/dashboard?denied=roles")
+      return
+    }
 
-    loadRoles();
+    if (!canAccessManagement) {
+      return
+    }
 
-  }, []);
+    if (!currentUser) return
+
+    if (isSuperadmin) {
+      setSelectedMerchantId((prev) => (prev === undefined ? 0 : prev))
+      return
+    }
+
+    setSelectedMerchantId(undefined)
+  }, [authLoading, currentUser, isSuperadmin, canAccessManagement, router])
+
+  useEffect(() => {
+    if (!currentUser || !isSuperadmin || !canAccessManagement) return
+
+    async function loadMerchants() {
+      try {
+        const data = await fetchMerchants()
+        setMerchants(
+          data.map((merchant) => ({
+            merchant_id: merchant.merchant_id,
+            name: merchant.name,
+          }))
+        )
+      } catch (error) {
+        console.error("Error loading merchants", error)
+      }
+    }
+
+    loadMerchants()
+  }, [currentUser, isSuperadmin])
+
+  useEffect(() => {
+    if (!canAccessManagement) return
+    loadRoles()
+  }, [currentUser, isSuperadmin, selectedMerchantId, canAccessManagement]);
+
+  if (!authLoading && currentUser && !canAccessManagement) {
+    return null
+  }
 
   async function handleCreateRole() {
 
@@ -77,7 +155,7 @@ export default function RolesPage() {
 
     try {
 
-      const response = await createRole(cleanRoleName);
+      const response = await createRole(cleanRoleName, isSuperadmin ? selectedMerchantId : undefined);
 
       if (response.error) {
         setErrorMessage(response.error)
@@ -112,7 +190,7 @@ export default function RolesPage() {
 
     try {
 
-      const response = await updateRole(role_id, cleanRoleName)
+      const response = await updateRole(role_id, cleanRoleName, isSuperadmin ? selectedMerchantId : undefined)
 
       if (response.error) {
         setErrorMessage(response.error)
@@ -138,7 +216,7 @@ export default function RolesPage() {
 
         setErrorMessage(null)
 
-        await deleteRole(role_id)
+        await deleteRole(role_id, isSuperadmin ? selectedMerchantId : undefined)
 
         loadRoles()
 
@@ -172,11 +250,20 @@ export default function RolesPage() {
 
         ) : (
 
-          <>
+          <div className="flex flex-col gap-5 stagger-children">
 
             {/* Create role */}
 
-            <GlassCard>
+            <GlassCard className="animate-fade-in">
+              <div className="flex flex-col gap-1">
+                <p className="text-xs uppercase text-muted-foreground tracking-wider">
+                  Empresa
+                </p>
+                <h2 className="text-lg font-semibold">{merchantName}</h2>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="animate-fade-in">
 
               <div className="flex flex-col gap-3">
 
@@ -193,6 +280,19 @@ export default function RolesPage() {
                 </div>
 
                 <div className="flex gap-2">
+
+                  {isSuperadmin && (
+                    <div className="min-w-[220px]">
+                      <CustomSelect
+                        value={String(selectedMerchantId ?? 0)}
+                        onChange={(value) => setSelectedMerchantId(Number(value))}
+                        options={merchantOptions.map((merchant) => ({
+                          value: String(merchant.merchant_id),
+                          label: merchant.name,
+                        }))}
+                      />
+                    </div>
+                  )}
 
                   <input
                     value={newRole}
@@ -353,9 +453,9 @@ export default function RolesPage() {
 
                 </table>
 
-                </GlassCard>
+                    </GlassCard>
 
-          </>
+                  </div>
 
         )}
 
