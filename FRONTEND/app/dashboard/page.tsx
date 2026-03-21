@@ -5,19 +5,29 @@ import { Users, CreditCard, DollarSign, Percent } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/header";
 import StatCard from "@/components/dashboard/stat-card";
 import OverviewChart from "@/components/dashboard/charts/overview-chart";
-import LocationChart from "@/components/dashboard/charts/location-chart";
 import TransactionsHourChart from "@/components/dashboard/charts/transactions-hour-chart";
 import PaymentSummary from "@/components/dashboard/charts/payment-summary";
-import { mockStats } from "@/lib/mock-data";
+import CustomSelect from "@/components/checkout/custom-select";
 import RevenueByLocation from "@/components/dashboard/charts/revenue-by-location";
 import ConversionFunnel from "@/components/dashboard/charts/conversion-funnel";
-import RevenueComparison from "@/components/dashboard/charts/revenue-comparison";
+import { useAuth } from "@/lib/auth-context";
 
-import { useEffect, useState } from "react";
-import { fetchOverviewMetrics } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { fetchMerchants, fetchOverviewMetrics } from "@/lib/api";
+
+type MerchantOption = {
+  merchant_id: number;
+  name: string;
+};
 
 export default function OverviewPage() {
+  const { user: currentUser } = useAuth();
+  const isSuperadmin = !!currentUser?.is_superadmin;
+
   const [overviewData, setOverviewData] = useState<any>(null);
+  const [merchants, setMerchants] = useState<MerchantOption[]>([]);
+  const [selectedMerchantId, setSelectedMerchantId] = useState<number | undefined>(undefined);
+
   const searchParams = useSearchParams();
   const deniedSection = searchParams.get("denied");
   const deniedMessage =
@@ -29,15 +39,74 @@ export default function OverviewPage() {
       ? "Acceso denegado: solo admins o superadmins pueden acceder a Roles de la Empresa."
       : null;
 
+  const merchantOptions = useMemo(() => {
+    const uniqueById = new Map<number, MerchantOption>();
+    merchants.forEach((merchant) => {
+      uniqueById.set(merchant.merchant_id, merchant);
+    });
+
+    return Array.from(uniqueById.values())
+      .filter((merchant) => merchant.merchant_id !== 0)
+      .sort((a, b) => a.merchant_id - b.merchant_id);
+  }, [merchants]);
+
+  useEffect(() => {
+    if (!currentUser || !isSuperadmin) {
+      setSelectedMerchantId(undefined);
+      return;
+    }
+  }, [currentUser, isSuperadmin]);
+
+  useEffect(() => {
+    if (!isSuperadmin) return;
+
+    setSelectedMerchantId((prev) => {
+      if (prev !== undefined && merchantOptions.some((m) => m.merchant_id === prev)) {
+        return prev;
+      }
+
+      return merchantOptions[0]?.merchant_id;
+    });
+  }, [isSuperadmin, merchantOptions]);
+
+  useEffect(() => {
+    if (!currentUser || !isSuperadmin) return;
+
+    async function loadMerchants() {
+      try {
+        const data = await fetchMerchants();
+        setMerchants(
+          data.map((merchant) => ({
+            merchant_id: merchant.merchant_id,
+            name: merchant.name,
+          }))
+        );
+      } catch (error) {
+        console.error("Error loading merchants for dashboard", error);
+      }
+    }
+
+    loadMerchants();
+  }, [currentUser, isSuperadmin]);
+
   useEffect(() => {
     const load = async () => {
-      const res = await fetchOverviewMetrics();
+      const res = await fetchOverviewMetrics(
+        undefined,
+        isSuperadmin ? selectedMerchantId : undefined
+      );
       if (res.data) {
         setOverviewData(res.data);
       }
     };
+
+    if (isSuperadmin && selectedMerchantId === undefined) {
+      return;
+    }
+
     load();
-  }, []);
+  }, [isSuperadmin, selectedMerchantId]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <DashboardHeader title="Overview" />
@@ -49,7 +118,22 @@ export default function OverviewPage() {
           </div>
         )}
 
-        {/* Stat Cards */}
+        {isSuperadmin && (
+          <div className="w-full max-w-[260px] animate-fade-in">
+            <CustomSelect
+              variant="dashboard"
+              value={String(selectedMerchantId ?? "")}
+              onChange={(value) => setSelectedMerchantId(Number(value))}
+              placeholder="Selecciona un comercio"
+              options={merchantOptions.map((merchant) => ({
+                value: String(merchant.merchant_id),
+                label: merchant.name,
+              }))}
+            />
+          </div>
+        )}
+
+        {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 stagger-children">
           <StatCard
             label="Usuarios Activos"
@@ -79,24 +163,24 @@ export default function OverviewPage() {
           />
         </div>
 
-        {/* Main Chart */}
+        {/* Gráfica principal */}
         <div className="animate-fade-in">
-          <OverviewChart />
+          <OverviewChart merchantId={isSuperadmin ? selectedMerchantId : undefined} />
         </div>
 
-        {/* Bottom Row */}
+        {/* Fila inferior */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-in">
-          <PaymentSummary />
-          <RevenueByLocation />
+          <PaymentSummary merchantId={isSuperadmin ? selectedMerchantId : undefined} />
+          <RevenueByLocation merchantId={isSuperadmin ? selectedMerchantId : undefined} />
         </div>
 
-        {/* Payment Summary */}
+        {/* Resumen de pagos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-in">
-          <ConversionFunnel />
-          <TransactionsHourChart />
+          <ConversionFunnel merchantId={isSuperadmin ? selectedMerchantId : undefined} />
+          <TransactionsHourChart merchantId={isSuperadmin ? selectedMerchantId : undefined} />
         </div>
 
-        {/* Bottom Row */}
+        {/* Fila inferior */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-in">
           {/* <RevenueComparison />  */}
           {/* <LocationChart />    */}

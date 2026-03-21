@@ -79,7 +79,11 @@ function CustomTooltip({
   );
 }
 
-export default function OverviewChart() {
+type OverviewChartProps = {
+  merchantId?: number;
+};
+
+export default function OverviewChart({ merchantId }: OverviewChartProps) {
   const [chartType, setChartType] = useState<ChartType>("line");
   const [lineData, setLineData] = useState<LineData[]>([]);
   const [barData, setBarData] = useState<BarData[]>([]);
@@ -87,7 +91,7 @@ export default function OverviewChart() {
 
   useEffect(() => {
     const load = async () => {
-      const res = await fetchTrends();
+      const res = await fetchTrends(merchantId);
       if (res.data) {
         setLineData(res.data.line);
         setBarData(res.data.bar);
@@ -95,7 +99,7 @@ export default function OverviewChart() {
       }
     };
     load();
-  }, []);
+  }, [merchantId]);
 
   const titles: Record<ChartType, string> = {
     line: "Tendencias de Transacciones e Ingresos",

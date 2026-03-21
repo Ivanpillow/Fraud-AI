@@ -41,13 +41,17 @@ type PaymentSummaryData = {
   average_amount: number;
 };
 
+type PaymentSummaryProps = {
+  merchantId?: number;
+};
 
-export default function PaymentSummary() {
+
+export default function PaymentSummary({ merchantId }: PaymentSummaryProps) {
 
   const [data, setData] = useState<PaymentSummaryData | null>(null);
   useEffect(() => {
     const load = async () => {
-      const res = await fetchOverviewMetrics();
+      const res = await fetchOverviewMetrics(undefined, merchantId);
       if (res.data) {
         const decisions = res.data.decisions;
 
@@ -67,7 +71,7 @@ export default function PaymentSummary() {
       }
     };
     load();
-  }, []);
+  }, [merchantId]);
 
   const total = data?.total_payments || 0;
 

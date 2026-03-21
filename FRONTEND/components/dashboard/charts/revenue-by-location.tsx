@@ -20,12 +20,16 @@ const COLORS = [
   "hsl(0, 72%, 55%)",
 ];
 
-export default function RevenueByLocation() {
+type RevenueByLocationProps = {
+  merchantId?: number;
+};
+
+export default function RevenueByLocation({ merchantId }: RevenueByLocationProps) {
 
   const [data, setData] = useState<any[]>([]);
   useEffect(() => {
     const loadData = async () => {
-      const response = await fetchTransactionsByCountry();
+      const response = await fetchTransactionsByCountry(undefined, merchantId);
 
       if (response.data) {
         setData(response.data);
@@ -33,14 +37,14 @@ export default function RevenueByLocation() {
     };
 
     loadData();
-  }, []);
+  }, [merchantId]);
 
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <GlassCard title="Ingresos por Ubicación">
       <p className="text-xs text-muted-foreground mb-2">
-        Distribución de ingresos por ubicación geográfica..
+        Distribución de ingresos por ubicación geográfica.
       </p>
       <div className="flex flex-col md:flex-row items-center gap-6">
         <div className="w-[200px] h-[200px]">

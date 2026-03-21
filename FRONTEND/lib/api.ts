@@ -379,22 +379,22 @@ export async function fetchWeeklyTransactions(token?: string) {
   >("/metrics/weekly-transactions", { token });
 }
 
-export async function fetchFraudFunnel(token?: string) {
+export async function fetchFraudFunnel(token?: string, merchantId?: number) {
   return apiRequest<{
     total: number;
     decisions: Array<{ name: string; value: number }>;
-  }>("/metrics/fraud-funnel", { token });
+  }>(withMerchantQuery("/metrics/fraud-funnel", merchantId), { token });
 }
 
-export async function fetchTransactionsByCountry(token?: string) {
+export async function fetchTransactionsByCountry(token?: string, merchantId?: number) {
   return apiRequest<
     Array<{ name: string; value: number }>
-  >("/metrics/transactions-by-country", { token });
+  >(withMerchantQuery("/metrics/transactions-by-country", merchantId), { token });
 }
 
 
 // 
-export async function fetchOverviewMetrics(token?: string) {
+export async function fetchOverviewMetrics(token?: string, merchantId?: number) {
   return apiRequest<{
     stats: {
       total_users: number;
@@ -408,15 +408,15 @@ export async function fetchOverviewMetrics(token?: string) {
       amount: number;
       count: number;
     }>;
-  }>("/metrics/overview", { token });
+  }>(withMerchantQuery("/metrics/overview", merchantId), { token });
 }
 
-export async function fetchTrends() {
+export async function fetchTrends(merchantId?: number) {
   return apiRequest<{
     line: any[];
     bar: any[];
     scatter: any[];
-  }>("/metrics/trends");
+  }>(withMerchantQuery("/metrics/trends", merchantId));
 }
 
 

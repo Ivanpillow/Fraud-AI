@@ -172,7 +172,7 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
         ${open ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
       >
 
-        {/* Header */}
+        {/* Encabezado */}
         <div className="flex items-center justify-between mb-5">
 
           <h2 className="text-lg font-semibold">
@@ -188,7 +188,7 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
 
         </div>
 
-        {/* Form */}
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
 
           {error && (
@@ -228,7 +228,7 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
             <p className="text-xs text-destructive">{fieldErrors.key}</p>
           )}
 
-          {/* Status */}
+          {/* Estado */}
           {!editing && (
             <>
               <CustomSelect
@@ -247,7 +247,7 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
             </>
           )}
 
-          {/* Actions */}
+          {/* Acciones */}
           <div className="flex justify-end gap-2 mt-4">
 
             <button

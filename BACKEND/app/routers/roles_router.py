@@ -112,10 +112,10 @@ def update_role(
     )
 
     if not role:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise HTTPException(status_code=404, detail="Rol no encontrado")
 
     if role.is_admin:
-        raise HTTPException(status_code=400, detail="Admin role cannot be modified")
+        raise HTTPException(status_code=400, detail="El rol administrador no se puede modificar")
 
     duplicate_role = (
         db.query(Role)
@@ -156,12 +156,12 @@ def delete_role(
     )
 
     if not role:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise HTTPException(status_code=404, detail="Rol no encontrado")
 
     if role.is_admin:
         raise HTTPException(
             status_code=400,
-            detail="Admin role cannot be deleted"
+            detail="El rol administrador no se puede eliminar"
         )
 
     users_using_role = (
@@ -173,13 +173,13 @@ def delete_role(
     if users_using_role > 0:
         raise HTTPException(
             status_code=400,
-            detail="Role has assigned users"
+            detail="El rol tiene usuarios asignados"
         )
 
     db.delete(role)
     db.commit()
 
-    return {"message": "Role deleted"}
+    return {"message": "Rol eliminado"}
 
 
 

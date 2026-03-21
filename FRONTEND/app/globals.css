@@ -125,7 +125,7 @@
   transform: translateY(0) scale(0.98);
 }
 
-/* Animations */
+/* Animaciones */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -184,7 +184,7 @@
 .stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
 .stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
 
-/* Scrollbar */
+/* Barra de desplazamiento */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -204,7 +204,7 @@
    PAGINA DE CHECKOUT
    ═══════════════════════════════════════════════════════════ */
 
-/* Page background with subtle gradient */
+/* Fondo de página con degradado sutil */
 .checkout-bg {
   background:
     radial-gradient(ellipse 80% 60% at 50% -10%, hsla(220, 30%, 18%, 1) 0%, transparent 60%),
@@ -250,7 +250,7 @@
     0 -2px 0 rgba(0, 0, 0, 0.1) inset;
 }
 
-/* ── Method Selector Pills ── */
+/* ── Botones de método de pago ── */
 .glass-checkout-pill {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(20px);
@@ -280,7 +280,7 @@
     0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
 }
 
-/* ── Checkout Inputs — Liquid glass feel ── */
+/* ── Inputs de checkout con estilo liquid glass ── */
 .checkout-input {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
@@ -375,7 +375,7 @@
   margin: 0.25rem 0;
 }
 
-/* ── Custom Select Dropdown (Glassmorphism) ── */
+/* ── Lista desplegable custom del select (glassmorphism) ── */
 .bg-glass {
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(12px);
@@ -404,6 +404,24 @@
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
+/* Select específico de dashboard: más oscuro y casi sin transparencia */
+.dashboard-select-trigger {
+  background: hsl(220 18% 14% / 0.97) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dashboard-select-panel {
+  background: hsl(220 20% 11% / 1) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.62),
+    0 1px 0 rgba(255, 255, 255, 0.1) inset !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 .border-glass {
   border: 1.5px solid rgba(255, 255, 255, 0.08);
 }
@@ -412,7 +430,7 @@
   border-width: 1.5px;
 }
 
-/* Labels */
+/* Etiquetas */
 .checkout-label {
   display: block;
   font-size: 0.75rem;

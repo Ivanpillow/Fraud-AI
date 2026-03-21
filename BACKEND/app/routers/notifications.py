@@ -11,7 +11,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 class NotificationResponse(BaseModel):
     id: str
-    prediction_id: int  # ID de la predicción para updates
+    prediction_id: int  # ID de la predicción para actualizaciones
     type: str  # "block" o "review"
     message: str
     amount: float
@@ -30,8 +30,8 @@ def get_notifications(
     db: Session = Depends(get_db)
 ):
     """
-    Get recent fraud notifications (block and review)
-    Returns notifications for both card and QR transactions
+    Obtiene notificaciones recientes de fraude (block y review).
+    Retorna notificaciones para transacciones con tarjeta y QR.
     """
     notifications_data = get_fraud_notifications(db, limit=limit)
     
@@ -64,7 +64,7 @@ def get_notifications(
 
 
 class UpdateDecisionRequest(BaseModel):
-    decision: str  # "approve", "block", or "review"
+    decision: str  # "approve", "block" o "review"
 
     class Config:
         from_attributes = True
@@ -77,15 +77,15 @@ def update_notification_decision(
     db: Session = Depends(get_db)
 ):
     """
-    Update the decision of a fraud prediction
-    Changes the status from review to approve/block or vice versa
+    Actualiza la decisión de una predicción de fraude.
+    Cambia el estado de review a approve/block o viceversa.
     """
     # Validar que la decisión sea válida
     valid_decisions = ["approve", "block", "review"]
     if payload.decision not in valid_decisions:
         raise HTTPException(
             status_code=400, 
-            detail=f"Invalid decision. Must be one of: {', '.join(valid_decisions)}"
+            detail=f"Decisión inválida. Debe ser una de: {', '.join(valid_decisions)}"
         )
     
     # Actualizar la decisión
@@ -98,12 +98,12 @@ def update_notification_decision(
     if not updated_prediction:
         raise HTTPException(
             status_code=404,
-            detail=f"Prediction with ID {prediction_id} not found"
+            detail=f"Predicción con ID {prediction_id} no encontrada"
         )
     
     return {
         "status": "ok",
-        "message": f"Decision updated to '{payload.decision}'",
+        "message": f"Decisión actualizada a '{payload.decision}'",
         "prediction_id": prediction_id,
         "new_decision": payload.decision
     }

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from app.core.auth import get_current_merchant_from_user
+from app.core.auth import get_current_user
 from app.db.session import get_db
 from app.services.metrics_service import collect_metrics, get_dashboard_metrics
 
@@ -12,6 +12,22 @@ from datetime import datetime, timedelta
 from app.models.user import User
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
+
+
+def _resolve_merchant_scope(user: dict, merchant_id: int | None) -> int:
+    user_merchant_id = int(user["merchant_id"])
+    is_superadmin = bool(user.get("is_superadmin"))
+
+    if merchant_id is None:
+        return user_merchant_id
+
+    if is_superadmin:
+        return merchant_id
+
+    if merchant_id != user_merchant_id:
+        raise HTTPException(status_code=403, detail="No puedes consultar métricas de otro comercio")
+
+    return user_merchant_id
 
 @router.get("/")
 def get_metrics(db: Session = Depends(get_db)):
@@ -25,7 +41,13 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
 # Transacciones últimos 7 días
 @router.get("/weekly-transactions")
-def weekly_transactions(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
+def weekly_transactions(
+    merchant_id: int | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
     today = datetime.utcnow()
     last_7_days = today - timedelta(days=7)
@@ -36,7 +58,7 @@ def weekly_transactions(merchant_id: int = Depends(get_current_merchant_from_use
             func.sum(Transaction.amount).label("total_amount")
         )
         .filter(Transaction.timestamp >= last_7_days)
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .group_by(func.date(Transaction.timestamp))
         .order_by(func.date(Transaction.timestamp))
         .all()
@@ -53,11 +75,17 @@ def weekly_transactions(merchant_id: int = Depends(get_current_merchant_from_use
 
 # Funnel - Transacciones totales vs decisiones del modelo (aceptada, rechazada, revisión) 
 @router.get("/fraud-funnel")
-def fraud_funnel(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
+def fraud_funnel(
+    merchant_id: int | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
     total = (
         db.query(func.count(Transaction.transaction_id))
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .scalar()
     )
 
@@ -66,7 +94,7 @@ def fraud_funnel(merchant_id: int = Depends(get_current_merchant_from_user), db:
             FraudPrediction.decision,
             func.count(FraudPrediction.prediction_id)
         )
-        .filter(FraudPrediction.merchant_id == merchant_id)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .group_by(FraudPrediction.decision)
         .all()
     )
@@ -82,14 +110,20 @@ def fraud_funnel(merchant_id: int = Depends(get_current_merchant_from_user), db:
 
 # Transacciones por país
 @router.get("/transactions-by-country")
-def transactions_by_country(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
+def transactions_by_country(
+    merchant_id: int | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
     results = (
         db.query(
             Transaction.country,
             func.sum(Transaction.amount).label("total_amount")
         )
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .group_by(Transaction.country)
         .order_by(func.sum(Transaction.amount).desc())
         .limit(5)
@@ -106,26 +140,32 @@ def transactions_by_country(merchant_id: int = Depends(get_current_merchant_from
 
 
 @router.get("/overview")
-def overview_metrics(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
+def overview_metrics(
+    merchant_id: int | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
     # Usuarios totales 
     total_users = (
         db.query(func.count(func.distinct(Transaction.user_id)))
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .scalar()
     )
 
     # Transacciones totales 
     total_transactions = (
         db.query(func.count(Transaction.transaction_id))
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .scalar()
     )
 
     # Ingresos totales (considerando solo transacciones permitidas)
     total_revenue = (
         db.query(func.sum(Transaction.amount))
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .scalar()
     ) or 0
 
@@ -133,7 +173,7 @@ def overview_metrics(merchant_id: int = Depends(get_current_merchant_from_user),
     fraud_count = (
         db.query(func.count())
         .filter(FraudPrediction.decision == "block")
-        .filter(FraudPrediction.merchant_id == merchant_id)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .scalar()
     )
     fraud_rate = (
@@ -145,7 +185,7 @@ def overview_metrics(merchant_id: int = Depends(get_current_merchant_from_user),
     # Decisiones antifraude
     decisions = (
         db.query(FraudPrediction.decision, func.count())
-        .filter(FraudPrediction.merchant_id == merchant_id)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .group_by(FraudPrediction.decision)
         .all()
     )
@@ -158,7 +198,7 @@ def overview_metrics(merchant_id: int = Depends(get_current_merchant_from_user),
             func.sum(Transaction.amount),
             func.count(Transaction.transaction_id)
         )
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .group_by(Transaction.hour)
         .all()
     )
@@ -184,7 +224,13 @@ def overview_metrics(merchant_id: int = Depends(get_current_merchant_from_user),
 
 
 @router.get("/trends")
-def trends(merchant_id: int = Depends(get_current_merchant_from_user), db: Session = Depends(get_db)):
+def trends(
+    merchant_id: int | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
     from sqlalchemy import func
     from datetime import datetime, timedelta
@@ -200,7 +246,7 @@ def trends(merchant_id: int = Depends(get_current_merchant_from_user), db: Sessi
             func.sum(Transaction.amount)
         )
         .filter(Transaction.timestamp >= last_7_days)
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .group_by(func.date(Transaction.timestamp))
         .order_by(func.date(Transaction.timestamp))
         .all()
@@ -212,7 +258,7 @@ def trends(merchant_id: int = Depends(get_current_merchant_from_user), db: Sessi
             Transaction.device_type,
             func.count(Transaction.transaction_id)
         )
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .group_by(Transaction.device_type)
         .all()
     )
@@ -224,7 +270,7 @@ def trends(merchant_id: int = Depends(get_current_merchant_from_user), db: Sessi
             func.sum(Transaction.amount),
             func.count(Transaction.transaction_id)
         )
-        .filter(Transaction.merchant_id == merchant_id)
+        .filter(Transaction.merchant_id == merchant_scope)
         .group_by(Transaction.hour)
         .all()
     )

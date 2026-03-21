@@ -13,11 +13,11 @@ def save_prediction(db, prediction):
 
 def get_fraud_notifications(db: Session, limit: int = 20):
     """
-    Get recent fraud predictions with status 'block' or 'review'
-    Supports both card transactions and QR transactions
-    Returns: List of fraud notifications with transaction details
+    Obtiene predicciones recientes de fraude con estado 'block' o 'review'.
+    Soporta tanto transacciones con tarjeta como transacciones QR.
+    Retorna: lista de notificaciones de fraude con detalle de transacción.
     """
-    # Get fraud predictions with block or review status
+    # Obtener predicciones de fraude con estado block o review
     fraud_predictions = db.query(FraudPrediction).filter(
         FraudPrediction.decision.in_(["block", "review"])
     ).order_by(
@@ -38,7 +38,7 @@ def get_fraud_notifications(db: Session, limit: int = 20):
             'user_id': None,
         }
         
-        # Get transaction details based on channel
+        # Obtener detalles de la transacción según el canal
         if pred.channel == "card":
             transaction = db.query(Transaction).filter(
                 Transaction.transaction_id == pred.transaction_id
@@ -64,11 +64,11 @@ def get_fraud_notifications(db: Session, limit: int = 20):
 
 def update_prediction_decision(db: Session, prediction_id: int, new_decision: str):
     """
-    Update the decision of a fraud prediction
+    Actualiza la decisión de una predicción de fraude.
     Args:
-        prediction_id: ID of the prediction to update
-        new_decision: New decision value ('approve', 'block', 'review')
-    Returns: Updated prediction or None if not found
+        prediction_id: ID de la predicción a actualizar.
+        new_decision: Nuevo valor de decisión ('approve', 'block', 'review').
+    Returns: predicción actualizada o None si no existe.
     """
     prediction = db.query(FraudPrediction).filter(
         FraudPrediction.prediction_id == prediction_id

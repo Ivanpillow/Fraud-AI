@@ -15,17 +15,21 @@ import { mockTransactionsByHour } from "@/lib/mock-data";
 import { useEffect, useState } from "react";
 import { fetchOverviewMetrics } from "@/lib/api";
 
-export default function TransactionsHourChart() {
+type TransactionsHourChartProps = {
+  merchantId?: number;
+};
+
+export default function TransactionsHourChart({ merchantId }: TransactionsHourChartProps) {
   const [data, setData] = useState<any[]>([]);
     useEffect(() => {
     const load = async () => {
-      const res = await fetchOverviewMetrics();
+      const res = await fetchOverviewMetrics(undefined, merchantId);
       if (res.data) {
         setData(res.data.transactions_by_hour);
       }
     };
     load();
-  }, []);
+  }, [merchantId]);
 
   const maxAmount = data.length > 0 ? Math.max(...data.map((d) => d.amount)) : 0;
   

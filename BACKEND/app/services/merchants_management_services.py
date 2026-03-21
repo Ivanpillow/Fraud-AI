@@ -21,7 +21,7 @@ from app.queries.merchants_management_queries import (
 
 
 # ============================
-# Listar merchants
+# Listar comercios
 # ============================
 def list_merchants_service(db):
 
@@ -50,7 +50,7 @@ def list_merchants_service(db):
 
 
 # ============================
-# Crear merchant + API key
+# Crear comercio + llave API
 # ============================
 def create_merchant_service(db: Session, payload):
 
@@ -62,7 +62,7 @@ def create_merchant_service(db: Session, payload):
     # 🔐 hash
     key_hash = _hash_key(key)
 
-    # 1. Crear merchant
+    # 1. Crear comercio
     merchant = create_merchant_db(
         db,
         name=name,
@@ -70,7 +70,7 @@ def create_merchant_service(db: Session, payload):
         plan_type=plan_type
     )
 
-    # 2. Crear API key
+    # 2. Crear llave API
     api_key = create_api_key_db(
         db,
         merchant_id=merchant.merchant_id,
@@ -93,14 +93,14 @@ def create_merchant_service(db: Session, payload):
 
 
 # ============================
-# Actualizar merchant
+# Actualizar comercio
 # ============================
 def update_merchant_service(db: Session, merchant_id: int, payload):
 
     merchant = get_merchant_by_id(db, merchant_id)
 
     if not merchant:
-        raise HTTPException(status_code=404, detail="Merchant no encontrado")
+        raise HTTPException(status_code=404, detail="Comercio no encontrado")
 
     name = _validate_name(payload.name)
 
@@ -108,7 +108,7 @@ def update_merchant_service(db: Session, merchant_id: int, payload):
 
     updated_api_key = None
 
-    # 🔐 Si viene label → actualizar API key
+    # 🔐 Si viene label → actualizar llave API
     if payload.label:
 
         label = _validate_key(payload.label)
@@ -117,7 +117,7 @@ def update_merchant_service(db: Session, merchant_id: int, payload):
         api_key = get_api_key_by_merchant(db, merchant_id)
 
         if not api_key:
-            raise HTTPException(status_code=404, detail="API key no encontrada")
+            raise HTTPException(status_code=404, detail="Llave API no encontrada")
 
         updated_api_key = update_api_key_db(
             db,
@@ -142,10 +142,10 @@ def toggle_merchant_status_service(db: Session, merchant_id: int, status: str):
     merchant = get_merchant_by_id(db, merchant_id)
 
     if not merchant:
-        raise HTTPException(status_code=404, detail="Merchant no encontrado")
+        raise HTTPException(status_code=404, detail="Comercio no encontrado")
 
     if status not in ["active", "inactive"]:
-        raise HTTPException(status_code=400, detail="Status inválido")
+        raise HTTPException(status_code=400, detail="Estado inválido")
 
     # actualizar en memoria
     update_merchant_status_db(db, merchant, status)
@@ -235,7 +235,7 @@ def _validate_name(name: str) -> str:
 
 def _validate_status(status: str) -> str:
     if status not in ["active", "inactive"]:
-        raise HTTPException(status_code=400, detail="Status inválido")
+        raise HTTPException(status_code=400, detail="Estado inválido")
 
     return status
 
@@ -258,16 +258,16 @@ def _validate_key(key: str) -> str:
     clean_key = _sanitize(key)
 
     if not clean_key:
-        raise HTTPException(status_code=400, detail="API key requerida")
+        raise HTTPException(status_code=400, detail="Llave API requerida")
 
     if len(clean_key) < 6:
-        raise HTTPException(status_code=400, detail="API key muy corta")
+        raise HTTPException(status_code=400, detail="Llave API muy corta")
 
     if len(clean_key) > 120:
-        raise HTTPException(status_code=400, detail="API key demasiado larga")
+        raise HTTPException(status_code=400, detail="Llave API demasiado larga")
 
     if re.search(r"\s", clean_key):
-        raise HTTPException(status_code=400, detail="API key inválida")
+        raise HTTPException(status_code=400, detail="Llave API inválida")
 
     return clean_key
 

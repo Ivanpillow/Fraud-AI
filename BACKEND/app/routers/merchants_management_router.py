@@ -25,7 +25,7 @@ class ToggleStatusRequest(BaseModel):
     status: str
 
 # ============================
-# REQUEST MODEL
+# MODELO DE REQUEST
 # ============================
 
 class CreateMerchantRequest(BaseModel):
@@ -47,7 +47,7 @@ def get_merchants(db: Session = Depends(get_db)):
 
 
 # ============================
-# CREATE MERCHANT
+# CREAR COMERCIO
 # ============================
 
 @router.post("/")

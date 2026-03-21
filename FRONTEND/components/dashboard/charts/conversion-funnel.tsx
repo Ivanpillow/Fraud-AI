@@ -24,12 +24,16 @@ const COLORS = [
   "hsl(240, 60%, 50%)",
 ];
 
-export default function ConversionFunnel() {
+type ConversionFunnelProps = {
+  merchantId?: number;
+};
+
+export default function ConversionFunnel({ merchantId }: ConversionFunnelProps) {
   const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
   const loadData = async () => {
-    const response = await fetchFraudFunnel();
+    const response = await fetchFraudFunnel(undefined, merchantId);
 
     if (response.data) {
       const formatted = [
@@ -42,7 +46,7 @@ export default function ConversionFunnel() {
   };
 
   loadData();
-}, []);
+}, [merchantId]);
 
 
   return (

@@ -237,7 +237,7 @@ export default function UsersPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-5 stagger-children">
-            {/* Merchant */}
+            {/* Comercio */}
             <GlassCard>
               <div className="flex flex-col gap-1">
                 <p className="text-xs uppercase text-muted-foreground tracking-wider">
@@ -247,7 +247,7 @@ export default function UsersPage() {
               </div>
             </GlassCard>
 
-            {/* Stats */}
+            {/* Estadísticas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
               <GlassCard>
                 <div className="text-center">
@@ -277,7 +277,7 @@ export default function UsersPage() {
               </GlassCard>
             </div>
 
-            {/* Controls */}
+            {/* Controles */}
             <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 glass rounded-xl px-3 py-2">
@@ -328,7 +328,7 @@ export default function UsersPage() {
               </button>
             </div>
 
-            {/* Users table */}
+            {/* Tabla de usuarios */}
             <GlassCard className="animate-fade-in">
               <div className="flex justify-between mb-4">
                 <h3 className="text-lg font-semibold">Usuarios</h3>

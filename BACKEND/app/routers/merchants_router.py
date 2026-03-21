@@ -90,7 +90,6 @@ def _validate_status(status: str) -> str:
 
 @router.get("/")
 def list_merchants(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    """List all merchants with their API keys"""
     
     merchants = db.query(Merchant).order_by(Merchant.merchant_id).all()
 
@@ -125,16 +124,15 @@ def create_merchant(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Create a new merchant"""
     
-    # Verify current user is superadmin
+    # Verificar que el usuario es superadmin
     if not current_user.get("is_superadmin"):
-        raise HTTPException(status_code=403, detail="Only superadmins can create merchants")
+        raise HTTPException(status_code=403, detail="Solo los superadmins pueden crear comercios")
 
     merchant_name = _validate_merchant_name(payload.name)
     plan_type = _validate_plan_type(payload.plan_type)
 
-    # Check for duplicate merchant name
+    # Verificar que no exista otro comercio con el mismo nombre
     existing = db.query(Merchant).filter(Merchant.name.ilike(merchant_name)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un comercio con ese nombre")
@@ -161,7 +159,7 @@ def get_merchant(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Get merchant details with API keys"""
+    """Obtiene el detalle del comercio con sus llaves API"""
     
     merchant = db.query(Merchant).filter(Merchant.merchant_id == merchant_id).first()
 
@@ -198,10 +196,10 @@ def update_merchant(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Update merchant information"""
+    """Actualiza la información del comercio"""
     
     if not current_user.get("is_superadmin"):
-        raise HTTPException(status_code=403, detail="Only superadmins can update merchants")
+        raise HTTPException(status_code=403, detail="Solo los superadmins pueden actualizar comercios")
 
     merchant = db.query(Merchant).filter(Merchant.merchant_id == merchant_id).first()
 
@@ -211,7 +209,7 @@ def update_merchant(
     merchant_name = _validate_merchant_name(payload.name)
     plan_type = _validate_plan_type(payload.plan_type)
 
-    # Check for duplicate (excluding current merchant)
+    # Verificar nombre duplicado (excluyendo el comercio actual)
     existing = (
         db.query(Merchant)
         .filter(
@@ -246,10 +244,10 @@ def update_merchant_status(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Update merchant status (activate/deactivate/suspend)"""
+    """Actualiza el estado del comercio (activar/desactivar/suspender)"""
     
     if not current_user.get("is_superadmin"):
-        raise HTTPException(status_code=403, detail="Only superadmins can change merchant status")
+        raise HTTPException(status_code=403, detail="Solo los superadmins pueden cambiar el estado del comercio")
 
     merchant = db.query(Merchant).filter(Merchant.merchant_id == merchant_id).first()
 
@@ -276,17 +274,17 @@ def delete_merchant(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    """Delete merchant and all associated data"""
+    """Elimina el comercio y todos sus datos asociados"""
     
     if not current_user.get("is_superadmin"):
-        raise HTTPException(status_code=403, detail="Only superadmins can delete merchants")
+        raise HTTPException(status_code=403, detail="Solo los superadmins pueden eliminar comercios")
 
     merchant = db.query(Merchant).filter(Merchant.merchant_id == merchant_id).first()
 
     if not merchant:
         raise HTTPException(status_code=404, detail="Comercio no encontrado")
 
-    # Check if merchant has users
+    # Verificar si el comercio tiene usuarios
     from app.models.auth_user import AuthUser
     user_count = db.query(AuthUser).filter(AuthUser.merchant_id == merchant_id).count()
     
@@ -296,10 +294,10 @@ def delete_merchant(
             detail="No se puede eliminar un comercio que tiene usuarios asignados"
         )
 
-    # Delete API keys first
+    # Eliminar primero las llaves API
     db.query(APIKey).filter(APIKey.merchant_id == merchant_id).delete()
 
-    # Delete merchant
+    # Eliminar comercio
     db.delete(merchant)
     db.commit()
 

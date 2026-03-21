@@ -252,7 +252,7 @@ export default function RolesPage() {
 
           <div className="flex flex-col gap-5 stagger-children">
 
-            {/* Create role */}
+            {/* Crear rol */}
 
             <GlassCard className="animate-fade-in">
               <div className="flex flex-col gap-1">
@@ -315,7 +315,7 @@ export default function RolesPage() {
 
             </GlassCard>
 
-            {/* Roles table */}
+            {/* Tabla de roles */}
 
             <GlassCard>
 

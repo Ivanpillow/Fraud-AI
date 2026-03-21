@@ -54,7 +54,7 @@ def create_user_service(db: Session, payload, merchant_id: int):
     # Validación de rol
     role = get_role_by_name(db, role_name)
     if not role:
-        raise HTTPException(status_code=400, detail="Invalid role")
+        raise HTTPException(status_code=400, detail="Rol inválido")
 
     # Validar que email no exista ya para el mismo merchant
     existing_user = db.query(AuthUser).filter(
@@ -63,7 +63,7 @@ def create_user_service(db: Session, payload, merchant_id: int):
     ).first()
 
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email ya existente.")
+        raise HTTPException(status_code=400, detail="Correo electrónico ya existente.")
 
     # Hash de password
     password_hash = ph.hash(password)
@@ -88,7 +88,7 @@ def create_user_service(db: Session, payload, merchant_id: int):
 
 
 # ============================
-# Toggle activo/inactivo
+# Cambiar estado activo/inactivo
 # ============================
 def toggle_user_status_service(db: Session, user_id: int, merchant_id: int, current_user: dict):
     user = get_user_by_id(db, user_id)
@@ -136,7 +136,7 @@ def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
 
     role = get_role_by_name(db, role_name)
     if not role:
-        raise HTTPException(status_code=400, detail="Invalid role")
+        raise HTTPException(status_code=400, detail="Rol inválido")
 
     user = update_user_db(
         db,
@@ -163,17 +163,17 @@ def delete_user_service(db: Session, user_id: int, merchant_id: int, current_use
     actor = get_user_by_id(db, int(current_user["sub"]))
 
     if user is None or getattr(user, "merchant_id") != merchant_id:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     if actor is None:
-        raise HTTPException(status_code=401, detail="Current user not found")
+        raise HTTPException(status_code=401, detail="Usuario actual no encontrado")
 
     if getattr(actor, "id") == getattr(user, "id"):
-        raise HTTPException(status_code=403, detail="Cannot delete your own user")
+        raise HTTPException(status_code=403, detail="No puedes eliminar tu propio usuario")
 
     # Solo superadmins permitidos pueden eliminar admins
     if bool(getattr(user.role, "is_admin")) and not is_superadmin_email(getattr(actor, "email", None)):
-        raise HTTPException(status_code=403, detail="Only superadmins can delete an admin user")
+        raise HTTPException(status_code=403, detail="Solo los superadmins pueden eliminar un usuario administrador")
 
     delete_user_db(db, user)
 
