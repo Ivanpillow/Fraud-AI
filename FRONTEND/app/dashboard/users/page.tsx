@@ -293,6 +293,7 @@ export default function UsersPage() {
                 {isSuperadmin && (
     <div className="min-w-[180px]">
       <CustomSelect
+        variant="dashboard"
         value={String(selectedMerchantId ?? 0)}
         onChange={(value) => setSelectedMerchantId(Number(value))}
         options={merchantOptions.map((merchant) => ({
@@ -305,6 +306,7 @@ export default function UsersPage() {
 
   <div className="min-w-[180px]">
     <CustomSelect
+      variant="dashboard"
       value={roleFilter}
       onChange={setRoleFilter}
       options={roleFilterOptions}
@@ -313,6 +315,7 @@ export default function UsersPage() {
 
   <div className="min-w-[180px]">
     <CustomSelect
+      variant="dashboard"
       value={statusFilter}
       onChange={setStatusFilter}
       options={statusFilterOptions}

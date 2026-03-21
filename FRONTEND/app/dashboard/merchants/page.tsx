@@ -252,7 +252,7 @@ export default function MerchantsPage() {
           <div className="flex flex-col gap-5 stagger-children">
             {!isSuperadmin && (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                Solo los superadmins pueden agregar, editar, activar/desactivar o eliminar comercios.
+                Solo los superadmins pueden administrar los comercios.
               </div>
             )}
 
@@ -325,6 +325,7 @@ export default function MerchantsPage() {
 
                 <div className="min-w-[180px]">
                   <CustomSelect
+                    variant="dashboard"
                     value={statusFilter}
                     onChange={setStatusFilter}
                     options={statuses}
