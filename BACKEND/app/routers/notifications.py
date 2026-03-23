@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.queries.prediction_queries import get_fraud_notifications, update_prediction_decision
+from app.core.dependencies import get_current_user
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
@@ -27,13 +28,21 @@ class NotificationResponse(BaseModel):
 @router.get("/", response_model=List[NotificationResponse])
 def get_notifications(
     limit: int = 20,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     """
     Obtiene notificaciones recientes de fraude (block y review).
     Retorna notificaciones para transacciones con tarjeta y QR.
     """
-    notifications_data = get_fraud_notifications(db, limit=limit)
+    is_superadmin = bool(current_user.get("is_superadmin"))
+    merchant_id = None if is_superadmin else int(current_user["merchant_id"])
+
+    notifications_data = get_fraud_notifications(
+        db,
+        limit=limit,
+        merchant_id=merchant_id,
+    )
     
     result = []
     for notif_dict in notifications_data:

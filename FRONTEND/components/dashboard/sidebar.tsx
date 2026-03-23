@@ -69,6 +69,13 @@ export default function Sidebar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const visibleNavItems = navItems
+    .filter((item) => {
+      if (item.href === "/dashboard/review") {
+        return !isSuperadmin;
+      }
+
+      return true;
+    })
     .map((item) => {
       if (!item.children) return item;
 

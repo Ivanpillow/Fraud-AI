@@ -106,7 +106,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
       {isOpen && !collapsed && (
         <div className="absolute left-0 right-0 top-full mt-2 bg-card border border-white/10 rounded-lg shadow-lg z-40 overflow-hidden min-w-max">
           {/* Opción de administrador */}
-          <button
+          {/* <button
             onClick={handleAdminPanel}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 text-sm",
@@ -118,10 +118,10 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
           >
             <LayoutDashboard size={16} />
             <span>Panel de Administración</span>
-          </button>
+          </button> */}
 
           {/* Payment Page Option */}
-          <button
+          {/* <button
             onClick={handlePaymentPage}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-2.5 text-sm",
@@ -133,7 +133,7 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
           >
             <CreditCard size={16} />
             <span>Pagos</span>
-          </button>
+          </button> */}
 
           {/* Opción de cerrar sesión */}
           <button

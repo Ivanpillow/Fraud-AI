@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { Filter } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/header";
@@ -25,8 +26,10 @@ interface Transaction {
 }
 
 export default function ReviewPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isSuperadmin = !!user?.is_superadmin;
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +40,11 @@ export default function ReviewPage() {
   const specifiedChannel = searchParams.get("channel");
 
   useEffect(() => {
+    if (isAuthenticated && isSuperadmin) {
+      router.replace("/dashboard");
+      return;
+    }
+
     async function loadTransactions() {
       if (isAuthenticated) {
         const res = await fetchNotifications();
@@ -67,7 +75,11 @@ export default function ReviewPage() {
       setIsLoading(false);
     }
     loadTransactions();
-  }, [isAuthenticated, specifiedTransactionId, specifiedChannel]);
+  }, [isAuthenticated, isSuperadmin, specifiedTransactionId, specifiedChannel, router]);
+
+  if (isSuperadmin) {
+    return null;
+  }
 
   const filtered =
     filter === "all"

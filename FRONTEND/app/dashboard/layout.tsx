@@ -14,7 +14,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const isSuperadmin = !!user?.is_superadmin;
   const router = useRouter();
 
   useEffect(() => {
@@ -46,10 +47,12 @@ export default function DashboardLayout({
       {/* Main Content */}
       <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
 
-      {/* Notifications Panel - desktop only */}
-      <div className="hidden lg:block">
-        <NotificationsPanel />
-      </div>
+      {/* Notifications Panel - desktop only (except superadmin) */}
+      {!isSuperadmin && (
+        <div className="hidden lg:block">
+          <NotificationsPanel />
+        </div>
+      )}
     </div>
   );
 }

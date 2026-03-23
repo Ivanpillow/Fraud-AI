@@ -11,16 +11,21 @@ def save_prediction(db, prediction):
     return prediction
 
 
-def get_fraud_notifications(db: Session, limit: int = 20):
+def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | None = None):
     """
     Obtiene predicciones recientes de fraude con estado 'block' o 'review'.
     Soporta tanto transacciones con tarjeta como transacciones QR.
     Retorna: lista de notificaciones de fraude con detalle de transacción.
     """
     # Obtener predicciones de fraude con estado block o review
-    fraud_predictions = db.query(FraudPrediction).filter(
+    query = db.query(FraudPrediction).filter(
         FraudPrediction.decision.in_(["block", "review"])
-    ).order_by(
+    )
+
+    if merchant_id is not None:
+        query = query.filter(FraudPrediction.merchant_id == merchant_id)
+
+    fraud_predictions = query.order_by(
         desc(FraudPrediction.created_at)
     ).limit(limit).all()
     

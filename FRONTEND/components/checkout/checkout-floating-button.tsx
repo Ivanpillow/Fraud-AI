@@ -32,10 +32,10 @@ export default function CheckoutFloatingButton() {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-foreground group-hover:text-emerald-400 transition-colors">
-                Payment Page
+                Pagos
               </p>
               <p className="text-[10px] text-muted-foreground">
-                Go to checkout
+                Ir a checkout
               </p>
             </div>
             <ChevronRight

@@ -58,10 +58,15 @@ function timeAgo(ts: string): string {
 
 export default function NotificationsPanel() {
   const { user } = useAuth();
+  const isSuperadmin = !!user?.is_superadmin;
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+
+  if (isSuperadmin) {
+    return null;
+  }
 
   useEffect(() => {
     async function load() {

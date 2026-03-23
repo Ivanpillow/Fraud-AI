@@ -284,6 +284,7 @@ export default function RolesPage() {
                   {isSuperadmin && (
                     <div className="min-w-[220px]">
                       <CustomSelect
+                        variant="dashboard"
                         value={String(selectedMerchantId ?? 0)}
                         onChange={(value) => setSelectedMerchantId(Number(value))}
                         options={merchantOptions.map((merchant) => ({
