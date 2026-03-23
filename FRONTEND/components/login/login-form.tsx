@@ -70,6 +70,7 @@ export default function LoginForm() {
           email: result.data.userData.email,
           name: result.data.userData.full_name,
           role: result.data.userData.role,
+          merchant_name: result.data.userData.merchant_name,
           is_admin: result.data.userData.is_admin,
           is_superadmin: result.data.userData.is_superadmin,
         };

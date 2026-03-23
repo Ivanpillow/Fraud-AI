@@ -52,7 +52,7 @@ export async function apiRequest<T = unknown>(
 
 // Endpoint para login
 export async function loginUser(email: string, password: string) {
-  return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string; is_admin?: boolean; is_superadmin?: boolean } }>(
+  return apiRequest<{ userData: { id: number; full_name: string; email: string; role: string; merchant_name?: string; is_admin?: boolean; is_superadmin?: boolean } }>(
     "/auth/login",
     {
       method: "POST",
@@ -496,6 +496,17 @@ export async function fetchMerchantUsers(merchantId?: number): Promise<User[]> {
   export async function deleteUser(userId: number, merchantId?: number) {
     return apiRequest(withMerchantQuery(`/users/${userId}`, merchantId), {
       method: "DELETE"
+    })
+  }
+
+  export async function resetUserPassword(
+    userId: number,
+    newPassword: string,
+    merchantId?: number
+  ) {
+    return apiRequest(withMerchantQuery(`/users/${userId}/reset-password`, merchantId), {
+      method: "PATCH",
+      body: JSON.stringify({ new_password: newPassword })
     })
   }
 

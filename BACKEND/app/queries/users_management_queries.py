@@ -69,6 +69,15 @@ def update_user_db(db: Session, user, email: str, full_name: str, role_id: int):
     return user
 
 
+def update_user_password_hash_db(db: Session, user, password_hash: str):
+    user.password_hash = password_hash
+
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
 
 # ============================
 # Eliminar usuario

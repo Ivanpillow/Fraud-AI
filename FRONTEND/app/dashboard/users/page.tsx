@@ -7,7 +7,7 @@ import GlassCard from "@/components/dashboard/glass-card";
 import CreateUserModal from "@/components/dashboard/users/create-user-modal";
 import CustomSelect from "@/components/checkout/custom-select";
 import { useAuth } from "@/lib/auth-context";
-import { fetchMerchantUsers, toggleUser, deleteUser, fetchMerchants, fetchRoles } from "@/lib/api";
+import { fetchMerchantUsers, toggleUser, deleteUser, fetchMerchants, fetchRoles, resetUserPassword } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 
@@ -50,6 +50,12 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
+  const [userToConfirmResetPassword, setUserToConfirmResetPassword] = useState<User | null>(null);
+  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 
   async function loadUsers() {
     if (!currentUser || !canAccessManagement) return;
@@ -134,6 +140,16 @@ export default function UsersPage() {
     loadUsers();
   }, [currentUser, isSuperadmin, selectedMerchantId, canAccessManagement]);
 
+  useEffect(() => {
+    if (!userToResetPassword) {
+      setResetPasswordModalOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(() => setResetPasswordModalOpen(true), 10);
+    return () => clearTimeout(timer);
+  }, [userToResetPassword]);
+
   if (!authLoading && currentUser && !canAccessManagement) {
     return null;
   }
@@ -143,6 +159,12 @@ export default function UsersPage() {
     if (isSelf) return false;
     if (!targetUser.is_admin) return true;
     return !!currentUser?.is_superadmin;
+  }
+
+  function canResetPassword(targetUser: User) {
+    const isSelf = currentUser?.id === targetUser.id;
+    if (isSelf) return false;
+    return true;
   }
 
   async function handleToggle(user: User) {
@@ -163,6 +185,59 @@ export default function UsersPage() {
     } catch (error) {
       console.error("Error eliminando usuario", error);
     }
+  }
+
+  async function handleConfirmResetPassword() {
+    if (!userToConfirmResetPassword) return;
+
+    setResetPasswordLoading(true);
+    setResetPasswordError("");
+
+    try {
+      const res = await resetUserPassword(
+        userToConfirmResetPassword.id,
+        resetPasswordValue,
+        isSuperadmin ? selectedMerchantId : undefined
+      );
+
+      if (res.error) {
+        setResetPasswordError(res.error);
+        return;
+      }
+
+      setUserToResetPassword(null);
+      setUserToConfirmResetPassword(null);
+      setResetPasswordValue("");
+      setResetPasswordError("");
+    } catch (error) {
+      setResetPasswordError("Error al restablecer la contraseña");
+      console.error("Error resetting password", error);
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  }
+
+  function closeResetPasswordModal(clearForm: boolean = true) {
+    setResetPasswordModalOpen(false);
+    setTimeout(() => {
+      setUserToResetPassword(null);
+      if (clearForm) {
+        setResetPasswordValue("");
+        setResetPasswordError("");
+      }
+    }, 200);
+  }
+
+  function handleOpenResetConfirmation() {
+    if (!userToResetPassword) return;
+
+    if (!resetPasswordValue) {
+      setResetPasswordError("La nueva contraseña es requerida");
+      return;
+    }
+
+    setUserToConfirmResetPassword(userToResetPassword);
+    closeResetPasswordModal(false);
   }
 
   function handleEdit(user: User) {
@@ -397,6 +472,29 @@ export default function UsersPage() {
                             </button>
 
                             <button
+                              disabled={!canResetPassword(user)}
+                              title={
+                                currentUser?.id === user.id
+                                  ? "No puedes restablecer tu propia contraseña desde este módulo"
+                                  : ""
+                              }
+                              onClick={() => {
+                                setUserToResetPassword(user);
+                                setUserToConfirmResetPassword(null);
+                                setResetPasswordValue("");
+                                setResetPasswordError("");
+                              }}
+                              className={cn(
+                                "w-28 text-xs px-3 py-1 border rounded-md text-amber-300",
+                                !canResetPassword(user)
+                                  ? "opacity-40 cursor-not-allowed"
+                                  : "hover:bg-amber-500/10"
+                              )}
+                            >
+                              Contraseña
+                            </button>
+
+                            <button
                               disabled={!canManageAdmin(user)}
                               title={
                                 currentUser?.id === user.id
@@ -469,6 +567,108 @@ export default function UsersPage() {
                 className="text-xs px-4 py-2 rounded-md border border-red-400/30 text-red-300 hover:bg-red-500/20"
               >
                 Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToResetPassword && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${
+            resetPasswordModalOpen ? "bg-black/60 backdrop-blur-sm" : "bg-black/0"
+          }`}
+        >
+          <div
+            className={`w-[420px] rounded-2xl border border-white/10 bg-background/95 backdrop-blur-xl shadow-xl p-6 transform transition-all duration-200 ${
+              resetPasswordModalOpen ? "scale-100 opacity-100" : "scale-95 opacity-0"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold">Restablecer Contraseña</h2>
+              <button
+                onClick={() => closeResetPasswordModal()}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                x
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Define una nueva contraseña para
+              <span className="font-semibold text-white"> {userToResetPassword.full_name}</span>.
+            </p>
+
+            <input
+              type="password"
+              placeholder="Nueva contraseña"
+              value={resetPasswordValue}
+              onChange={(e) => {
+                setResetPasswordValue(e.target.value);
+                setResetPasswordError("");
+              }}
+              className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-sm outline-none focus:border-primary w-full"
+            />
+
+            <p className="text-xs text-muted-foreground mt-2">
+              Debe tener al menos 8 caracteres, incluir un número y una letra.
+            </p>
+
+            {resetPasswordError && (
+              <p className="text-xs text-destructive mt-3">{resetPasswordError}</p>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => closeResetPasswordModal()}
+                className="text-xs px-4 py-2 rounded-md border border-border hover:bg-white/5 transition"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenResetConfirmation}
+                className="text-xs px-4 py-2 rounded-md bg-primary text-white hover:opacity-90 transition"
+              >
+                Restablecer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToConfirmResetPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass rounded-xl p-6 w-[420px] border border-border/40">
+            <h3 className="text-lg font-semibold mb-2">Confirmar restablecimiento</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              ¿Seguro que deseas restablecer la contraseña de
+              <span className="font-semibold text-white"> {userToConfirmResetPassword.full_name}</span>?
+            </p>
+
+            {resetPasswordError && (
+              <p className="text-xs text-destructive mb-4">{resetPasswordError}</p>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setUserToConfirmResetPassword(null);
+                  setResetPasswordError("");
+                }}
+                className="text-xs px-4 py-2 border rounded-md hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleConfirmResetPassword}
+                disabled={resetPasswordLoading}
+                className="text-xs px-4 py-2 rounded-md border border-amber-400/30 text-amber-300 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resetPasswordLoading ? "Restableciendo..." : "Confirmar"}
               </button>
             </div>
           </div>

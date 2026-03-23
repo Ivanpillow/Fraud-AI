@@ -39,6 +39,7 @@ def login_user(db, email: str, password: str):
             "full_name": user.full_name,
             "role": user.role.name,
             "merchant_id": user.merchant_id,
+            "merchant_name": user.merchant.name,
             "is_admin": bool(user.role.is_admin),
             "is_superadmin": is_superadmin_email(user.email),
         }

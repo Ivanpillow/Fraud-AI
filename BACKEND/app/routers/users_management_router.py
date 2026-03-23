@@ -11,7 +11,8 @@ from app.services.users_management_services import (
     list_users_by_merchant,
     create_user_service,
     toggle_user_status_service,
-    update_user_service
+    update_user_service,
+    reset_user_password_service,
 )
 
 
@@ -26,6 +27,10 @@ class UpdateUserRequest(BaseModel):
     email: str
     full_name: str
     role: str
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
 
 
 router = APIRouter(prefix="/users", tags=["Users Management"])
@@ -108,6 +113,28 @@ def update_user(
     user = update_user_service(db, user_id, payload, merchant_scope)
 
     return {"data": user}
+
+
+@router.patch("/{user_id}/reset-password")
+def reset_user_password(
+    user_id: int,
+    payload: ResetPasswordRequest,
+    merchant_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
+
+    result = reset_user_password_service(
+        db,
+        user_id,
+        payload.new_password,
+        merchant_scope,
+        current_user,
+    )
+
+    return {"data": result}
 
 
 @router.delete("/{user_id}")

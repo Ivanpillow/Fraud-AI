@@ -12,6 +12,7 @@ from app.queries.users_management_queries import (
     get_role_by_name,
     create_user_db,
     update_user_db,
+    update_user_password_hash_db,
     delete_user_db
 )
 
@@ -152,6 +153,34 @@ def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
         "full_name": user.full_name,
         "role": role_name,
         "is_active": user.is_active
+    }
+
+
+# ============================
+# Restablecer contraseña
+# ============================
+def reset_user_password_service(db: Session, user_id: int, new_password: str, merchant_id: int, current_user: dict):
+    user = get_user_by_id(db, user_id)
+    actor = get_user_by_id(db, int(current_user["sub"]))
+
+    if user is None or getattr(user, "merchant_id") != merchant_id:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if actor is None:
+        raise HTTPException(status_code=401, detail="Usuario actual no encontrado")
+
+    if getattr(actor, "id") == getattr(user, "id"):
+        raise HTTPException(status_code=403, detail="No puedes restablecer tu propia contraseña desde este módulo")
+
+    clean_password = _validate_password(new_password)
+    password_hash = ph.hash(clean_password)
+
+    update_user_password_hash_db(db, user, password_hash)
+
+    return {
+        "id": getattr(user, "id"),
+        "email": getattr(user, "email"),
+        "password_reset": True,
     }
 
 
