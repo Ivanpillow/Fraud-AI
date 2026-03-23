@@ -63,7 +63,7 @@ export default function UsersPage() {
       const data = await fetchMerchantUsers(isSuperadmin ? selectedMerchantId : undefined);
       setUsers(data);
     } catch (error) {
-      console.error("Error loading users", error);
+      console.error("Error cargando usuarios", error);
     } finally {
       setLoading(false);
     }
@@ -102,7 +102,7 @@ export default function UsersPage() {
 
         setMerchants(mapped);
       } catch (error) {
-        console.error("Error loading merchants", error);
+        console.error("Error cargando comercios", error);
       }
     }
 
@@ -117,7 +117,7 @@ export default function UsersPage() {
         const data = await fetchRoles(isSuperadmin ? selectedMerchantId : undefined);
         setRoles(data);
       } catch (error) {
-        console.error("Error loading roles", error);
+        console.error("Error cargando roles", error);
         setRoles([]);
       }
     }
@@ -161,7 +161,7 @@ export default function UsersPage() {
       await deleteUser(user.id, isSuperadmin ? selectedMerchantId : undefined);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (error) {
-      console.error("Error deleting user", error);
+      console.error("Error eliminando usuario", error);
     }
   }
 
@@ -291,36 +291,36 @@ export default function UsersPage() {
                 </div>
 
                 {isSuperadmin && (
-    <div className="min-w-[180px]">
-      <CustomSelect
-        variant="dashboard"
-        value={String(selectedMerchantId ?? 0)}
-        onChange={(value) => setSelectedMerchantId(Number(value))}
-        options={merchantOptions.map((merchant) => ({
-          value: String(merchant.merchant_id),
-          label: merchant.name,
-        }))}
-      />
-    </div>
-  )}
+                  <div className="min-w-[180px]">
+                    <CustomSelect
+                      variant="dashboard"
+                      value={String(selectedMerchantId ?? 0)}
+                      onChange={(value) => setSelectedMerchantId(Number(value))}
+                      options={merchantOptions.map((merchant) => ({
+                        value: String(merchant.merchant_id),
+                        label: merchant.name,
+                      }))}
+                    />
+                  </div>
+                )}
 
-  <div className="min-w-[180px]">
-    <CustomSelect
-      variant="dashboard"
-      value={roleFilter}
-      onChange={setRoleFilter}
-      options={roleFilterOptions}
-    />
-  </div>
+                <div className="min-w-[180px]">
+                  <CustomSelect
+                    variant="dashboard"
+                    value={roleFilter}
+                    onChange={setRoleFilter}
+                    options={roleFilterOptions}
+                  />
+                </div>
 
-  <div className="min-w-[180px]">
-    <CustomSelect
-      variant="dashboard"
-      value={statusFilter}
-      onChange={setStatusFilter}
-      options={statusFilterOptions}
-    />
-  </div>
+                <div className="min-w-[180px]">
+                  <CustomSelect
+                    variant="dashboard"
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={statusFilterOptions}
+                  />
+                </div>
               </div>
 
               <button

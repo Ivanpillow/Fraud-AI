@@ -11,6 +11,7 @@ interface MeResponse {
   role: string;
   is_admin?: boolean;
   is_superadmin?: boolean;
+  merchant_name?: string;
 }
 
 interface User {
@@ -18,6 +19,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  merchant_name?: string;
   is_admin?: boolean;
   is_superadmin?: boolean;
 }
@@ -28,6 +30,7 @@ interface AuthContextValue {
   login: (user: User) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUserName: (newName: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: res.data.email,
           name: res.data.full_name,
           role: res.data.role,
+          merchant_name: res.data.merchant_name,
           is_admin: res.data.is_admin,
           is_superadmin: res.data.is_superadmin,
         });
@@ -72,6 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUserName = (newName: string) => {
+    if (user) {
+      setUser({ ...user, name: newName });
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -80,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         isAuthenticated: !!user,
+        updateUserName,
       }}
     >
       {children}

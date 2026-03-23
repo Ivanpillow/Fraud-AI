@@ -642,5 +642,22 @@ export async function deleteMerchant(merchantId: number) {
   return res.data
 }
 
+// ============================
+// Perfil del usuario
+// ============================
+
+export async function updateUserProfile(full_name: string) {
+  return apiRequest("/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify({ full_name })
+  })
+}
+
+export async function changeUserPassword(current_password: string, new_password: string) {
+  return apiRequest("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ current_password, new_password })
+  })
+}
 
 export { API_BASE_URL };

@@ -1,7 +1,8 @@
 "use client";
 
-import { Search, Settings, Bell } from "lucide-react";
+import { Search, User, Bell } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function DashboardHeader({
   title,
@@ -39,15 +40,17 @@ export default function DashboardHeader({
         </div> */}
 
         {/* Actions */}
-        <button
-          className="glass-button flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
-          aria-label="Settings"
-        >
-          <Settings size={16} />
-        </button>
+        <Link href="/dashboard/profile">
+          <button
+            className="glass-button flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Perfil"
+          >
+            <User size={16} />
+          </button>
+        </Link>
         <button
           className="glass-button flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground lg:hidden"
-          aria-label="Notifications"
+          aria-label="Notificationes"
         >
           <Bell size={16} />
         </button>
