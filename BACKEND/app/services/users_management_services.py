@@ -53,7 +53,7 @@ def create_user_service(db: Session, payload, merchant_id: int):
     password = _validate_password(payload.password)
 
     # Validación de rol
-    role = get_role_by_name(db, role_name)
+    role = get_role_by_name(db, role_name, merchant_id)
     if not role:
         raise HTTPException(status_code=400, detail="Rol inválido")
 
@@ -135,7 +135,7 @@ def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
     if email != str(user.email).lower():
         raise HTTPException(status_code=403, detail="No puedes cambiar el correo de un usuario existente")
 
-    role = get_role_by_name(db, role_name)
+    role = get_role_by_name(db, role_name, merchant_id)
     if not role:
         raise HTTPException(status_code=400, detail="Rol inválido")
 

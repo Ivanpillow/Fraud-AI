@@ -43,7 +43,7 @@ export default function CreateUserModal({ onClose, onCreated, user, selectedMerc
     email: "",
     full_name: "",
     password: "",
-    role: ""
+    role: "",
   })
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<{
@@ -96,7 +96,7 @@ export default function CreateUserModal({ onClose, onCreated, user, selectedMerc
         email: user.email,
         full_name: user.full_name,
         password: "",
-        role: user.role
+        role: user.role,
       })
 
     }
@@ -174,7 +174,7 @@ export default function CreateUserModal({ onClose, onCreated, user, selectedMerc
           email: cleanEmail,
           full_name: cleanName,
           password: form.password,
-          role: form.role
+          role: form.role,
         }, selectedMerchantId)
 
         if (res.error) {

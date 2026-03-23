@@ -26,8 +26,13 @@ def get_user_by_id(db: Session, user_id: int):
 # Obtener role por nombre
 # ============================
 
-def get_role_by_name(db: Session, role_name: str):
-    return db.query(Role).filter(Role.name == role_name).first()
+def get_role_by_name(db: Session, role_name: str, merchant_id: int | None = None):
+    query = db.query(Role).filter(Role.name == role_name)
+
+    if merchant_id is not None:
+        query = query.filter(Role.merchant_id == merchant_id)
+
+    return query.first()
 
 
 # ============================

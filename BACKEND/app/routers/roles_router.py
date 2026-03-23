@@ -17,6 +17,7 @@ router = APIRouter(prefix="/roles", tags=["Roles"])
 
 class RoleRequest(BaseModel):
     name: str
+    is_admin: bool = False
 
 
 ROLE_NAME_REGEX = re.compile(r"^[A-Za-zÀ-ÿ0-9 _\-]+$")
@@ -84,7 +85,7 @@ def create_role(
     if existing_role:
         raise HTTPException(status_code=400, detail="Ya existe un rol con ese nombre")
 
-    role = Role(name=role_name, merchant_id=merchant_scope)
+    role = Role(name=role_name, is_admin=payload.is_admin, merchant_id=merchant_scope)
 
     db.add(role)
     db.commit()

@@ -532,10 +532,10 @@ export async function fetchRoles(merchantId?: number) {
 }
 
 // Endpoint para crear un nuevo rol
-export async function createRole(name: string, merchantId?: number) {
+export async function createRole(name: string, merchantId?: number, is_admin: boolean = false) {
   return apiRequest(withMerchantQuery("/roles", merchantId), {
     method: "POST",
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name, is_admin })
   })
 }
 

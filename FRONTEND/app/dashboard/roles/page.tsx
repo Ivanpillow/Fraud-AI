@@ -32,6 +32,7 @@ export default function RolesPage() {
   const [loading, setLoading] = useState(true);
 
   const [newRole, setNewRole] = useState("");
+  const [newRoleIsAdmin, setNewRoleIsAdmin] = useState(false);
 
   const [editingRoleId, setEditingRoleId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState("")
@@ -50,10 +51,10 @@ export default function RolesPage() {
   }, [merchants])
 
   const merchantName = useMemo(() => {
-    if (!isSuperadmin) return "Tu empresa"
+    if (!isSuperadmin) return currentUser?.merchant_name || "Merchant"
     const selected = merchantOptions.find((m) => m.merchant_id === selectedMerchantId)
     return selected?.name || "Merchant"
-  }, [isSuperadmin, merchantOptions, selectedMerchantId])
+  }, [isSuperadmin, currentUser?.merchant_name, merchantOptions, selectedMerchantId])
 
   useEffect(() => {
     if (!errorMessage) return
@@ -155,7 +156,7 @@ export default function RolesPage() {
 
     try {
 
-      const response = await createRole(cleanRoleName, isSuperadmin ? selectedMerchantId : undefined);
+      const response = await createRole(cleanRoleName, isSuperadmin ? selectedMerchantId : undefined, newRoleIsAdmin);
 
       if (response.error) {
         setErrorMessage(response.error)
@@ -163,6 +164,7 @@ export default function RolesPage() {
       }
 
       setNewRole("");
+      setNewRoleIsAdmin(false);
 
       loadRoles();
 
@@ -259,7 +261,7 @@ export default function RolesPage() {
                 <p className="text-xs uppercase text-muted-foreground tracking-wider">
                   Empresa
                 </p>
-                <h2 className="text-lg font-semibold">{merchantName}</h2>
+                <h2 className="text-xl font-semibold text-foreground">{merchantName}</h2>
               </div>
             </GlassCard>
 
@@ -279,7 +281,7 @@ export default function RolesPage() {
 
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
 
                   {isSuperadmin && (
                     <div className="min-w-[220px]">
@@ -295,17 +297,29 @@ export default function RolesPage() {
                     </div>
                   )}
 
-                  <input
-                    value={newRole}
-                    onChange={(e) => setNewRole(e.target.value)}
-                    placeholder="Nombre del rol..."
-                    maxLength={50}
-                    className="glass rounded-lg px-3 py-2 text-sm outline-none"
-                  />
+                  <div className="flex-1 min-w-[240px]">
+                    <input
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value)}
+                      placeholder="Nombre del rol..."
+                      maxLength={50}
+                      className="w-full rounded-xl border border-border/40 bg-background/70 px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/70 focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/80"
+                    />
+                  </div>
+
+                  <label className="flex items-center justify-center gap-2 rounded-xl border border-border/40 bg-background/65 px-4 py-2 text-sm whitespace-nowrap hover:border-primary/40 transition">
+                    <input
+                      type="checkbox"
+                      checked={newRoleIsAdmin}
+                      onChange={(e) => setNewRoleIsAdmin(e.target.checked)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-foreground font-medium">¿Es Administrador?</span>
+                  </label>
 
                   <button
                     onClick={handleCreateRole}
-                    className="text-xs px-4 py-2 rounded-lg bg-primary/15 text-primary font-medium hover:bg-primary/25 transition"
+                    className="text-xs px-4 py-2 rounded-xl bg-primary/15 text-primary font-semibold hover:bg-primary/25 hover:shadow-[0_0_0_1px_rgba(99,102,241,0.18)] transition"
                   >
                     Crear
                   </button>
