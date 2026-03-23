@@ -16,13 +16,19 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FraudAI Admin - Fintech Checkout Dashboard",
+  title: "FraudAI - Prevención de Fraude",
   description:
-    "Admin dashboard for managing fintech checkout module with analytics, fraud detection, and payment monitoring.",
+    "Panel de control para monitorear y gestionar transacciones, detectar fraudes y administrar usuarios.",
+  icons: {
+    icon: "/images/fraudai_icon_v2.png",
+    shortcut: "/images/fraudai_icon_v2.png",
+    apple: "/images/fraudai_icon_v2.png",
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: "#0f141e",
+  
   width: "device-width",
   initialScale: 1,
 };

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Shield, LayoutDashboard, LogOut, ChevronDown, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
+
 
 export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
   const { user, logout } = useAuth();
@@ -64,9 +66,20 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
         )}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <Shield size={20} />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
+            <Image
+              src="/images/fraudai_icon_v2.png"
+              alt="FraudAI"
+              width={28}
+              height={28}
+              className="h-full w-full object-contain"
+            />
           </div>
+
+          {/* <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <Shield size={20} />
+          </div> */}
+
           {!collapsed && (
             <div className="animate-fade-in overflow-hidden min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">

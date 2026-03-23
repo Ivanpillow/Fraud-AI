@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Shield } from "lucide-react";
+import Image from "next/image";
 import LoginForm from "@/components/login/login-form";
 import FraudOverview from "@/components/login/fraud-overview";
 import CheckoutFloatingButton from "@/components/checkout/checkout-floating-button";
@@ -37,8 +37,15 @@ export default function LoginPage() {
       <div className="flex w-full lg:w-1/2 xl:w-[45%] flex-col items-center justify-center px-6 py-12 md:px-16">
         <div className="w-full max-w-md animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Shield size={22} />
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
+              <Image
+                src="/images/fraudai_icon_v2.png"
+                alt="FraudAI logo"
+                fill
+                sizes="48px"
+                className="object-contain"
+                priority
+              />
             </div>
             <span className="text-2xl font-bold tracking-tight text-foreground">
               FraudAI
