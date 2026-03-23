@@ -67,7 +67,7 @@ export default function MerchantsPage() {
     try {
       setLoading(true);
       const data = await fetchMerchants();
-      setMerchants(data);
+      setMerchants(data.filter((merchant) => merchant.merchant_id !== 0));
       setErrorMessage(null);
     } catch (error) {
       console.error("Error loading merchants", error);

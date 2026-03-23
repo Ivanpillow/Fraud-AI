@@ -85,7 +85,7 @@ X_train_meta = get_base_predictions(X_train)
 X_test_meta = get_base_predictions(X_test)
 
 # === Meta-modelo ===
-meta_model = LogisticRegression(max_iter=1000)
+meta_model = LogisticRegression(C=0.5)
 meta_model.fit(X_train_meta, y_train)
 
 # Evaluación

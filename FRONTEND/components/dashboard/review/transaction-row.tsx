@@ -24,11 +24,39 @@ interface Transaction {
   fraud_probability?: number;
   channel?: string;
   transaction_id?: number;
+  explanations?: Array<{
+    feature_name?: string;
+    contribution_value?: number;
+    direction?: string;
+  }>;
 }
 
 interface TransactionRowProps {
   transaction: Transaction;
-  onAction: (id: string) => void;
+  onAction: (id: string, action: "approve" | "block" | "review") => void;
+}
+
+const FEATURE_LABELS: Record<string, string> = {
+  amount: "Monto",
+  amount_vs_avg: "Monto vs promedio del usuario",
+  transactions_last_24h: "Transacciones en 24h",
+  card_tx_last_24h: "Transacciones con tarjeta en 24h",
+  qr_tx_last_24h: "Transacciones QR en 24h",
+  hour: "Hora de la transacción",
+  day_of_week: "Día de la semana",
+  failed_attempts: "Intentos fallidos",
+  is_international: "Operación internacional",
+};
+
+function toFeatureLabel(featureName?: string): string {
+  if (!featureName) return "Factor desconocido";
+  return FEATURE_LABELS[featureName] || featureName.replaceAll("_", " ");
+}
+
+function formatContribution(value?: number): string {
+  const numericValue = typeof value === "number" ? value : 0;
+  const sign = numericValue > 0 ? "+" : "";
+  return `${sign}${numericValue.toFixed(4)}`;
 }
 
 function formatDate(ts: string): string {
@@ -51,6 +79,7 @@ export default function TransactionRow({
 }: TransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const topExplanations = (tx.explanations || []).slice(0, 4);
 
   const handleAction = async (action: "approve" | "block" | "review") => {
     setActionLoading(action);
@@ -62,8 +91,8 @@ export default function TransactionRow({
       );
       
       if (result.data) {
-        // Si la actualización fue exitosa, notificar al padre para remover de la lista
-        onAction(tx.id);
+        // Si la actualización fue exitosa, notificar al padre para sincronizar estado local
+        onAction(tx.id, action);
       } else {
         console.error("Error updating decision:", result.error);
         alert("Error al actualizar la decisión. Por favor intenta de nuevo.");
@@ -164,6 +193,47 @@ export default function TransactionRow({
               <span className="text-foreground font-medium">Mensaje: </span>
               {tx.message || "Transacción sospechosa detectada"}
             </p>
+          </div>
+
+          <div className="glass rounded-lg p-3 mb-4">
+            <p className="text-xs text-foreground font-medium mb-2">
+              Factores relevantes de la predicción:
+            </p>
+            {topExplanations.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Sin factores registrados para esta transacción.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {topExplanations.map((exp, idx) => {
+                  const direction = (exp.direction || "").toLowerCase();
+                  const isIncrease = direction === "increase";
+
+                  return (
+                    <div key={`${tx.id}-exp-${idx}`} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-muted-foreground truncate">
+                        {toFeatureLabel(exp.feature_name)}
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-[10px] uppercase",
+                            isIncrease
+                              ? "bg-destructive/10 text-destructive"
+                              : "bg-emerald-500/10 text-emerald-400"
+                          )}
+                        >
+                          {isIncrease ? "Aumenta Riesgo" : "Reduce Riesgo"}
+                        </span>
+                        <span className="font-mono text-foreground">
+                          {formatContribution(exp.contribution_value)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

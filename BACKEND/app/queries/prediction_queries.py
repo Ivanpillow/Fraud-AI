@@ -3,12 +3,32 @@ from sqlalchemy.orm import Session
 from app.models.fraud_prediction import FraudPrediction
 from app.models.transaction import Transaction
 from app.models.qr_transaction import QRTransaction
+from app.models.fraud_explanation import FraudExplanation
 
 def save_prediction(db, prediction):
     db.add(prediction)
     # db.flush()
     db.refresh(prediction)
     return prediction
+
+
+def _get_prediction_explanations(db: Session, prediction_id: int) -> list[dict]:
+    explanations = db.query(FraudExplanation).filter(
+        FraudExplanation.prediction_id == prediction_id
+    ).all()
+
+    parsed = []
+    for exp in explanations:
+        value = float(exp.contribution_value) if exp.contribution_value is not None else 0.0
+        parsed.append({
+            "feature_name": exp.feature_name,
+            "contribution_value": value,
+            "direction": exp.direction,
+        })
+
+    # Primero las variables con mayor impacto absoluto para facilitar lectura en frontend.
+    parsed.sort(key=lambda item: abs(item["contribution_value"]), reverse=True)
+    return parsed
 
 
 def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | None = None):
@@ -41,6 +61,7 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
             'amount': 0.0,
             'timestamp': pred.created_at,
             'user_id': None,
+            'explanations': _get_prediction_explanations(db, pred.prediction_id),
         }
         
         # Obtener detalles de la transacción según el canal

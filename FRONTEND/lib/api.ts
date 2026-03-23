@@ -344,6 +344,11 @@ export async function fetchNotifications(token?: string) {
     transaction_id: number;
     channel: string;
     fraud_probability: number;
+    explanations?: Array<{
+      feature_name?: string;
+      contribution_value?: number;
+      direction?: string;
+    }>;
   }>>("/notifications", {
     method: "GET",
     token,

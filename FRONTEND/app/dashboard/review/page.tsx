@@ -23,6 +23,11 @@ interface Transaction {
   fraud_probability: number;
   timestamp: string;
   message: string;
+  explanations?: Array<{
+    feature_name?: string;
+    contribution_value?: number;
+    direction?: string;
+  }>;
 }
 
 export default function ReviewPage() {
@@ -59,6 +64,7 @@ export default function ReviewPage() {
             fraud_probability: notif.fraud_probability,
             timestamp: notif.timestamp,
             message: notif.message,
+            explanations: notif.explanations || [],
           }));
           setTransactions(txns);
 
@@ -92,10 +98,25 @@ export default function ReviewPage() {
     block: transactions.filter((t) => t.status === "block").length,
   };
 
-  const handleAction = (id: string) => {
-    setTransactions((prev) =>
-      prev.filter((t) => t.id !== id)
-    );
+  const handleAction = (id: string, action: "approve" | "block" | "review") => {
+    setTransactions((prev) => {
+      if (action === "approve") {
+        return prev.filter((t) => t.id !== id);
+      }
+
+      return prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: action,
+              message:
+                action === "block"
+                  ? "Transacción bloqueada por fraude"
+                  : "Transacción requiere revisión",
+            }
+          : t
+      );
+    });
   };
 
   const filters: { key: StatusFilter; label: string }[] = [

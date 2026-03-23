@@ -46,7 +46,8 @@ X_test_scaled = scaler.transform(X_test)
 # Modelo (Regresión Logística)
 model = LogisticRegression(
     max_iter=1000,
-    class_weight={0:1, 1:2} # Se cambio de balanced a un peso fijo que penalice más errores en fraude
+    class_weight="balanced",
+    C=0.5  # más regularización
 )
 
 model.fit(X_train_scaled, y_train)

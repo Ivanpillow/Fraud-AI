@@ -3,11 +3,17 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.queries.prediction_queries import get_fraud_notifications, update_prediction_decision
 from app.core.dependencies import get_current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+
+class ExplanationItem(BaseModel):
+    feature_name: str | None = None
+    contribution_value: float = 0.0
+    direction: str | None = None
 
 
 class NotificationResponse(BaseModel):
@@ -20,6 +26,7 @@ class NotificationResponse(BaseModel):
     transaction_id: int
     channel: str  # "card" o "qr"
     fraud_probability: float
+    explanations: List[ExplanationItem] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -65,7 +72,8 @@ def get_notifications(
             timestamp=notif_dict['created_at'],
             transaction_id=notif_dict['transaction_id'],
             channel=notif_dict['channel'],
-            fraud_probability=notif_dict['fraud_probability']
+            fraud_probability=notif_dict['fraud_probability'],
+            explanations=notif_dict.get('explanations', [])
         )
         result.append(notification)
     
