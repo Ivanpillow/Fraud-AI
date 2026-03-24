@@ -58,15 +58,15 @@ function buildStableQrPattern(seed: number): boolean[] {
 
 export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: Props) {
   const [userId, setUserId] = useState("1");
-  const [merchantId, setMerchantId] = useState("1");
   const [country, setCountry] = useState("MX");
+  const [selectedHour, setSelectedHour] = useState("");
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
   const [latitude, setLatitude] = useState("19.4326");
   const [longitude, setLongitude] = useState("-99.1332");
   const [hasCustomCoordinates, setHasCustomCoordinates] = useState(false);
   const [deviceChange, setDeviceChange] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPaid, setIsPaid] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState<number | null>(null);
 
@@ -77,14 +77,14 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
 
   useEffect(() => {
     setUserId("1");
-    setMerchantId("1");
     setCountry("MX");
+    setSelectedHour("");
+    setSelectedDayOfWeek("");
     setLatitude("19.4326");
     setLongitude("-99.1332");
     setHasCustomCoordinates(false);
     setDeviceChange(false);
     setIsSubmitting(false);
-    setIsPaid(false);
     setError(null);
     setQrSeed(null);
   }, [resetTrigger]);
@@ -96,6 +96,25 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
     setLatitude(selected.defaultLat);
     setLongitude(selected.defaultLon);
   }, [country, hasCustomCoordinates]);
+
+  const dayOptions = [
+    { value: "", label: "Automático" },
+    { value: "1", label: "Lunes" },
+    { value: "2", label: "Martes" },
+    { value: "3", label: "Miércoles" },
+    { value: "4", label: "Jueves" },
+    { value: "5", label: "Viernes" },
+    { value: "6", label: "Sábado" },
+    { value: "7", label: "Domingo" },
+  ];
+
+  const hourOptions = [
+    { value: "", label: "Automático" },
+    ...Array.from({ length: 24 }, (_, hour) => ({
+      value: String(hour),
+      label: `${hour.toString().padStart(2, "0")}:00`,
+    })),
+  ];
 
   const handleApplyCountryCoordinates = () => {
     const selected = COUNTRIES.find((item) => item.value === country);
@@ -130,16 +149,11 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
     }
 
     const parsedUserId = parseInt(userId, 10);
-    const parsedMerchantId = parseInt(merchantId, 10);
     const parsedLat = parseFloat(latitude);
     const parsedLon = parseFloat(longitude);
 
     if (!Number.isFinite(parsedUserId) || parsedUserId <= 0) {
       setError("ID de usuario inválido.");
-      return;
-    }
-    if (!Number.isFinite(parsedMerchantId) || parsedMerchantId <= 0) {
-      setError("ID del comerciante inválido.");
       return;
     }
     if (!Number.isFinite(parsedLat) || parsedLat < -90 || parsedLat > 90) {
@@ -159,18 +173,19 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
         transaction_id: txId,
         user_id: parsedUserId,
         amount: subtotal,
-        merchant_id: parsedMerchantId,
         country: country,
         latitude: parsedLat,
         longitude: parsedLon,
         device_change_flag: deviceChange,
+        ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
+        ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
       };
 
       const response = await fetch(`${API_BASE_URL}/qr-transactions/simple`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
-          "X-API-Key": "sk_test_demo_merchant"
+          "X-API-Key": "floreria_key"
          },
         body: JSON.stringify(payload),
         credentials: "include",
@@ -183,7 +198,6 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
 
       const result = await response.json();
       onResult(result);
-      setIsPaid(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "QR Transaction failed");
     } finally {
@@ -231,7 +245,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
             <button
               type="button"
               onClick={handleGenerateQR}
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
               className="flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
             >
               <QrCode size={48} className="opacity-40" />
@@ -260,18 +274,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
               onChange={(e) => setUserId(e.target.value)}
               className="checkout-input"
               min="1"
-              disabled={isSubmitting || isPaid}
-            />
-          </div>
-          <div>
-            <label className="checkout-label">ID del Comerciante</label>
-            <input
-              type="number"
-              value={merchantId}
-              onChange={(e) => setMerchantId(e.target.value)}
-              className="checkout-input"
-              min="1"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -280,7 +283,25 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
               value={country}
               onChange={setCountry}
               options={COUNTRIES.map((item) => ({ value: item.value, label: item.label }))}
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div>
+            <label className="checkout-label">Día de la Semana (opcional)</label>
+            <CustomSelect
+              value={selectedDayOfWeek}
+              onChange={setSelectedDayOfWeek}
+              options={dayOptions}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div>
+            <label className="checkout-label">Hora del Día (opcional)</label>
+            <CustomSelect
+              value={selectedHour}
+              onChange={setSelectedHour}
+              options={hourOptions}
+              disabled={isSubmitting}
             />
           </div>
           <div className="flex items-center gap-3">
@@ -288,7 +309,8 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
             <button
               type="button"
               onClick={() => setDeviceChange(!deviceChange)}
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
+              aria-pressed={deviceChange}
               className={cn(
                 "relative w-12 h-7 rounded-full transition-all duration-300",
                 deviceChange
@@ -305,6 +327,9 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
                 )}
               />
             </button>
+            <span className="text-xs text-muted-foreground">
+              {deviceChange ? "Sí" : "No"}
+            </span>
           </div>
         </div>
       </div>
@@ -330,7 +355,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
               }}
               placeholder="19.4326"
               className="checkout-input"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -344,7 +369,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
               }}
               placeholder="-99.1332"
               className="checkout-input"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
         </div>
@@ -353,7 +378,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
           <button
             type="button"
             onClick={handleApplyCountryCoordinates}
-            disabled={isSubmitting || isPaid}
+            disabled={isSubmitting}
             className="underline underline-offset-4 hover:text-foreground disabled:opacity-50"
           >
             Usar coordenadas sugeridas del país
@@ -369,22 +394,21 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
         </div>
       )}
 
+      <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        Modo pruebas activo: el formulario no se reinicia al completar una transacción.
+      </div>
+
       {/* Submit */}
       <button
         type="submit"
-        disabled={isSubmitting || subtotal <= 0 || isPaid || qrSeed === null}
+        disabled={isSubmitting || subtotal <= 0 || qrSeed === null}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
           "disabled:opacity-40 disabled:cursor-not-allowed"
         )}
       >
-        {isPaid ? (
-          <>
-            <ShieldCheck size={18} />
-            Pago realizado
-          </>
-        ) : isSubmitting ? (
+        {isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
             Analizando transacción QR...

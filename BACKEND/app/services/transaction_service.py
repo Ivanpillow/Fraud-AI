@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
-from pyexpat import features
+from zoneinfo import ZoneInfo
 from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
-from app.queries.transaction_queries import create_transaction # Se quito esta funcion y la de save para que no se guardaran si ocurria algún error en el proceso, ahora se maneja todo con flush y commit al final
-from app.queries.prediction_queries import save_prediction
+from app.models.user import User
 from app.ml.predictors.fraud_ensemble import predict_fraud_combined
-from app.services.user_behavior_service import update_user_behavior, update_user_avg_amount
+from app.services.user_behavior_service import (
+    update_user_behavior,
+    update_user_avg_amount,
+    update_failed_attempts,
+)
 from app.ml.utils.explainability import explain_transaction
 from app.queries.fraud_explanation_queries import save_explanations
 
@@ -15,9 +18,95 @@ from app.services.user_behavior_service import (
     calculate_risk_score_rule,
 )
 
+MEXICO_CITY_TZ = ZoneInfo("America/Mexico_City")
+
+
+def _ensure_user_exists(db, tx_data: dict) -> None:
+    user_id = int(tx_data["user_id"])
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if user:
+        return
+
+    country = str(tx_data.get("country") or "MX").upper()[:5]
+    amount = float(tx_data.get("amount") or 0.0)
+
+    db.add(
+        User(
+            user_id=user_id,
+            country=country,
+            avg_amount_user=round(max(amount, 0.0), 2),
+            risk_profile="medium",
+        )
+    )
+    db.flush()
+
+
+def _score_card_decision(features: dict, model_result: dict, is_new_user: bool) -> tuple[str, float, float]:
+    stacked_prob = float(model_result["final_score"])
+    logistic_prob = float(model_result["logistic_probability"])
+    rf_prob = float(model_result["rf_probability"])
+
+    risk_rule = calculate_risk_score_rule(
+        amount_vs_avg=float(features["amount_vs_avg"]),
+        transactions_last_24h=int(features["transactions_last_24h"]),
+        failed_attempts=int(features["failed_attempts"]),
+        is_international=bool(features["is_international"]),
+        hour=int(features["hour"]),
+        channel="card",
+        card_tx_last_24h=int(features["card_tx_last_24h"]),
+        qr_tx_last_24h=int(features["qr_tx_last_24h"]),
+    )
+
+    
+    decision_score = (0.45 * stacked_prob) + (0.40 * logistic_prob) + (0.15 * rf_prob)
+
+    # Para reducir falsos allow en zonas grises.
+    if risk_rule >= 0.55:
+        decision_score += 0.08
+    elif risk_rule >= 0.40:
+        decision_score += 0.04
+
+    if int(features["failed_attempts"]) >= 2:
+        decision_score += 0.04
+    if float(features["amount_vs_avg"]) >= 2.2:
+        decision_score += 0.04
+
+    decision_score = max(0.0, min(decision_score, 1.0))
+
+    block_threshold = 0.80 if is_new_user else 0.76
+    review_threshold = 0.50
+
+    if decision_score >= block_threshold:
+        decision = "block"
+    elif decision_score >= review_threshold:
+        decision = "review"
+    else:
+        decision = "allow"
+
+    # Reglas de negocio para reducir falsos bloqueos en casos de borderline
+    if (
+        decision == "block"
+        and float(features["amount_vs_avg"]) < 1.25
+        and int(features["failed_attempts"]) == 0
+        and int(features["transactions_last_24h"]) <= 6
+        and not bool(features["is_international"])
+    ):
+        decision = "review"
+
+    return decision, round(risk_rule, 4), round(decision_score, 4)
+
 def process_transaction(db, tx_data, merchant_id):
 
     try:
+        _ensure_user_exists(db, tx_data)
+
+        tx_hour = int(tx_data["hour"]) % 24
+        tx_day_of_week = int(tx_data["day_of_week"])
+        if tx_day_of_week < 1 or tx_day_of_week > 7:
+            tx_day_of_week = ((tx_day_of_week - 1) % 7) + 1
+
+        model_day_of_week = (tx_day_of_week - 1) % 7
+
         #nueva transaction_id
         transaction_id = int(datetime.utcnow().timestamp() * 1_000_000) # ID único basado en timestamp para evitar colisiones
 
@@ -29,8 +118,8 @@ def process_transaction(db, tx_data, merchant_id):
             amount=tx_data["amount"],
             currency="MXN",
             timestamp=datetime.now(timezone.utc),
-            hour=tx_data["hour"],
-            day_of_week=tx_data["day_of_week"],
+            hour=tx_hour,
+            day_of_week=tx_day_of_week,
             country=tx_data["country"],
             is_international=tx_data["is_international"],
             device_type=tx_data["device_type"],
@@ -50,18 +139,18 @@ def process_transaction(db, tx_data, merchant_id):
             "transactions_last_24h": user_stats["transactions_last_24h"],
             "card_tx_last_24h": user_stats["card_tx_last_24h"],
             "qr_tx_last_24h": user_stats["qr_tx_last_24h"],
-            "hour": tx_data["hour"],
-            "day_of_week": tx_data["day_of_week"],
+            "hour": tx_hour,
+            "day_of_week": model_day_of_week,
             "failed_attempts": user_stats["failed_attempts"],
             "is_international": tx_data["is_international"],
         }
 
-        # Limitar valores extremos para evitar problemas con el modelo 
+        # Limitar valores extremos
         features["transactions_last_24h"] = min(features["transactions_last_24h"], 10)
         features["card_tx_last_24h"] = min(features["card_tx_last_24h"], 10)
         features["qr_tx_last_24h"] = min(features["qr_tx_last_24h"], 10)
 
-        # Blindaje contra valores que pudieran ser None
+        # Evitar valores None
         for k, v in features.items():
             if v is None:
                 features[k] = 0
@@ -69,36 +158,23 @@ def process_transaction(db, tx_data, merchant_id):
         # print("USER_STATS:", user_stats)
         # print("FEATURES:", features)
 
-        # Predicción de Random Forest + Logistic Regression + KMeans
+        # Random Forest + Logistic Regression + KMeans
         result = predict_fraud_combined(features)
         prediction = result["label"]
         prob = result["final_score"]
 
-        # Decisión
-        block_threshold = 0.90 if is_new_user else 0.80
-        review_threshold = 0.55
-
-        if prob >= block_threshold:
-            # 🔹 No bloquear solo por frecuencia
-            if features["amount_vs_avg"] < 1.2 and features["failed_attempts"] == 0:
-                decision = "review"
-            else:
-                decision = "block"
-
-        elif prob >= review_threshold:
-            decision = "review"
-        else:
-            decision = "allow"
+        decision, risk_score_rule, decision_score = _score_card_decision(features, result, is_new_user)
 
         # Guardar predicción
         fraud_pred = FraudPrediction(
             transaction_id=transaction.transaction_id,
             merchant_id=merchant_id,
             channel="card",
-            model_version="RF_LG_v1",
+            model_version="RF_LG_v1_logit_boost",
             fraud_probability=prob,
             prediction_label=prediction,
-            decision=decision,        
+            risk_score_rule=risk_score_rule,
+            decision=decision,
             rf_probability=result["rf_probability"],
             logistic_probability=result["logistic_probability"],
             kmeans_score=result["kmeans_score"]
@@ -127,7 +203,7 @@ def process_transaction(db, tx_data, merchant_id):
         # Explainability
         explanations = None
 
-        if prob >= 0.30:
+        if max(prob, decision_score) >= 0.30:
             logistic_features = {
                 "amount": features["amount"],
                 "amount_vs_avg": features["amount_vs_avg"],
@@ -149,17 +225,17 @@ def process_transaction(db, tx_data, merchant_id):
                     explanations=explanations
                 )
 
-        # Regla adicional de estabilidad para evitar bloqueos por picos de probabilidad en usuarios con buen comportamiento histórico
-        if decision == "block":
-            if (
-                features["amount_vs_avg"] < 1.0 and
-                features["failed_attempts"] == 0 and
-                features["transactions_last_24h"] <= 10
-            ):
-                decision = "review"
+        if fraud_pred.decision != decision:
+            fraud_pred.decision = decision
+
+
+        update_failed_attempts(
+            db=db,
+            user_id=tx_data["user_id"],
+            decision=decision,
+        )
         
 
-        # Commit final después de todo el proceso para asegurar atomicidad
         db.commit()
         return {
             "transaction_id": transaction.transaction_id,
@@ -180,11 +256,19 @@ def process_transaction(db, tx_data, merchant_id):
 
 def process_transaction_simple(db, tx_data, merchant_id):
     try:
+        _ensure_user_exists(db, tx_data)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(MEXICO_CITY_TZ)
 
-        hour = tx_data.get("hour") or now.hour
-        day_of_week = tx_data.get("day_of_week") or now.weekday()
+        hour_raw = tx_data.get("hour")
+        day_of_week_raw = tx_data.get("day_of_week")
+
+        hour = now.hour if hour_raw is None else int(hour_raw)
+        day_of_week = now.isoweekday() if day_of_week_raw is None else int(day_of_week_raw)
+
+        hour = hour % 24
+        if day_of_week < 1 or day_of_week > 7:
+            day_of_week = ((day_of_week - 1) % 7) + 1
 
         user_stats = get_user_stats(db, tx_data["user_id"])
 

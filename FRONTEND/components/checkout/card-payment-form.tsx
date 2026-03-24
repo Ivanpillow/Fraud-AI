@@ -185,6 +185,8 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
   const [merchantCategory, setMerchantCategory] = useState("retail");
   const [country, setCountry] = useState("MX");
   const [deviceType, setDeviceType] = useState("desktop");
+  const [selectedHour, setSelectedHour] = useState("");
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
 
   // Shipping info (for model variables - no cost calculation)
   // const [shippingName, setShippingName] = useState("");
@@ -234,13 +236,14 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
     setMerchantCategory("retail");
     setCountry("MX");
     setDeviceType("desktop");
+    setSelectedHour("");
+    setSelectedDayOfWeek("");
     setShippingName("");
     setShippingAddress("");
     setShippingCity("");
     setShippingCountry("MX");
     setShippingZip("");
     setUseShipping(false);
-    setIsPaid(false);
     setError(null);
   }, [resetTrigger]);
 
@@ -265,7 +268,25 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
     { value: "FR", label: "Francia" },
   ];
 
-  const [isPaid, setIsPaid] = useState(false);
+  const dayOptions = [
+    { value: "", label: "Automático" },
+    { value: "1", label: "Lunes" },
+    { value: "2", label: "Martes" },
+    { value: "3", label: "Miércoles" },
+    { value: "4", label: "Jueves" },
+    { value: "5", label: "Viernes" },
+    { value: "6", label: "Sábado" },
+    { value: "7", label: "Domingo" },
+  ];
+
+  const hourOptions = [
+    { value: "", label: "Automático" },
+    ...Array.from({ length: 24 }, (_, hour) => ({
+      value: String(hour),
+      label: `${hour.toString().padStart(2, "0")}:00`,
+    })),
+  ];
+
   const [useShipping, setUseShipping] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,6 +332,8 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
         merchant_category: merchantCategory,
         country: finalCountry,
         device_type: deviceType,
+        ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
+        ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
       };
 
       // console.log("PAYLOAD:", payload);
@@ -319,7 +342,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "X-API-Key": "sk_test_demo_merchant"
+          "X-API-Key": "floreria_key"
          },
         body: JSON.stringify(payload),
         credentials: "include",
@@ -333,7 +356,6 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
 
       const result = await response.json();
       onResult(result);
-      setIsPaid(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Transaction failed");
     } finally {
@@ -395,7 +417,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
             onChange={(e) => setCardName(e.target.value)}
             placeholder="JUAN PÉREZ"
             className="checkout-input placeholder:text-muted-foreground/40"
-            disabled={isSubmitting || isPaid}
+            disabled={isSubmitting}
           />
         </div>
         <div>
@@ -410,7 +432,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
               }
               placeholder="1234 5678 9012 3456"
               className="checkout-input pr-20 placeholder:text-muted-foreground/40"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-300">
               <CardBrandLogo brand={brand} />
@@ -428,7 +450,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
               maxLength={5}
               placeholder="12/28"
               className="checkout-input placeholder:text-muted-foreground/40"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -449,7 +471,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
               placeholder={brand === "amex" ? "1234" : "123"}
               maxLength={brandInfo.cvvLength}
               className="checkout-input placeholder:text-muted-foreground/40"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
         </div>
@@ -470,7 +492,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
               placeholder="1"
               className="checkout-input placeholder:text-muted-foreground/40"
               min="1"
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -482,7 +504,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
                 { value: "desktop", label: "Ordenador" },
                 { value: "mobile", label: "Dispositivo Móvil" },
               ]}
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -491,7 +513,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
               value={merchantCategory}
               onChange={setMerchantCategory}
               options={merchantCategories}
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
             />
           </div>
           <div>
@@ -500,7 +522,25 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
               value={country}
               onChange={setCountry}
               options={countries}
-              disabled={isSubmitting || isPaid}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div>
+            <label className="checkout-label">Día de la Semana (opcional)</label>
+            <CustomSelect
+              value={selectedDayOfWeek}
+              onChange={setSelectedDayOfWeek}
+              options={dayOptions}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div>
+            <label className="checkout-label">Hora del Día (opcional)</label>
+            <CustomSelect
+              value={selectedHour}
+              onChange={setSelectedHour}
+              options={hourOptions}
+              disabled={isSubmitting}
             />
           </div>
         </div>
@@ -512,7 +552,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
           type="checkbox"
           checked={useShipping}
           onChange={() => setUseShipping(!useShipping)}
-          disabled={isSubmitting || isPaid}
+          disabled={isSubmitting}
         />
       </div>
 
@@ -534,7 +574,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
                 onChange={(e) => setShippingName(e.target.value)}
                 placeholder="Juan Pérez García"
                 className="checkout-input placeholder:text-muted-foreground/40"
-                disabled={isSubmitting || isPaid}
+                disabled={isSubmitting}
               />
             </div>
             <div>
@@ -545,7 +585,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
                 onChange={(e) => setShippingAddress(e.target.value)}
                 placeholder="Av. Vallarta 1234, Col. Centro"
                 className="checkout-input placeholder:text-muted-foreground/40"
-                disabled={isSubmitting || isPaid}
+                disabled={isSubmitting}
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -557,7 +597,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
                   onChange={(e) => setShippingCity(e.target.value)}
                   placeholder="Guadalajara"
                   className="checkout-input placeholder:text-muted-foreground/40"
-                  disabled={isSubmitting || isPaid}
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -566,7 +606,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
                   value={shippingCountry}
                   onChange={setShippingCountry}
                   options={countries}
-                  disabled={isSubmitting || isPaid}
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -577,7 +617,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
                   onChange={(e) => setShippingZip(e.target.value)}
                   placeholder="44100"
                   className="checkout-input placeholder:text-muted-foreground/40"
-                  disabled={isSubmitting || isPaid}
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -593,22 +633,21 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
         </div>
       )}
 
+      <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        Modo pruebas activo: el formulario no se reinicia al completar una transacción.
+      </div>
+
       {/* Boton para enviar */}
       <button
         type="submit"
-        disabled={isSubmitting || amount <= 0 || isPaid}
+        disabled={isSubmitting || amount <= 0}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
           "disabled:opacity-40 disabled:cursor-not-allowed"
         )}
       >
-        {isPaid ? (
-          <>
-            <ShieldCheck size={18} />
-            Pago realizado
-          </>
-        ) : isSubmitting ? (
+        {isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
             Analizando transacción...

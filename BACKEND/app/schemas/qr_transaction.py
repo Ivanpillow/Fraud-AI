@@ -7,14 +7,12 @@ class QRTransactionCreate(BaseModel):
     user_id: int = Field(gt=0)
     amount: float = Field(gt=0)
 
-    merchant_id: int = Field(gt=0)
-
     country: str = Field(min_length=2, max_length=2)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
 
     hour: int = Field(ge=0, le=23)
-    day_of_week: int = Field(ge=0, le=6)
+    day_of_week: int = Field(ge=1, le=7)
 
     device_change_flag: Optional[bool] = False
 
@@ -29,14 +27,13 @@ class QRTransactionRawCreate(BaseModel):
     user_id: int = Field(gt=0)
     amount: float = Field(gt=0)
 
-    merchant_id: int = Field(gt=0)
     country: str = Field(min_length=2, max_length=2)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
 
     device_change_flag: Optional[bool] = False
     hour: Optional[int] = Field(default=None, ge=0, le=23)
-    day_of_week: Optional[int] = Field(default=None, ge=0, le=6)
+    day_of_week: Optional[int] = Field(default=None, ge=1, le=7)
 
     @field_validator("country")
     @classmethod

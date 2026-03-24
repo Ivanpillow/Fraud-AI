@@ -5,7 +5,7 @@ import React from "react"
 import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { loginUser } from "@/lib/api";
+import { apiRequest, loginUser } from "@/lib/api";
 import { USE_MOCK } from "@/lib/mock-data";
 import { isValidEmail, sanitizeInput, validatePassword } from "@/lib/auth-validation";
 
@@ -64,16 +64,31 @@ export default function LoginForm() {
           setError(result.error || "Error desconocido. Por favor intente nuevamente.");
         }
       } else if (result.data && result.data.userData) {
-        // El backend devuelve userData con full_name, convertir a name para el contexto
+        const session = await apiRequest<{
+          id: number;
+          email: string;
+          full_name: string;
+          role: string;
+          merchant_name?: string;
+          is_admin?: boolean;
+          is_superadmin?: boolean;
+        }>("/auth/me", { method: "GET" });
+
+        if (session.error || !session.data) {
+          setError("No se pudo establecer la sesión. Verifica IP/backend y vuelve a intentar.");
+          return;
+        }
+
         const userData = {
-          id: result.data.userData.id,
-          email: result.data.userData.email,
-          name: result.data.userData.full_name,
-          role: result.data.userData.role,
-          merchant_name: result.data.userData.merchant_name,
-          is_admin: result.data.userData.is_admin,
-          is_superadmin: result.data.userData.is_superadmin,
+          id: session.data.id,
+          email: session.data.email,
+          name: session.data.full_name,
+          role: session.data.role,
+          merchant_name: session.data.merchant_name,
+          is_admin: session.data.is_admin,
+          is_superadmin: session.data.is_superadmin,
         };
+
         login(userData);
       }
     } catch {

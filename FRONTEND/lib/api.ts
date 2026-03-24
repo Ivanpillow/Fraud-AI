@@ -3,7 +3,11 @@
  * All API calls go through this module for centralized error handling and auth.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : "http://localhost:8000");
 
 interface ApiOptions extends RequestInit {
   token?: string;
@@ -286,15 +290,15 @@ export async function fetchPaymentSummary(token?: string) {
   
   // Calcular estadísticas basadas en las decisiones
   const approved = decisions
-    .filter(d => d.decision === "approved")
+    .filter(d => d.decision === "allow")
     .reduce((sum, d) => sum + d.count, 0);
   
   const declined = decisions
-    .filter(d => d.decision === "declined")
+    .filter(d => d.decision === "block")
     .reduce((sum, d) => sum + d.count, 0);
   
   const pending = decisions
-    .filter(d => d.decision === "pending")
+    .filter(d => d.decision === "review")
     .reduce((sum, d) => sum + d.count, 0);
   
   return {

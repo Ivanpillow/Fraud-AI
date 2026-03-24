@@ -75,19 +75,64 @@ def update_user_behavior(
     return behavior
 
 
+def update_failed_attempts(
+    db: Session,
+    user_id: int,
+    decision: str,
+    max_failed_attempts: int = 10,
+) -> int:
+    """
+    Actualiza failed_attempts de manera consistente según la decisión:
+    - allow  -> reduce agresividad (resetea a 0)
+    - review -> incrementa en 1
+    - block  -> incrementa en 2
+    Retorna el valor actualizado.
+    """
+
+    behavior = (
+        db.query(UserBehaviorFeatures)
+        .filter(UserBehaviorFeatures.user_id == user_id)
+        .first()
+    )
+
+    if not behavior:
+        behavior = UserBehaviorFeatures(
+            user_id=user_id,
+            transactions_last_24h=0,
+            card_tx_last_24h=0,
+            qr_tx_last_24h=0,
+            failed_attempts=0,
+            amount_vs_avg=0,
+        )
+        db.add(behavior)
+        db.flush()
+
+    current = int(behavior.failed_attempts or 0)
+    decision_norm = str(decision or "").lower().strip()
+
+    if decision_norm == "allow":
+        updated = 0
+    elif decision_norm == "review":
+        updated = min(current + 1, max_failed_attempts)
+    elif decision_norm == "block":
+        updated = min(current + 2, max_failed_attempts)
+    else:
+        updated = current
+
+    behavior.failed_attempts = updated
+    db.flush()
+
+    return updated
+
+
 def update_user_avg_amount(
     db,
     user_id: int,
     amount: float,
     alpha: float = 0.1
 ):
-    """
-    Actualiza el avg_amount_user usando un promedio móvil exponencial.
-
-    alpha:
-      - 0.1 → aprende lento (más estable)
-      - 0.2 → aprende más rápido
-    """
+    
+    # Actualiza el avg_amount_user usando un promedio móvil exponencial.
 
     user = db.query(User).filter(User.user_id == user_id).first()
 
@@ -148,12 +193,7 @@ def calculate_amount_vs_avg(
     min_avg: float = 50.0,
     max_ratio: float = 10.0
 ) -> float:
-    """
-    Calcula el ratio amount_vs_avg de forma segura y estable.
-
-    - min_avg: evita inflar ratios en usuarios nuevos
-    - max_ratio: evita outliers extremos
-    """
+    # Calcula el ratio amount_vs_avg de forma segura y estable.
 
     if amount <= 0:
         return 0.0
@@ -178,11 +218,7 @@ def calculate_risk_score_rule(
     card_tx_last_24h: int = 0,
     qr_tx_last_24h: int = 0,
 ) -> float:
-    """
-    Calcula un score heurístico de riesgo basado en reglas para transacciones CARD.
-    Para QR, usar calculate_risk_score_rule_qr() en su lugar.
-    Retorna un valor entre 0 y 1.
-    """
+    # Calcula un score heurístico de riesgo basado en reglas para transacciones generales.
 
     score = 0.0
 
@@ -236,11 +272,8 @@ def calculate_risk_score_rule_qr(
     transactions_last_24h: int,
     geo_distance: float = 0.0,
 ) -> float:
-    """
-    Calcula un score heurístico de riesgo ESPECÍFICO para transacciones QR.
-    Mantiene los factores QR originales: geo_distance, device_change, qr_scans.
-    Retorna un valor entre 0 y 1.
-    """
+    # Calcula un score heurístico de riesgo basado en reglas para transacciones QR.
+    
     score = 0.0
 
     # Riesgo por monto

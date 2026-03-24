@@ -7,17 +7,19 @@ import { Filter } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/header";
 import GlassCard from "@/components/dashboard/glass-card";
 import TransactionRow from "@/components/dashboard/review/transaction-row";
+import CustomSelect from "@/components/checkout/custom-select";
 import { cn } from "@/lib/utils";
 import { fetchNotifications } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 type StatusFilter = "all" | "block" | "review";
+type PaymentMethodFilter = "all" | "card" | "qr" | "crypto";
 
 interface Transaction {
   id: string;
   prediction_id: number;
   transaction_id: number;
-  channel: string;
+  channel: "card" | "qr" | "crypto";
   status: "block" | "review";
   amount: number;
   fraud_probability: number;
@@ -36,6 +38,7 @@ export default function ReviewPage() {
   const { isAuthenticated, user } = useAuth();
   const isSuperadmin = !!user?.is_superadmin;
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilter>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export default function ReviewPage() {
             id: notif.id,
             prediction_id: notif.prediction_id,
             transaction_id: notif.transaction_id,
-            channel: notif.channel,
+            channel: notif.channel as "card" | "qr" | "crypto",
             status: notif.type as "block" | "review",
             amount: notif.amount,
             fraud_probability: notif.fraud_probability,
@@ -87,10 +90,15 @@ export default function ReviewPage() {
     return null;
   }
 
-  const filtered =
+  const filteredByStatus =
     filter === "all"
       ? transactions
       : transactions.filter((t) => t.status === filter);
+
+  const filtered =
+    paymentMethodFilter === "all"
+      ? filteredByStatus
+      : filteredByStatus.filter((t) => t.channel === paymentMethodFilter);
 
   const counts = {
     all: transactions.length,
@@ -123,6 +131,13 @@ export default function ReviewPage() {
     { key: "all", label: "Todas" },
     { key: "review", label: "En Revisión" },
     { key: "block", label: "Bloqueadas" },
+  ];
+
+  const paymentMethodOptions = [
+    { value: "all", label: "Todos los métodos" },
+    { value: "card", label: "Tarjeta" },
+    { value: "qr", label: "QR" },
+    { value: "crypto", label: "Crypto" },
   ];
 
   return (
@@ -170,7 +185,18 @@ export default function ReviewPage() {
             </div>
 
             {/* Filtros */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="w-full md:w-[260px]">
+                <CustomSelect
+                  value={paymentMethodFilter}
+                  onChange={(value) => setPaymentMethodFilter(value as PaymentMethodFilter)}
+                  options={paymentMethodOptions}
+                  placeholder="Método de pago"
+                  variant="dashboard"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
               <Filter size={16} className="text-muted-foreground" />
               <div className="flex items-center rounded-xl glass p-1 gap-0.5">
                 {filters.map((f) => (
@@ -191,6 +217,7 @@ export default function ReviewPage() {
                     </span>
                   </button>
                 ))}
+              </div>
               </div>
             </div>
 
