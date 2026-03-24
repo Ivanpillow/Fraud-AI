@@ -104,6 +104,7 @@ def update_role(
 ):
 
     merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
+    is_superadmin = bool(current_user.get("is_superadmin"))
     role_name = _validate_role_name(payload.name)
 
     role = (
@@ -115,7 +116,7 @@ def update_role(
     if not role:
         raise HTTPException(status_code=404, detail="Rol no encontrado")
 
-    if role.is_admin:
+    if role.is_admin and not is_superadmin:
         raise HTTPException(status_code=400, detail="El rol administrador no se puede modificar")
 
     duplicate_role = (
@@ -149,6 +150,8 @@ def delete_role(
 ):
 
     merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
+    is_superadmin = bool(current_user.get("is_superadmin"))
+    current_user_id = int(current_user["sub"])
 
     role = (
         db.query(Role)
@@ -159,10 +162,17 @@ def delete_role(
     if not role:
         raise HTTPException(status_code=404, detail="Rol no encontrado")
 
-    if role.is_admin:
+    if role.is_admin and not is_superadmin:
         raise HTTPException(
             status_code=400,
             detail="El rol administrador no se puede eliminar"
+        )
+
+    current_db_user = db.query(User).filter(User.id == current_user_id).first()
+    if current_db_user and int(current_db_user.role_id) == int(role.role_id):
+        raise HTTPException(
+            status_code=400,
+            detail="No puedes eliminar el rol al que perteneces"
         )
 
     users_using_role = (

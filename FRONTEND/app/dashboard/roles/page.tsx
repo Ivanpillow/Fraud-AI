@@ -379,7 +379,9 @@ export default function RolesPage() {
 
                     {roles.map((role) => {
 
-                        const isEditing = editingRoleId === role.role_id
+                      const isEditing = editingRoleId === role.role_id
+                      const canEditRole = !role.is_admin || isSuperadmin
+                      const canDeleteRole = !role.is_admin || isSuperadmin
 
                         return (
 
@@ -432,23 +434,23 @@ export default function RolesPage() {
 
                                 <>
                                     <button
-                                        disabled={role.is_admin}
-                                        title={role.is_admin ? "El rol administrador no puede modificarse" : ""}
+                                      disabled={!canEditRole}
+                                      title={!canEditRole ? "El rol administrador no puede modificarse" : ""}
                                         onClick={() => {
                                         setEditingRoleId(role.role_id)
                                         setEditingName(role.name)
                                         }}
                                         className={`text-xs px-3 py-1 border rounded-md 
-                                        ${role.is_admin ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"}`}
+                                      ${!canEditRole ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"}`}
                                     >
                                         Editar
                                     </button>
 
                                     <button
-                                        disabled={role.is_admin}
+                                      disabled={!canDeleteRole}
                                         onClick={() => setRoleToDelete(role)}
                                         className={`text-xs px-3 py-1 border rounded-md 
-                                        ${role.is_admin ? "opacity-40 cursor-not-allowed" : "hover:bg-red-500/20 text-red-300 border-red-400/30"}`}
+                                      ${!canDeleteRole ? "opacity-40 cursor-not-allowed" : "hover:bg-red-500/20 text-red-300 border-red-400/30"}`}
                                     >
                                         Eliminar
                                     </button>

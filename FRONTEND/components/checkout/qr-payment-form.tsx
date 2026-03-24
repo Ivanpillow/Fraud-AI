@@ -185,7 +185,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
-          "X-API-Key": "floreria_key"
+          "X-API-Key": "libros_book"
          },
         body: JSON.stringify(payload),
         credentials: "include",
