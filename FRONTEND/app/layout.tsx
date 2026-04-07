@@ -16,9 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FraudAI - Prevención de Fraude",
+  title: "FraudAI - Inicio de Sesión",
   description:
-    "Panel de control para monitorear y gestionar transacciones, detectar fraudes y administrar usuarios.",
+    "Detección inteligente de fraude y monitoreo de transacciones en tiempo real.",
   icons: {
     icon: "/images/fraudai_icon_v2.png",
     shortcut: "/images/fraudai_icon_v2.png",
@@ -40,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >

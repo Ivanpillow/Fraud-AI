@@ -1,12 +1,9 @@
 "use client";
 
-import React from "react"
-
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, loginUser } from "@/lib/api";
-import { USE_MOCK } from "@/lib/mock-data";
 import { isValidEmail, sanitizeInput, validatePassword } from "@/lib/auth-validation";
 
 export default function LoginForm() {
@@ -44,7 +41,7 @@ export default function LoginForm() {
   };
 
   // Manejo del submit del formulario
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
@@ -53,7 +50,6 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-
       const result = await loginUser(sanitizeInput(email), password);
       if (result.error) {
         if (result.status === 401) {
@@ -173,22 +169,22 @@ export default function LoginForm() {
           <p id="password-error" className="text-xs text-destructive animate-fade-in">
             {fieldErrors.password}
           </p>
-          ) : null} 
-          {/* Le quite lo de 8 characters at least por que contamina esa madre lol  */}
+          ) : null}
       </div>
 
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full rounded-lg bg-primary py-3 px-4 text-sm font-semibold text-primary-foreground transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+        className="group relative mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(20,184,166,0.96),rgba(45,212,191,0.9),rgba(59,130,246,0.92))] py-3.5 px-4 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(8,145,178,0.25)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(8,145,178,0.35)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
       >
+        <span className="absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(255,255,255,0.24)_50%,transparent_70%)] translate-x-[-140%] transition-transform duration-1000 group-hover:translate-x-[140%]" />
         {isLoading ? (
-          <span className="flex items-center justify-center gap-2">
+          <span className="relative flex items-center justify-center gap-2">
             <Loader2 size={16} className="animate-spin" />
             Iniciando sesión...
           </span>
         ) : (
-          "Iniciar sesión"
+          <span className="relative">Iniciar sesión</span>
         )}
       </button>
     </form>
