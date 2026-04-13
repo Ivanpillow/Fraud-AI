@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.base import Base
 from app.db.session import engine
+from app.core.config import settings
 from app.routers import fraud_feedback, qr_transactions, transactions, auth_router, users_management_router, roles_router, merchants_management_router
 from app.routers import metrics, notifications
 from app.models.user import User
@@ -9,6 +10,9 @@ from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
 import uvicorn
 import os
+
+
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 
 
 
@@ -24,11 +28,7 @@ app = FastAPI(
 # Configuración de CORS para permitir peticiones desde el frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000",
-        "http://192.168.100.72:3000"
-    ],  
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,4 +48,4 @@ app.include_router(merchants_management_router.router)
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=int(os.getenv("PORT", 8000)))
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
