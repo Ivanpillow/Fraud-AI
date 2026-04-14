@@ -8,6 +8,7 @@ from app.schemas.auth import LoginRequest, UpdateProfileRequest, ChangePasswordR
 from app.queries.auth_queries import get_auth_user_by_id
 from app.core.security import verify_access_token
 from app.core.authorization import is_superadmin_email
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -20,8 +21,8 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
         key="accessToken",
         value=result["accessToken"],
         httponly=True,
-        secure=False,      # True en produccion con HTTPS
-        samesite="lax",
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
         path="/"
     )
 
