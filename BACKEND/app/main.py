@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db.base import Base
 from app.db.session import engine
 from app.core.config import settings
-from app.routers import fraud_feedback, qr_transactions, transactions, auth_router, users_management_router, roles_router, merchants_management_router
+from app.routers import fraud_feedback, qr_transactions, transactions, bc_transactions, auth_router, users_management_router, roles_router, merchants_management_router
 from app.routers import metrics, notifications
 from app.models.user import User
 from app.models.transaction import Transaction
@@ -37,6 +37,7 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(transactions.router)
 app.include_router(qr_transactions.router)
+app.include_router(bc_transactions.router)
 app.include_router(metrics.router)
 app.include_router(notifications.router)
 app.include_router(fraud_feedback.router)

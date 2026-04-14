@@ -120,7 +120,11 @@ export default function CheckoutPage() {
               />
             )}
             {selectedMethod === "crypto" && (
-              <CryptoPaymentForm subtotal={subtotal} />
+              <CryptoPaymentForm
+                subtotal={subtotal}
+                resetTrigger={resetTrigger}
+                onResult={handleTransactionResult}
+              />
             )}
           </div>
         </div>
