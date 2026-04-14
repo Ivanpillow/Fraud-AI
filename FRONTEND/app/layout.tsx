@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
@@ -49,6 +50,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>{children}</AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
