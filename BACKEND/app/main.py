@@ -45,6 +45,16 @@ app.include_router(roles_router.router)
 app.include_router(merchants_management_router.router)
 
 
+@app.get("/")
+def root():
+    return {"message": "FraudAI Backend activo", "docs": "/docs", "health": "/health"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 
 
 if __name__ == "__main__":
