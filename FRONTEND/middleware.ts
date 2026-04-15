@@ -7,12 +7,10 @@ export function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname === "/login";
   const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
 
-  // Si no hay token y quiere entrar a dashboard, redirect a login
   if (!token && isDashboard) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Si hay token y quiere entrar a login, redirect a dashboard
   if (token && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

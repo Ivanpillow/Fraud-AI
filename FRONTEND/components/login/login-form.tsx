@@ -59,33 +59,18 @@ export default function LoginForm() {
         } else {
           setError(result.error || "Error desconocido. Por favor intente nuevamente.");
         }
-      } else if (result.data && result.data.userData) {
-        const session = await apiRequest<{
-          id: number;
-          email: string;
-          full_name: string;
-          role: string;
-          merchant_name?: string;
-          is_admin?: boolean;
-          is_superadmin?: boolean;
-        }>("/auth/me", { method: "GET" });
+      } else if (result.data?.userData) {
+        const userData = result.data.userData;
 
-        if (session.error || !session.data) {
-          setError("No se pudo establecer la sesión. Verifica IP/backend y vuelve a intentar.");
-          return;
-        }
-
-        const userData = {
-          id: session.data.id,
-          email: session.data.email,
-          name: session.data.full_name,
-          role: session.data.role,
-          merchant_name: session.data.merchant_name,
-          is_admin: session.data.is_admin,
-          is_superadmin: session.data.is_superadmin,
-        };
-
-        login(userData);
+        login({
+          id: userData.id,
+          email: userData.email,
+          name: userData.full_name,
+          role: userData.role,
+          merchant_name: userData.merchant_name,
+          is_admin: userData.is_admin,
+          is_superadmin: userData.is_superadmin,
+        });
       }
     } catch {
       setError("Error de red. Por favor intente nuevamente.");

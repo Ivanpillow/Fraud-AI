@@ -3,11 +3,7 @@
  * All API calls go through this module for centralized error handling and auth.
  */
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : "http://localhost:8000");
+const API_BASE_URL = "/api";
 
 interface ApiOptions extends RequestInit {
   token?: string;
