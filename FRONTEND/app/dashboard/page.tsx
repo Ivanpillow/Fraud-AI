@@ -29,6 +29,8 @@ export default function OverviewPage() {
   const [selectedMerchantId, setSelectedMerchantId] = useState<number | undefined>(undefined);
 
   const searchParams = useSearchParams();
+  const stats = overviewData?.stats;
+  const totalRevenue = Number(stats?.total_revenue ?? 0);
   const deniedSection = searchParams.get("denied");
   const deniedMessage =
     deniedSection === "merchants"
@@ -137,28 +139,28 @@ export default function OverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 stagger-children">
           <StatCard
             label="Usuarios Activos"
-            value={overviewData?.stats.total_users || 0}
-            change={overviewData?.stats.users_change || 0}
+            value={stats?.total_users || 0}
+            change={stats?.users_change || 0}
             icon={Users}
             accent
           />
           <StatCard
             label="Transaccions Totales"
-            value={overviewData?.stats.total_transactions || 0}
-            change={overviewData?.stats.transactions_change || 0}
+            value={stats?.total_transactions || 0}
+            change={stats?.transactions_change || 0}
             icon={CreditCard}
           />
           <StatCard
             label="Monto Total de Transacciones"
-            value={`$${overviewData?.stats.total_revenue.toLocaleString() || 0}`}
-            change={overviewData?.stats.revenue_change || 0}
+            value={`$${totalRevenue.toLocaleString()}`}
+            change={stats?.revenue_change || 0}
             icon={DollarSign}
             accent
           />
           <StatCard
             label="Porcentaje de Fraude"
-            value={`${overviewData?.stats.fraud_rate || 0}%`}
-            change={overviewData?.stats.fraud_change || 0}
+            value={`${stats?.fraud_rate || 0}%`}
+            change={stats?.fraud_change || 0}
             icon={Percent}
           />
         </div>
