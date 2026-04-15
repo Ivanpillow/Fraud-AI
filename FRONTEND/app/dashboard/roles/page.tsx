@@ -106,7 +106,6 @@ export default function RolesPage() {
     if (!currentUser) return
 
     if (isSuperadmin) {
-      setSelectedMerchantId((prev) => (prev === undefined ? 0 : prev))
       return
     }
 
@@ -119,12 +118,21 @@ export default function RolesPage() {
     async function loadMerchants() {
       try {
         const data = await fetchMerchants()
-        setMerchants(
-          data.map((merchant) => ({
+        const mapped = data.map((merchant) => ({
             merchant_id: merchant.merchant_id,
             name: merchant.name,
           }))
+
+        setMerchants(
+          mapped
         )
+        setSelectedMerchantId((current) => {
+          if (current !== undefined) {
+            return current
+          }
+
+          return mapped[0]?.merchant_id
+        })
       } catch (error) {
         console.error("Error loading merchants", error)
       }

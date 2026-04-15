@@ -88,7 +88,6 @@ export default function UsersPage() {
     if (!currentUser) return;
 
     if (isSuperadmin) {
-      setSelectedMerchantId((prev) => (prev === undefined ? 0 : prev));
       return;
     }
 
@@ -107,6 +106,13 @@ export default function UsersPage() {
         }));
 
         setMerchants(mapped);
+        setSelectedMerchantId((current) => {
+          if (current !== undefined) {
+            return current;
+          }
+
+          return mapped[0]?.merchant_id;
+        });
       } catch (error) {
         console.error("Error cargando comercios", error);
       }
