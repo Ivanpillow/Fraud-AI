@@ -342,7 +342,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "X-API-Key": "libros_book"
+          "X-API-Key": "floreria_key"
          },
         body: JSON.stringify(payload),
         credentials: "include",

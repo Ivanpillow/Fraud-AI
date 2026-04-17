@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.forwarded_headers import ForwardedHeaderMiddleware
 from app.db.base import Base
 from app.db.session import engine
 from app.core.config import settings
@@ -25,6 +26,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+# IMPORTANTE: ForwardedHeaderMiddleware DEBE ir ANTES que CORS
+# Esto hace que FastAPI respete los headers X-Forwarded-* de Vercel
+app.add_middleware(ForwardedHeaderMiddleware)
 
 # Configuración de CORS para permitir peticiones desde el frontend
 app.add_middleware(
