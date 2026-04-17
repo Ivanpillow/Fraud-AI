@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.forwarded_headers import ForwardedHeaderMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from app.db.base import Base
 from app.db.session import engine
 from app.core.config import settings
@@ -17,6 +18,17 @@ cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if
 cors_origin_regex = r"https://.*\.vercel\.app"
 
 
+# Middleware para respetar headers de Vercel proxy (X-Forwarded-*)
+class TrustedProxyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Lee los headers X-Forwarded-* enviados por Vercel
+        if "x-forwarded-proto" in request.headers:
+            request.scope["scheme"] = request.headers["x-forwarded-proto"]
+        if "x-forwarded-host" in request.headers:
+            host = request.headers["x-forwarded-host"]
+            request.scope["server"] = (host, 443 if request.headers.get("x-forwarded-proto") == "https" else 80)
+        return await call_next(request)
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,9 +39,9 @@ app = FastAPI(
 )
 
 
-# IMPORTANTE: ForwardedHeaderMiddleware DEBE ir ANTES que CORS
+# IMPORTANTE: TrustedProxyMiddleware DEBE ir ANTES que CORS
 # Esto hace que FastAPI respete los headers X-Forwarded-* de Vercel
-app.add_middleware(ForwardedHeaderMiddleware)
+app.add_middleware(TrustedProxyMiddleware)
 
 # Configuración de CORS para permitir peticiones desde el frontend
 app.add_middleware(
