@@ -39,19 +39,21 @@ app = FastAPI(
 )
 
 
-# IMPORTANTE: TrustedProxyMiddleware DEBE ir ANTES que CORS
-# Esto hace que FastAPI respete los headers X-Forwarded-* de Vercel
-app.add_middleware(TrustedProxyMiddleware)
-
-# Configuración de CORS para permitir peticiones desde el frontend
+# Configuración de CORS PRIMERO (se ejecuta antes en la cadena)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_origin_regex=cors_origin_regex,
-    allow_credentials=True,
+    allow_credentials=True,  # Permite cookies
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],  # Expone todos los headers de respuesta
 )
+
+# IMPORTANTE: TrustedProxyMiddleware va SEGUNDO (se ejecuta después)
+# Esto hace que FastAPI respete los headers X-Forwarded-* de Vercel
+# y que los redirects usen HTTPS
+app.add_middleware(TrustedProxyMiddleware)
 
 app.include_router(auth_router.router)
 app.include_router(transactions.router)

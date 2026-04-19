@@ -1,10 +1,16 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "" 
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,https://fraud-ai-ashy.vercel.app"
-    COOKIE_SECURE: bool = False
-    COOKIE_SAMESITE: str = "lax"
+    
+    # Detectar ambiente: Railway usa RAILWAY_ENVIRONMENT_NAME
+    ENV: str = os.getenv("RAILWAY_ENVIRONMENT_NAME", "development")
+    
+    # En producción (Railway), usar HTTPS y SameSite=none
+    COOKIE_SECURE: bool = ENV == "production"
+    COOKIE_SAMESITE: str = "none" if ENV == "production" else "lax"
 
     # class Config:
     #     env_file = ".env"
