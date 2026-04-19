@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Bitcoin, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/api";
+import CustomSelect from "./custom-select";
 
-/* Crypto brand info */
 interface CryptoInfo {
   name: string;
   symbol: string;
   color: string;
   gradient: string;
   icon: string;
+  network: string;
 }
 
 const CRYPTOS: CryptoInfo[] = [
@@ -19,6 +22,7 @@ const CRYPTOS: CryptoInfo[] = [
     color: "#F7931A",
     gradient: "from-orange-600/20 to-yellow-600/10",
     icon: "₿",
+    network: "Bitcoin",
   },
   {
     name: "Ethereum",
@@ -26,6 +30,7 @@ const CRYPTOS: CryptoInfo[] = [
     color: "#627EEA",
     gradient: "from-indigo-600/20 to-purple-600/10",
     icon: "Ξ",
+    network: "Ethereum",
   },
   {
     name: "BNB",
@@ -33,6 +38,7 @@ const CRYPTOS: CryptoInfo[] = [
     color: "#F3BA2F",
     gradient: "from-yellow-600/20 to-amber-600/10",
     icon: "◆",
+    network: "BNB Chain",
   },
   {
     name: "Solana",
@@ -40,6 +46,7 @@ const CRYPTOS: CryptoInfo[] = [
     color: "#9945FF",
     gradient: "from-purple-600/20 to-cyan-600/10",
     icon: "◎",
+    network: "Solana",
   },
   {
     name: "XRP",
@@ -47,39 +54,173 @@ const CRYPTOS: CryptoInfo[] = [
     color: "#23292F",
     gradient: "from-slate-600/20 to-blue-600/10",
     icon: "✕",
+    network: "XRP Ledger",
   },
 ];
 
 interface Props {
   subtotal: number;
+  resetTrigger?: number;
+  onResult?: (result: {
+    transaction_id: number;
+    fraud_probability: number;
+    decision: string;
+    model_scores: {
+      random_forest: number;
+      logistic_regression: number;
+      kmeans_anomaly: number;
+    };
+    explanations?: unknown;
+  } | null) => void;
 }
 
-export default function CryptoPaymentForm({ subtotal }: Props) {
+export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult }: Props) {
   const [selectedCrypto, setSelectedCrypto] = useState<string>("BTC");
   const [walletAddress, setWalletAddress] = useState("");
+  const [userId, setUserId] = useState("1");
+  const [merchantCategory, setMerchantCategory] = useState("crypto");
+  const [country, setCountry] = useState("MX");
+  const [deviceType, setDeviceType] = useState("desktop");
+  const [selectedHour, setSelectedHour] = useState("");
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const selected = CRYPTOS.find((c) => c.symbol === selectedCrypto)!;
+  const selected = useMemo(
+    () => CRYPTOS.find((crypto) => crypto.symbol === selectedCrypto) ?? CRYPTOS[0],
+    [selectedCrypto]
+  );
+
+  useEffect(() => {
+    setSelectedCrypto("BTC");
+    setWalletAddress("");
+    setUserId("1");
+    setMerchantCategory("crypto");
+    setCountry("MX");
+    setDeviceType("desktop");
+    setSelectedHour("");
+    setSelectedDayOfWeek("");
+    setIsSubmitting(false);
+    setError(null);
+  }, [resetTrigger]);
+
+  const merchantCategories = [
+    { value: "crypto", label: "Cripto" },
+    { value: "electronics", label: "Electrónica" },
+    { value: "gaming", label: "Gaming" },
+    { value: "travel", label: "Viajes" },
+    { value: "retail", label: "Retail" },
+  ];
+
+  const countries = [
+    { value: "MX", label: "México" },
+    { value: "US", label: "Estados Unidos" },
+    { value: "CA", label: "Canadá" },
+    { value: "BR", label: "Brasil" },
+    { value: "ES", label: "España" },
+    { value: "FR", label: "Francia" },
+  ];
+
+  const dayOptions = [
+    { value: "", label: "Automático" },
+    { value: "1", label: "Lunes" },
+    { value: "2", label: "Martes" },
+    { value: "3", label: "Miércoles" },
+    { value: "4", label: "Jueves" },
+    { value: "5", label: "Viernes" },
+    { value: "6", label: "Sábado" },
+    { value: "7", label: "Domingo" },
+  ];
+
+  const hourOptions = [
+    { value: "", label: "Automático" },
+    ...Array.from({ length: 24 }, (_, hour) => ({
+      value: String(hour),
+      label: `${hour.toString().padStart(2, "0")}:00`,
+    })),
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    onResult?.(null);
+
+    if (subtotal <= 0) {
+      setError("Por favor ingrese un monto válido en el resumen del pedido");
+      return;
+    }
+
+    const parsedUserId = parseInt(userId, 10);
+    if (!Number.isFinite(parsedUserId) || parsedUserId <= 0) {
+      setError("ID de usuario inválido");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        user_id: parsedUserId,
+        amount: subtotal,
+        merchant_category: merchantCategory,
+        country,
+        device_type: deviceType,
+        ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
+        ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
+      };
+
+      const response = await fetch(`${API_BASE_URL}/bc-transactions/simple`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "libros_book",
+        },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ detail: "Crypto transaction failed" }));
+        throw new Error(errData.detail || "Crypto transaction failed");
+      }
+
+      const result = await response.json();
+      onResult?.(result);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Crypto transaction failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   return (
-    <div className="flex flex-col gap-6">
-      <h2 className="text-lg font-semibold text-foreground">
-        Pago con Criptomoneda
-      </h2>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Pago Blockchain</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Prototipo visual de pago cripto para demo de interfaz.
+          </p>
+        </div>
+        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground flex items-center gap-2">
+          <Bitcoin size={14} className="text-amber-400" />
+          Blockchain Prototype
+        </div>
+      </div>
 
-      {/* Template Notice */}
       <div className="glass-checkout-alert-info rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
-        <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
-          <span className="text-xs text-blue-400">i</span>
+        <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+          <span className="text-xs text-amber-300">i</span>
         </div>
         <div>
-          <p className="text-sm text-blue-300 font-medium">Modo de Plantilla</p>
-          <p className="text-xs text-blue-300/70 mt-1">
-            Los pagos con criptomonedas aún no están conectados al sistema de detección de fraude del backend. Esta interfaz sirve como plantilla de diseño para futura integración.
+          <p className="text-sm text-amber-200 font-medium">Modo prototipo</p>
+          <p className="text-xs text-amber-100/70 mt-1">
+            Esta sección usa endpoint dedicado de blockchain y mantiene el flujo simple sin Coinbase Commerce por ahora.
           </p>
         </div>
       </div>
 
-      {/* Crypto Selector */}
       <div className="grid grid-cols-5 gap-3">
         {CRYPTOS.map((crypto) => {
           const isActive = selectedCrypto === crypto.symbol;
@@ -90,9 +231,7 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
               onClick={() => setSelectedCrypto(crypto.symbol)}
               className={cn(
                 "glass-crypto-card flex flex-col items-center gap-2 py-4 px-2 rounded-2xl transition-all duration-300",
-                isActive
-                  ? "glass-crypto-active border-white/20 shadow-lg"
-                  : "border-white/5 hover:border-white/10"
+                isActive ? "glass-crypto-active border-white/20 shadow-lg" : "border-white/5 hover:border-white/10"
               )}
               style={
                 isActive
@@ -106,9 +245,7 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
                 className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold transition-all duration-300",
                   `bg-gradient-to-br ${crypto.gradient}`,
-                  isActive
-                    ? "scale-110 shadow-lg"
-                    : "scale-100"
+                  isActive ? "scale-110 shadow-lg" : "scale-100"
                 )}
                 style={
                   isActive
@@ -118,12 +255,7 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
               >
                 {crypto.icon}
               </div>
-              <span
-                className={cn(
-                  "text-xs font-semibold transition-colors duration-200",
-                  isActive ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
+              <span className={cn("text-xs font-semibold transition-colors duration-200", isActive ? "text-foreground" : "text-muted-foreground")}>
                 {crypto.symbol}
               </span>
             </button>
@@ -131,64 +263,128 @@ export default function CryptoPaymentForm({ subtotal }: Props) {
         })}
       </div>
 
-      {/* Selected Crypto Info */}
-      <div
-        className={cn(
-          "glass-checkout-card rounded-2xl p-5 bg-gradient-to-br",
-          selected.gradient
-        )}
-      >
-        <div className="flex items-center justify-between">
+      <div className={cn("glass-checkout-card rounded-2xl p-5 bg-gradient-to-br", selected.gradient)}>
+        <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm text-muted-foreground">A Pagar</p>
-            <p className="text-2xl font-bold text-foreground mt-1">
-              ${subtotal.toFixed(2)}
-            </p>
+            <p className="text-2xl font-bold text-foreground mt-1">${subtotal.toFixed(2)}</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">Moneda</p>
-            <p className="text-2xl font-bold mt-1" style={{ color: selected.color }}>
-              {selected.symbol}
-            </p>
+            <p className="text-sm text-muted-foreground">Asset</p>
+            <p className="text-2xl font-bold mt-1" style={{ color: selected.color }}>{selected.symbol}</p>
           </div>
         </div>
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <p className="text-xs text-muted-foreground">
-            El monto en {selected.name} se calculará al momento del pago según la tasa de cambio actual.
-          </p>
+        <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-white/10 bg-black/10 p-3">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Red</p>
+            <p className="text-sm text-foreground mt-1">{selected.network}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/10 p-3">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Estado</p>
+            <p className="text-sm text-foreground mt-1 break-all">
+              Conectado a bc-transactions/simple
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Wallet Address */}
       <div>
-        <label className="checkout-label">Dirección de Billetera</label>
+        <label className="checkout-label">Dirección de billetera (demo)</label>
         <input
           type="text"
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
-          placeholder={`Ingrese su dirección de billetera ${selected.symbol}`}
+          placeholder={`Ingrese su dirección de wallet ${selected.symbol}`}
           className="checkout-input font-mono text-sm"
-          style={{ minWidth: "350px" }}
+          disabled={isSubmitting}
         />
       </div>
 
-      {/* Submit (Disabled - Template) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="checkout-label">ID de Usuario</label>
+          <input
+            type="number"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="1"
+            className="checkout-input placeholder:text-muted-foreground/40"
+            min="1"
+            disabled={isSubmitting}
+          />
+        </div>
+        <div>
+          <label className="checkout-label">Tipo de Dispositivo</label>
+          <CustomSelect
+            value={deviceType}
+            onChange={setDeviceType}
+            options={[
+              { value: "desktop", label: "Ordenador" },
+              { value: "mobile", label: "Dispositivo Móvil" },
+            ]}
+            disabled={isSubmitting}
+          />
+        </div>
+        <div>
+          <label className="checkout-label">Categoría</label>
+          <CustomSelect
+            value={merchantCategory}
+            onChange={setMerchantCategory}
+            options={merchantCategories}
+            disabled={isSubmitting}
+          />
+        </div>
+        <div>
+          <label className="checkout-label">País</label>
+          <CustomSelect value={country} onChange={setCountry} options={countries} disabled={isSubmitting} />
+        </div>
+        <div>
+          <label className="checkout-label">Día de la Semana (opcional)</label>
+          <CustomSelect
+            value={selectedDayOfWeek}
+            onChange={setSelectedDayOfWeek}
+            options={dayOptions}
+            disabled={isSubmitting}
+          />
+        </div>
+        <div>
+          <label className="checkout-label">Hora del Día (opcional)</label>
+          <CustomSelect value={selectedHour} onChange={setSelectedHour} options={hourOptions} disabled={isSubmitting} />
+        </div>
+      </div>
+
+      {error && (
+        <div className="glass-checkout-alert-error rounded-2xl p-4 flex items-center gap-3 animate-fade-in">
+          <AlertTriangle size={18} className="text-red-400 shrink-0" />
+          <p className="text-sm text-red-300">{error}</p>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        Prototipo blockchain conectado al backend: usa el endpoint de transacción simple para correr análisis antifraude.
+      </div>
+
       <button
-        type="button"
-        disabled
+        type="submit"
+        disabled={isSubmitting || subtotal <= 0}
         className={cn(
-          "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold opacity-50 cursor-not-allowed",
-          "flex items-center justify-center gap-2"
+          "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
+          "flex items-center justify-center gap-2",
+          "disabled:opacity-40 disabled:cursor-not-allowed"
         )}
       >
-        <span
-          className="w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold"
-          style={{ color: selected.color }}
-        >
-          {selected.icon}
-        </span>
-        Pagar con {selected.name} (Próximamente)
+        {isSubmitting ? (
+          <>
+            <Loader2 size={18} className="animate-spin" />
+            Analizando transacción...
+          </>
+        ) : (
+          <>
+            <ShieldCheck size={18} />
+            Pagar con {selected.name} y analizar
+          </>
+        )}
       </button>
-    </div>
+    </form>
   );
 }
