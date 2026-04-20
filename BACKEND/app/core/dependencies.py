@@ -10,6 +10,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def get_current_user(accessToken: str | None = Cookie(default=None)):
     if not accessToken:
+        print("No se encontró el token de acceso en las cookies")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No autenticado"
@@ -19,6 +20,7 @@ def get_current_user(accessToken: str | None = Cookie(default=None)):
         payload = jwt.decode(accessToken, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
+        print("Token inválido")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido"

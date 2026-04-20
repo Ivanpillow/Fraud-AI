@@ -32,7 +32,7 @@ class NotificationResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/", response_model=List[NotificationResponse])
+@router.get("", response_model=List[NotificationResponse])
 def get_notifications(
     limit: int = 20,
     db: Session = Depends(get_db),
