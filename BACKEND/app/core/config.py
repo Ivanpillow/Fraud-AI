@@ -5,12 +5,21 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "" 
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,https://fraud-ai-ashy.vercel.app"
     
-    # Detectar ambiente: Railway usa RAILWAY_ENVIRONMENT_NAME
-    ENV: str = os.getenv("RAILWAY_ENVIRONMENT_NAME", "development")
-    
-    # En producción (Railway), usar HTTPS y SameSite=none
-    COOKIE_SECURE: bool = ENV == "production"
-    COOKIE_SAMESITE: str = "none" if ENV == "production" else "lax"
+    # Detectar ambiente de forma robusta para Railway/Vercel/staging.
+    ENV: str = os.getenv(
+        "ENV",
+        os.getenv(
+            "APP_ENV",
+            os.getenv("RAILWAY_ENVIRONMENT_NAME", os.getenv("NODE_ENV", "development")),
+        ),
+    )
+
+    # En cloud (production/staging), cookies deben ser Secure + SameSite=None.
+    _ENV_NORMALIZED: str = ENV.lower().strip()
+    IS_CLOUD_ENV: bool = _ENV_NORMALIZED in {"production", "prod", "staging"}
+    COOKIE_SECURE: bool = IS_CLOUD_ENV
+    COOKIE_SAMESITE: str = "none" if IS_CLOUD_ENV else "lax"
+    COOKIE_DOMAIN: str = ""
 
     # Blockchain simulated provider settings
     BC_PROVIDER_NAME: str = "fake_blockchain"

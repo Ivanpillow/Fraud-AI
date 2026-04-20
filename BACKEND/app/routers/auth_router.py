@@ -17,13 +17,19 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
     result = login_user(db, payload.email, payload.password)
 
+    cookie_domain = settings.COOKIE_DOMAIN.strip() or None
+    samesite_value = (settings.COOKIE_SAMESITE or "lax").lower().strip()
+    if samesite_value not in {"lax", "strict", "none"}:
+        samesite_value = "lax"
+
     response.set_cookie(
         key="accessToken",
         value=result["accessToken"],
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite=settings.COOKIE_SAMESITE,
-        path="/"
+        samesite=samesite_value,
+        path="/",
+        domain=cookie_domain,
     )
 
     return {
@@ -33,9 +39,12 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
 
 @router.post("/logout")
 def logout(response: Response):
+    cookie_domain = settings.COOKIE_DOMAIN.strip() or None
+
     response.delete_cookie(
         key="accessToken",
-        path="/"
+        path="/",
+        domain=cookie_domain,
     )
     return {"ok": True}
 
