@@ -38,7 +38,7 @@ def _resolve_merchant_scope(current_user: dict, merchant_id: int | None) -> int:
 
     return user_merchant_id
 
-@router.get("/")
+@router.get("")
 def list_roles(
     merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
@@ -65,7 +65,7 @@ def list_roles(
         ]
     }
 
-@router.post("/")
+@router.post("")
 def create_role(
     payload: RoleRequest,
     merchant_id: int | None = Query(default=None),

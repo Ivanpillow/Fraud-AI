@@ -69,7 +69,7 @@ def get_users(
 
 
 
-@router.post("/")
+@router.post("")
 def create_user(
     payload: CreateUserRequest,
     merchant_id: int | None = Query(default=None),
