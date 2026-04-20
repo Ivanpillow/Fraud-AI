@@ -52,7 +52,7 @@ def _resolve_merchant_scope(current_user: dict, merchant_id: int | None) -> int:
         return user_merchant_id
 
 
-@router.get("/")
+@router.get("")
 def get_users(
     merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
