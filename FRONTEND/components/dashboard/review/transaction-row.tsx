@@ -8,7 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrencyMXN } from "@/lib/utils";
 import { updateNotificationDecision } from "@/lib/api";
 
 interface Transaction {
@@ -157,7 +157,7 @@ export default function TransactionRow({
 
         {/* Amount */}
         <span className="text-lg font-bold font-mono text-foreground">
-          ${tx.amount.toLocaleString()}
+          {formatCurrencyMXN(tx.amount)}
         </span>
 
         {/* Expand */}

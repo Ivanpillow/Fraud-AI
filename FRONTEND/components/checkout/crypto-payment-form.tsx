@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bitcoin, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
@@ -74,6 +74,31 @@ interface Props {
   } | null) => void;
 }
 
+interface BCPaymentStatus {
+  payment_id: number;
+  status: "pending" | "confirming" | "confirmed" | "failed";
+  status_reason?: string | null;
+  tx_hash?: string | null;
+  provider: string;
+  provider_reference: string;
+  confirmations: number;
+  required_confirmations: number;
+  fraud_result?: {
+    transaction_id: number;
+    fraud_probability: number;
+    decision: string;
+    model_scores: {
+      random_forest: number;
+      logistic_regression: number;
+      kmeans_anomaly: number;
+    };
+    explanations?: unknown;
+  } | null;
+}
+
+const FINAL_STATUSES = new Set(["confirmed", "failed"]);
+const POLL_INTERVAL_MS = 2000;
+
 export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult }: Props) {
   const [selectedCrypto, setSelectedCrypto] = useState<string>("BTC");
   const [walletAddress, setWalletAddress] = useState("");
@@ -84,14 +109,24 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
   const [selectedHour, setSelectedHour] = useState("");
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<BCPaymentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
 
   const selected = useMemo(
     () => CRYPTOS.find((crypto) => crypto.symbol === selectedCrypto) ?? CRYPTOS[0],
     [selectedCrypto]
   );
 
+  const stopPolling = () => {
+    if (pollTimerRef.current) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
+    stopPolling();
     setSelectedCrypto("BTC");
     setWalletAddress("");
     setUserId("1");
@@ -101,8 +136,57 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
     setSelectedHour("");
     setSelectedDayOfWeek("");
     setIsSubmitting(false);
+    setPaymentStatus(null);
     setError(null);
   }, [resetTrigger]);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        window.clearTimeout(pollTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleStatusPoll = (paymentId: number) => {
+    stopPolling();
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/bc-transactions/${paymentId}`, {
+          method: "GET",
+          headers: {
+            "X-API-Key": "floreria_key",
+          },
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ detail: "Unable to fetch blockchain status" }));
+          throw new Error(errData.detail || "Unable to fetch blockchain status");
+        }
+
+        const statusPayload = (await response.json()) as BCPaymentStatus;
+        setPaymentStatus(statusPayload);
+
+        if (statusPayload.fraud_result && FINAL_STATUSES.has(statusPayload.status)) {
+          onResult?.(statusPayload.fraud_result);
+        }
+
+        if (!FINAL_STATUSES.has(statusPayload.status)) {
+          pollTimerRef.current = window.setTimeout(poll, POLL_INTERVAL_MS);
+          return;
+        }
+
+        stopPolling();
+      } catch (pollErr: unknown) {
+        setError(pollErr instanceof Error ? pollErr.message : "Error consultando estado blockchain");
+        pollTimerRef.current = window.setTimeout(poll, POLL_INTERVAL_MS * 2);
+      }
+    };
+
+    void poll();
+  };
 
   const merchantCategories = [
     { value: "crypto", label: "Cripto" },
@@ -142,7 +226,9 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    stopPolling();
     setError(null);
+    setPaymentStatus(null);
     onResult?.(null);
 
     if (subtotal <= 0) {
@@ -165,6 +251,9 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
         merchant_category: merchantCategory,
         country,
         device_type: deviceType,
+        asset_symbol: selected.symbol,
+        network: selected.network,
+        wallet_address: walletAddress || undefined,
         ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
         ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
       };
@@ -185,13 +274,25 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
       }
 
       const result = await response.json();
-      onResult?.(result);
+      setPaymentStatus(result as BCPaymentStatus);
+      scheduleStatusPoll(result.payment_id as number);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Crypto transaction failed");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const statusLabel =
+    paymentStatus?.status === "pending"
+      ? "Pendiente de red"
+      : paymentStatus?.status === "confirming"
+      ? "Confirmando en blockchain"
+      : paymentStatus?.status === "confirmed"
+      ? "Confirmada"
+      : paymentStatus?.status === "failed"
+      ? "Fallida"
+      : "Sin transacción activa";
 
 
   return (
@@ -282,10 +383,28 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
           <div className="rounded-xl border border-white/10 bg-black/10 p-3">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Estado</p>
             <p className="text-sm text-foreground mt-1 break-all">
-              Conectado a bc-transactions/simple
+              {statusLabel}
             </p>
           </div>
         </div>
+        {paymentStatus && (
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground space-y-1">
+            <p>
+              Payment ID: <span className="text-foreground">{paymentStatus.payment_id}</span>
+            </p>
+            <p>
+              Confirmaciones: <span className="text-foreground">{paymentStatus.confirmations}/{paymentStatus.required_confirmations}</span>
+            </p>
+            <p>
+              Provider ref: <span className="text-foreground break-all">{paymentStatus.provider_reference}</span>
+            </p>
+            {paymentStatus.tx_hash && (
+              <p>
+                Tx hash: <span className="text-foreground break-all">{paymentStatus.tx_hash}</span>
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div>
@@ -361,7 +480,7 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
       )}
 
       <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-        Prototipo blockchain conectado al backend: usa el endpoint de transacción simple para correr análisis antifraude.
+        Flujo blockchain simulado profesional: crea pago pendiente, pasa por confirming y finaliza por webhook interno.
       </div>
 
       <button
@@ -376,7 +495,7 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
         {isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Analizando transacción...
+            Creando pago blockchain...
           </>
         ) : (
           <>

@@ -1,5 +1,6 @@
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
+from app.models.bc_transaction import BCTransaction
 from app.models.fraud_prediction import FraudPrediction
 from app.models.transaction import Transaction
 from app.models.qr_transaction import QRTransaction
@@ -34,7 +35,7 @@ def _get_prediction_explanations(db: Session, prediction_id: int) -> list[dict]:
 def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | None = None):
     """
     Obtiene predicciones recientes de fraude con estado 'block' o 'review'.
-    Soporta tanto transacciones con tarjeta como transacciones QR.
+    Soporta transacciones card, qr y blockchain (expuestas como crypto en frontend).
     Retorna: lista de notificaciones de fraude con detalle de transacción.
     """
     # Obtener predicciones de fraude con estado block o review
@@ -54,7 +55,7 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
         transaction_data = {
             'prediction_id': pred.prediction_id,
             'transaction_id': pred.transaction_id,
-            'channel': pred.channel,
+            'channel': 'crypto' if pred.channel == 'blockchain' else pred.channel,
             'decision': pred.decision,
             'fraud_probability': float(pred.fraud_probability) if pred.fraud_probability else 0.0,
             'created_at': pred.created_at,
@@ -82,6 +83,15 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
                 transaction_data['amount'] = float(qr_transaction.amount) if qr_transaction.amount else 0.0
                 transaction_data['timestamp'] = getattr(qr_transaction, 'timestamp', pred.created_at)
                 transaction_data['user_id'] = qr_transaction.user_id
+
+        elif pred.channel == "blockchain":
+            bc_transaction = db.query(BCTransaction).filter(
+                BCTransaction.fraud_transaction_id == pred.transaction_id
+            ).first()
+            if bc_transaction:
+                transaction_data['amount'] = float(bc_transaction.amount) if bc_transaction.amount else 0.0
+                transaction_data['timestamp'] = bc_transaction.created_at or pred.created_at
+                transaction_data['user_id'] = bc_transaction.user_id
         
         results.append(transaction_data)
     

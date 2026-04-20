@@ -61,7 +61,7 @@ export default function ReviewPage() {
             id: notif.id,
             prediction_id: notif.prediction_id,
             transaction_id: notif.transaction_id,
-            channel: notif.channel as "card" | "qr" | "crypto",
+            channel: (notif.channel === "blockchain" ? "crypto" : notif.channel) as "card" | "qr" | "crypto",
             status: notif.type as "block" | "review",
             amount: notif.amount,
             fraud_probability: notif.fraud_probability,

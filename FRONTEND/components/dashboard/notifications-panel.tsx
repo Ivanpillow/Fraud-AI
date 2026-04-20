@@ -9,7 +9,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrencyMXN } from "@/lib/utils";
 import { fetchNotifications } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -178,7 +178,7 @@ export default function NotificationsPanel() {
                       {timeAgo(notif.timestamp)}
                     </span>
                     <span className="text-[10px] font-mono text-primary">
-                      ${notif.amount.toLocaleString()}
+                      {formatCurrencyMXN(notif.amount)}
                     </span>
                     {notif.type === "block" && (
                       <span className="text-[10px] text-destructive font-semibold">

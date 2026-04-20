@@ -1,25 +1,94 @@
+import random
+import secrets
+import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
-from app.models.transaction import Transaction
-from app.models.fraud_prediction import FraudPrediction
-from app.models.user import User
-from app.ml.predictors.fraud_ensemble import predict_fraud_combined
-from app.services.user_behavior_service import (
-    update_user_behavior,
-    update_user_avg_amount,
-    update_failed_attempts,
-)
-from app.ml.utils.explainability import explain_transaction
-from app.queries.fraud_explanation_queries import save_explanations
+import httpx
 
+from app.core.config import settings
+from app.db.session import SessionLocal
+from app.ml.predictors.fraud_ensemble import predict_fraud_combined
+from app.ml.utils.explainability import explain_transaction
+from app.models.bc_transaction import BCTransaction
+from app.models.fraud_prediction import FraudPrediction
+from app.models.transaction import Transaction
+from app.models.user import User
+from app.queries.fraud_explanation_queries import save_explanations
+from app.schemas.bc_transaction import BCWebhookEvent
 from app.services.user_behavior_service import (
-    get_user_stats,
     calculate_amount_vs_avg,
     calculate_risk_score_rule,
+    get_user_stats,
+    update_failed_attempts,
+    update_user_avg_amount,
+    update_user_behavior,
 )
 
 MEXICO_CITY_TZ = ZoneInfo("America/Mexico_City")
+FINAL_STATUSES = {"confirmed", "failed"}
+
+
+@dataclass
+class ProviderPaymentDraft:
+    provider: str
+    provider_reference: str
+
+
+class BlockchainProvider(Protocol):
+    name: str
+
+    def create_payment_reference(
+        self,
+        payment_id: int,
+        amount: float,
+        asset_symbol: str,
+        network: str,
+    ) -> ProviderPaymentDraft:
+        ...
+
+    def confirmation_delay_seconds(self) -> int:
+        ...
+
+    def build_tx_hash(self, network: str) -> str:
+        ...
+
+
+class FakeBlockchainProvider:
+    name = "fake_blockchain"
+
+    def create_payment_reference(
+        self,
+        payment_id: int,
+        amount: float,
+        asset_symbol: str,
+        network: str,
+    ) -> ProviderPaymentDraft:
+        random_part = secrets.token_hex(6)
+        reference = f"{asset_symbol.lower()}_{network.lower().replace(' ', '_')}_{payment_id}_{random_part}"
+        return ProviderPaymentDraft(provider=self.name, provider_reference=reference)
+
+    def confirmation_delay_seconds(self) -> int:
+        min_sec = max(1, int(settings.BC_CONFIRMATION_MIN_SECONDS))
+        max_sec = max(min_sec, int(settings.BC_CONFIRMATION_MAX_SECONDS))
+        return random.randint(min_sec, max_sec)
+
+    def build_tx_hash(self, network: str) -> str:
+        prefix = "0x"
+        if network.strip().lower().startswith("bitcoin"):
+            prefix = "btc_"
+        return f"{prefix}{secrets.token_hex(32)}"
+
+
+def _get_provider() -> BlockchainProvider:
+    provider_name = (settings.BC_PROVIDER_NAME or "fake_blockchain").strip().lower()
+    if provider_name == "fake_blockchain":
+        return FakeBlockchainProvider()
+
+    # Fallback conservador para evitar interrupciones por configuración inválida.
+    return FakeBlockchainProvider()
 
 
 def _ensure_user_exists(db, tx_data: dict) -> None:
@@ -94,146 +163,299 @@ def _score_bc_decision(features: dict, model_result: dict, is_new_user: bool) ->
     return decision, round(risk_rule, 4), round(decision_score, 4)
 
 
-def process_bc_transaction(db, tx_data, merchant_id):
+def _build_status_response(payment: BCTransaction) -> dict[str, Any]:
+    fraud_result = None
+    if payment.fraud_transaction_id and payment.fraud_decision:
+        fraud_result = {
+            "transaction_id": int(payment.fraud_transaction_id),
+            "fraud_probability": float(payment.fraud_probability or 0.0),
+            "decision": payment.fraud_decision,
+            "model_scores": (payment.request_payload or {}).get("fraud_model_scores", {}),
+            "explanations": (payment.request_payload or {}).get("fraud_explanations"),
+        }
+
+    return {
+        "payment_id": int(payment.payment_id),
+        "provider": payment.provider,
+        "provider_reference": payment.provider_reference,
+        "status": payment.status,
+        "status_reason": payment.status_reason,
+        "amount": float(payment.amount),
+        "fiat_currency": payment.fiat_currency,
+        "asset_symbol": payment.asset_symbol,
+        "network": payment.network,
+        "tx_hash": payment.tx_hash,
+        "confirmations": int(payment.confirmations or 0),
+        "required_confirmations": int(payment.required_confirmations or 0),
+        "created_at": payment.created_at,
+        "updated_at": payment.updated_at,
+        "confirmed_at": payment.confirmed_at,
+        "failed_at": payment.failed_at,
+        "fraud_result": fraud_result,
+    }
+
+
+def _send_internal_webhook(payload: dict[str, Any]) -> None:
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            client.post(
+                settings.BC_INTERNAL_WEBHOOK_URL,
+                json=payload,
+                headers={"X-BC-Webhook-Secret": settings.BC_INTERNAL_WEBHOOK_SECRET},
+            )
+    except Exception:
+        # El estado final se mantiene con fallback local para no dejar pagos colgados.
+        db = SessionLocal()
+        try:
+            apply_internal_webhook_event(db, payload)
+        finally:
+            db.close()
+
+
+def _simulate_blockchain_confirmation(payment_id: int, tx_data: dict, merchant_id: int) -> None:
+    provider = _get_provider()
+    delay = provider.confirmation_delay_seconds()
+    half_delay = max(1, delay // 2)
+
+    time.sleep(half_delay)
+    _send_internal_webhook(
+        {
+            "event_type": "payment.confirming",
+            "payment_id": payment_id,
+            "provider": provider.name,
+            "provider_reference": tx_data["provider_reference"],
+            "status": "confirming",
+            "confirmations": 1,
+            "required_confirmations": int(settings.BC_REQUIRED_CONFIRMATIONS),
+        }
+    )
+
+    time.sleep(max(1, delay - half_delay))
+
+    db = SessionLocal()
+    try:
+        fraud_result = _run_blockchain_fraud_analysis(db, tx_data, merchant_id)
+        decision = str(fraud_result["decision"] or "").lower().strip()
+        tx_hash = provider.build_tx_hash(tx_data["network"])
+
+        if decision == "block":
+            final_status = "failed"
+            status_reason = "fraud_blocked"
+        elif decision == "review":
+            final_status = "failed"
+            status_reason = "manual_review_required"
+        else:
+            final_status = "confirmed"
+            status_reason = "onchain_confirmed"
+
+        _send_internal_webhook(
+            {
+                "event_type": f"payment.{final_status}",
+                "payment_id": payment_id,
+                "provider": provider.name,
+                "provider_reference": tx_data["provider_reference"],
+                "status": final_status,
+                "status_reason": status_reason,
+                "tx_hash": tx_hash,
+                "confirmations": int(settings.BC_REQUIRED_CONFIRMATIONS),
+                "required_confirmations": int(settings.BC_REQUIRED_CONFIRMATIONS),
+                "fraud_result": fraud_result,
+            }
+        )
+    finally:
+        db.close()
+
+
+def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[str, Any]:
+    _ensure_user_exists(db, tx_data)
+
+    tx_hour = int(tx_data["hour"]) % 24
+    tx_day_of_week = int(tx_data["day_of_week"])
+    if tx_day_of_week < 1 or tx_day_of_week > 7:
+        tx_day_of_week = ((tx_day_of_week - 1) % 7) + 1
+
+    model_day_of_week = (tx_day_of_week - 1) % 7
+
+    transaction_id = int(datetime.utcnow().timestamp() * 1_000_000)
+
+    transaction = Transaction(
+        transaction_id=transaction_id,
+        user_id=tx_data["user_id"],
+        merchant_id=merchant_id,
+        amount=tx_data["amount"],
+        currency="MXN",
+        timestamp=datetime.now(timezone.utc),
+        hour=tx_hour,
+        day_of_week=tx_day_of_week,
+        country=tx_data["country"],
+        is_international=tx_data["is_international"],
+        device_type=tx_data["device_type"],
+    )
+
+    db.add(transaction)
+    db.flush()
+
+    user_stats = get_user_stats(db, tx_data["user_id"])
+    is_new_user = user_stats["transactions_last_24h"] < 3
+
+    features = {
+        "amount": tx_data["amount"],
+        "amount_vs_avg": tx_data["amount_vs_avg"],
+        "transactions_last_24h": user_stats["transactions_last_24h"],
+        "card_tx_last_24h": user_stats["card_tx_last_24h"],
+        "qr_tx_last_24h": user_stats["qr_tx_last_24h"],
+        "hour": tx_hour,
+        "day_of_week": model_day_of_week,
+        "failed_attempts": user_stats["failed_attempts"],
+        "is_international": tx_data["is_international"],
+    }
+
+    features["transactions_last_24h"] = min(features["transactions_last_24h"], 10)
+    features["card_tx_last_24h"] = min(features["card_tx_last_24h"], 10)
+    features["qr_tx_last_24h"] = min(features["qr_tx_last_24h"], 10)
+
+    for key, value in features.items():
+        if value is None:
+            features[key] = 0
+
+    result = predict_fraud_combined(features)
+    prediction = result["label"]
+    prob = float(result["final_score"])
+
+    decision, risk_score_rule, decision_score = _score_bc_decision(features, result, is_new_user)
+
+    fraud_pred = FraudPrediction(
+        transaction_id=transaction.transaction_id,
+        merchant_id=merchant_id,
+        channel="blockchain",
+        model_version="RF_LG_v2_bc_async",
+        fraud_probability=prob,
+        prediction_label=prediction,
+        risk_score_rule=risk_score_rule,
+        decision=decision,
+        rf_probability=result["rf_probability"],
+        logistic_probability=result["logistic_probability"],
+        kmeans_score=result["kmeans_score"],
+    )
+
+    db.add(fraud_pred)
+    db.flush()
+
+    if decision != "block":
+        update_user_avg_amount(
+            db=db,
+            user_id=tx_data["user_id"],
+            amount=tx_data["amount"],
+        )
+
+    update_user_behavior(
+        db=db,
+        user_id=tx_data["user_id"],
+        amount=tx_data["amount"],
+        avg_amount_user=user_stats["avg_amount_user"],
+        channel="card",
+    )
+
+    explanations = None
+    if max(prob, decision_score) >= 0.30:
+        logistic_features = {
+            "amount": features["amount"],
+            "amount_vs_avg": features["amount_vs_avg"],
+            "transactions_last_24h": features["transactions_last_24h"],
+            "card_tx_last_24h": features["card_tx_last_24h"],
+            "qr_tx_last_24h": features["qr_tx_last_24h"],
+            "hour": features["hour"],
+            "day_of_week": features["day_of_week"],
+            "failed_attempts": features["failed_attempts"],
+            "is_international": features["is_international"],
+        }
+
+        explanations = explain_transaction(logistic_features)
+
+        if explanations:
+            save_explanations(
+                db=db,
+                prediction_id=fraud_pred.prediction_id,
+                explanations=explanations,
+            )
+
+    update_failed_attempts(
+        db=db,
+        user_id=tx_data["user_id"],
+        decision=decision,
+    )
+
+    db.commit()
+
+    return {
+        "transaction_id": int(transaction.transaction_id),
+        "fraud_probability": prob,
+        "decision": decision,
+        "model_scores": {
+            "random_forest": round(result["rf_probability"], 4),
+            "logistic_regression": round(result["logistic_probability"], 4),
+            "kmeans_anomaly": round(result["kmeans_score"], 4),
+        },
+        "explanations": explanations,
+    }
+
+
+def process_bc_transaction(db, tx_data, merchant_id, background_tasks=None):
     try:
         _ensure_user_exists(db, tx_data)
 
-        tx_hour = int(tx_data["hour"]) % 24
-        tx_day_of_week = int(tx_data["day_of_week"])
-        if tx_day_of_week < 1 or tx_day_of_week > 7:
-            tx_day_of_week = ((tx_day_of_week - 1) % 7) + 1
+        provider = _get_provider()
+        payment_id = int(datetime.utcnow().timestamp() * 1_000_000)
 
-        model_day_of_week = (tx_day_of_week - 1) % 7
-
-        transaction_id = int(datetime.utcnow().timestamp() * 1_000_000)
-
-        transaction = Transaction(
-            transaction_id=transaction_id,
-            user_id=tx_data["user_id"],
-            merchant_id=merchant_id,
-            amount=tx_data["amount"],
-            currency="MXN",
-            timestamp=datetime.now(timezone.utc),
-            hour=tx_hour,
-            day_of_week=tx_day_of_week,
-            country=tx_data["country"],
-            is_international=tx_data["is_international"],
-            device_type=tx_data["device_type"],
+        draft = provider.create_payment_reference(
+            payment_id=payment_id,
+            amount=float(tx_data["amount"]),
+            asset_symbol=str(tx_data.get("asset_symbol") or "BTC"),
+            network=str(tx_data.get("network") or "Bitcoin"),
         )
 
-        db.add(transaction)
-        db.flush()
-
-        user_stats = get_user_stats(db, tx_data["user_id"])
-        is_new_user = user_stats["transactions_last_24h"] < 3
-
-        features = {
-            "amount": tx_data["amount"],
-            "amount_vs_avg": tx_data["amount_vs_avg"],
-            "transactions_last_24h": user_stats["transactions_last_24h"],
-            "card_tx_last_24h": user_stats["card_tx_last_24h"],
-            "qr_tx_last_24h": user_stats["qr_tx_last_24h"],
-            "hour": tx_hour,
-            "day_of_week": model_day_of_week,
-            "failed_attempts": user_stats["failed_attempts"],
-            "is_international": tx_data["is_international"],
+        tx_data_for_simulation = {
+            **tx_data,
+            "provider_reference": draft.provider_reference,
         }
 
-        features["transactions_last_24h"] = min(features["transactions_last_24h"], 10)
-        features["card_tx_last_24h"] = min(features["card_tx_last_24h"], 10)
-        features["qr_tx_last_24h"] = min(features["qr_tx_last_24h"], 10)
-
-        for key, value in features.items():
-            if value is None:
-                features[key] = 0
-
-        result = predict_fraud_combined(features)
-        prediction = result["label"]
-        prob = result["final_score"]
-
-        decision, risk_score_rule, decision_score = _score_bc_decision(features, result, is_new_user)
-
-        fraud_pred = FraudPrediction(
-            transaction_id=transaction.transaction_id,
+        bc_payment = BCTransaction(
+            payment_id=payment_id,
             merchant_id=merchant_id,
-            channel="blockchain",
-            model_version="RF_LG_v1_bc_logit",
-            fraud_probability=prob,
-            prediction_label=prediction,
-            risk_score_rule=risk_score_rule,
-            decision=decision,
-            rf_probability=result["rf_probability"],
-            logistic_probability=result["logistic_probability"],
-            kmeans_score=result["kmeans_score"],
+            user_id=tx_data["user_id"],
+            amount=tx_data["amount"],
+            fiat_currency="MXN",
+            asset_symbol=str(tx_data.get("asset_symbol") or "BTC"),
+            network=str(tx_data.get("network") or "Bitcoin"),
+            wallet_address=tx_data.get("wallet_address"),
+            provider=draft.provider,
+            provider_reference=draft.provider_reference,
+            status="pending",
+            status_reason="awaiting_chain_confirmation",
+            confirmations=0,
+            required_confirmations=int(settings.BC_REQUIRED_CONFIRMATIONS),
+            request_payload=tx_data_for_simulation,
         )
 
-        db.add(fraud_pred)
-        db.flush()
+        db.add(bc_payment)
+        db.commit()
+        db.refresh(bc_payment)
 
-        if decision != "block":
-            update_user_avg_amount(
-                db=db,
-                user_id=tx_data["user_id"],
-                amount=tx_data["amount"],
+        if background_tasks is not None:
+            background_tasks.add_task(
+                _simulate_blockchain_confirmation,
+                int(bc_payment.payment_id),
+                tx_data_for_simulation,
+                merchant_id,
             )
 
-        update_user_behavior(
-            db=db,
-            user_id=tx_data["user_id"],
-            amount=tx_data["amount"],
-            avg_amount_user=user_stats["avg_amount_user"],
-            channel="card",
-        )
-
-        explanations = None
-        if max(prob, decision_score) >= 0.30:
-            logistic_features = {
-                "amount": features["amount"],
-                "amount_vs_avg": features["amount_vs_avg"],
-                "transactions_last_24h": features["transactions_last_24h"],
-                "card_tx_last_24h": features["card_tx_last_24h"],
-                "qr_tx_last_24h": features["qr_tx_last_24h"],
-                "hour": features["hour"],
-                "day_of_week": features["day_of_week"],
-                "failed_attempts": features["failed_attempts"],
-                "is_international": features["is_international"],
-            }
-
-            explanations = explain_transaction(logistic_features)
-
-            if explanations:
-                save_explanations(
-                    db=db,
-                    prediction_id=fraud_pred.prediction_id,
-                    explanations=explanations,
-                )
-
-        update_failed_attempts(
-            db=db,
-            user_id=tx_data["user_id"],
-            decision=decision,
-        )
-
-        db.commit()
-
-        return {
-            "transaction_id": transaction.transaction_id,
-            "fraud_probability": prob,
-            "decision": decision,
-            "model_scores": {
-                "random_forest": round(result["rf_probability"], 4),
-                "logistic_regression": round(result["logistic_probability"], 4),
-                "kmeans_anomaly": round(result["kmeans_score"], 4),
-            },
-            "explanations": explanations,
-        }
-
+        return _build_status_response(bc_payment)
     except Exception as e:
         db.rollback()
         raise e
 
 
-def process_bc_transaction_simple(db, tx_data, merchant_id):
+def process_bc_transaction_simple(db, tx_data, merchant_id, background_tasks=None):
     try:
         _ensure_user_exists(db, tx_data)
 
@@ -267,9 +489,72 @@ def process_bc_transaction_simple(db, tx_data, merchant_id):
             "amount_vs_avg": amount_vs_avg,
             "failed_attempts": user_stats["failed_attempts"],
             "is_international": is_international,
+            "asset_symbol": str(tx_data.get("asset_symbol") or "BTC").upper(),
+            "network": str(tx_data.get("network") or "Bitcoin"),
         }
 
-        return process_bc_transaction(db, full_tx, merchant_id)
+        return process_bc_transaction(db, full_tx, merchant_id, background_tasks=background_tasks)
     except Exception as e:
         db.rollback()
         raise e
+
+
+def get_bc_payment_status(db, payment_id: int, merchant_id: int) -> dict[str, Any] | None:
+    payment = (
+        db.query(BCTransaction)
+        .filter(
+            BCTransaction.payment_id == payment_id,
+            BCTransaction.merchant_id == merchant_id,
+        )
+        .first()
+    )
+    if not payment:
+        return None
+
+    return _build_status_response(payment)
+
+
+def apply_internal_webhook_event(db, payload: dict[str, Any]) -> dict[str, Any] | None:
+    event = BCWebhookEvent(**payload)
+    payment = db.query(BCTransaction).filter(BCTransaction.payment_id == event.payment_id).first()
+    if not payment:
+        return None
+
+    incoming_status = event.status.lower().strip()
+    current_status = payment.status.lower().strip()
+
+    if current_status in FINAL_STATUSES:
+        return _build_status_response(payment)
+
+    payment.status = incoming_status
+    payment.status_reason = event.status_reason
+
+    if event.tx_hash:
+        payment.tx_hash = event.tx_hash
+
+    if event.confirmations is not None:
+        payment.confirmations = int(event.confirmations)
+
+    if event.required_confirmations is not None:
+        payment.required_confirmations = int(event.required_confirmations)
+
+    now_utc = datetime.now(timezone.utc)
+    if incoming_status == "confirmed":
+        payment.confirmed_at = now_utc
+    elif incoming_status == "failed":
+        payment.failed_at = now_utc
+
+    if event.fraud_result:
+        fraud_result = event.fraud_result.model_dump()
+        request_payload = dict(payment.request_payload or {})
+        request_payload["fraud_model_scores"] = fraud_result.get("model_scores", {})
+        request_payload["fraud_explanations"] = fraud_result.get("explanations")
+        payment.request_payload = request_payload
+
+        payment.fraud_transaction_id = int(fraud_result["transaction_id"])
+        payment.fraud_decision = str(fraud_result["decision"])
+        payment.fraud_probability = float(fraud_result["fraud_probability"])
+
+    db.commit()
+    db.refresh(payment)
+    return _build_status_response(payment)
