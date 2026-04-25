@@ -160,6 +160,7 @@ function CardBrandLogo({ brand }: { brand: CardBrand }) {
 /* Component */
 interface Props {
   amount: number;
+  apiKey: string;
   resetTrigger?: number;
   onResult: (result: {
     transaction_id: number;
@@ -174,7 +175,7 @@ interface Props {
   } | null) => void;
 }
 
-export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: Props) {
+export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onResult }: Props) {
   // const [cardNumber, setCardNumber] = useState("");
   // const [cardName, setCardName] = useState("");
   // const [expiry, setExpiry] = useState("");
@@ -340,7 +341,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "X-API-Key": "floreria_key"
+          "X-API-Key": apiKey
          },
         body: JSON.stringify(payload),
         credentials: "include",

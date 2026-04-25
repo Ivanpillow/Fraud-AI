@@ -8,6 +8,7 @@ import CustomSelect from "./custom-select";
 
 interface Props {
   subtotal: number;
+  apiKey: string;
   resetTrigger?: number;
   onResult: (result: {
     transaction_id: number;
@@ -56,7 +57,7 @@ function buildStableQrPattern(seed: number): boolean[] {
   });
 }
 
-export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: Props) {
+export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onResult }: Props) {
   const [userId, setUserId] = useState("1");
   const [country, setCountry] = useState("MX");
   const [selectedHour, setSelectedHour] = useState("");
@@ -185,7 +186,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
-          "X-API-Key": "floreria_key"
+          "X-API-Key": apiKey
          },
         body: JSON.stringify(payload),
         credentials: "include",

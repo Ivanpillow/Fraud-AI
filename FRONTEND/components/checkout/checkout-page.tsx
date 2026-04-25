@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { CreditCard, QrCode, Bitcoin } from "lucide-react";
 import CardPaymentForm from "./card-payment-form";
 import QRPaymentForm from "./qr-payment-form";
 import CryptoPaymentForm from "./crypto-payment-form";
 import OrderSummary from "./order-summary";
 import { cn } from "@/lib/utils";
+import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -23,6 +24,9 @@ export default function CheckoutPage() {
   const [subtotal, setSubtotal] = useState<number>(0);
   const [selectedTax, setSelectedTax] = useState<TaxCode | null>(null);
   const [resetTrigger, setResetTrigger] = useState(0);
+  const [merchantApiKey, setMerchantApiKey] = useState<string>("floreria_key");
+  const [merchantName, setMerchantName] = useState<string | null>(null);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
 
   const taxRate = selectedTax ? TAX_OPTIONS[selectedTax] : 0;
   const taxAmount = subtotal * taxRate;
@@ -55,6 +59,20 @@ export default function CheckoutPage() {
     setResetTrigger((prev) => prev + 1);
   }, []);
 
+  useEffect(() => {
+    const ctx = loadFraudAICheckoutContext();
+    if (!ctx) return;
+
+    setMerchantApiKey(ctx.merchant.apiKey);
+    setMerchantName(ctx.merchant.name || null);
+    setReturnUrl(ctx.returnUrl || null);
+
+    // Precargar subtotal (shipping/tax están en 0 en la demo de comercios).
+    if (Number.isFinite(ctx.cart?.subtotal)) {
+      setSubtotal(Number(ctx.cart.subtotal));
+    }
+  }, []);
+
   const paymentMethods = [
     { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },
     { id: "qr" as PaymentMethod, label: "Código QR", icon: QrCode },
@@ -67,6 +85,21 @@ export default function CheckoutPage() {
         <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
           Checkout
         </h1>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {merchantName && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
+              Comercio: <span className="text-foreground">{merchantName}</span>
+            </div>
+          )}
+          {returnUrl && (
+            <a
+              href={returnUrl}
+              className="rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/10 transition-all"
+            >
+              Volver a la tienda
+            </a>
+          )}
+        </div>
         <p className="text-muted-foreground mt-1 text-sm md:text-base">
           Realiza tu pago y obtén una evaluación de riesgo instantánea para tu transacción.
         </p>
@@ -108,6 +141,7 @@ export default function CheckoutPage() {
             {selectedMethod === "card" && (
               <CardPaymentForm
                 amount={total}
+                apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
                 onResult={handleTransactionResult}
               />
@@ -115,6 +149,7 @@ export default function CheckoutPage() {
             {selectedMethod === "qr" && (
               <QRPaymentForm
                 subtotal={subtotal}
+                apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
                 onResult={handleTransactionResult}
               />
@@ -122,6 +157,7 @@ export default function CheckoutPage() {
             {selectedMethod === "crypto" && (
               <CryptoPaymentForm
                 subtotal={subtotal}
+                apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
                 onResult={handleTransactionResult}
               />

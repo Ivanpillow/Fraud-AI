@@ -60,6 +60,7 @@ const CRYPTOS: CryptoInfo[] = [
 
 interface Props {
   subtotal: number;
+  apiKey: string;
   resetTrigger?: number;
   onResult?: (result: {
     transaction_id: number;
@@ -99,7 +100,7 @@ interface BCPaymentStatus {
 const FINAL_STATUSES = new Set(["confirmed", "failed"]);
 const POLL_INTERVAL_MS = 2000;
 
-export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult }: Props) {
+export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, onResult }: Props) {
   const [selectedCrypto, setSelectedCrypto] = useState<string>("BTC");
   const [walletAddress, setWalletAddress] = useState("");
   const [userId, setUserId] = useState("1");
@@ -156,7 +157,7 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
         const response = await fetch(`${API_BASE_URL}/bc-transactions/${paymentId}`, {
           method: "GET",
           headers: {
-            "X-API-Key": "floreria_key",
+            "X-API-Key": apiKey,
           },
           credentials: "include",
         });
@@ -262,7 +263,7 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": "floreria_key",
+          "X-API-Key": apiKey,
         },
         body: JSON.stringify(payload),
         credentials: "include",
