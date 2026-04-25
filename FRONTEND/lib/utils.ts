@@ -47,3 +47,35 @@ export function formatCurrencyMXN(value: number | string | null | undefined): st
     maximumFractionDigits: 2,
   }).format(numericValue)
 }
+
+/** Lee el cuerpo de una respuesta HTTP fallida (JSON FastAPI o texto plano del servidor). */
+export async function readHttpErrorMessage(response: Response): Promise<string> {
+  const statusPart = `Error HTTP ${response.status}`;
+  const text = await response.text();
+  if (!text.trim()) {
+    return statusPart;
+  }
+  try {
+    const data = JSON.parse(text) as { detail?: unknown };
+    if (typeof data.detail === "string") {
+      return data.detail;
+    }
+    if (Array.isArray(data.detail)) {
+      const parts = data.detail.map((item: { msg?: string; type?: string }) => {
+        if (item && typeof item === "object") {
+          return typeof item.msg === "string" ? item.msg : JSON.stringify(item);
+        }
+        return String(item);
+      });
+      const joined = parts.filter(Boolean).join(" · ");
+      return joined || statusPart;
+    }
+    if (data.detail != null) {
+      return JSON.stringify(data.detail);
+    }
+  } catch {
+    // cuerpo no JSON (p. ej. "Internal Server Error" de Starlette)
+  }
+  const trimmed = text.trim().slice(0, 500);
+  return trimmed || statusPart;
+}

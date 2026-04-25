@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { QrCode, Loader2, AlertTriangle, ShieldCheck, MapPin } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
 
@@ -192,8 +192,7 @@ export default function QRPaymentForm({ subtotal, resetTrigger = 0, onResult }: 
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({ detail: "QR Transaction failed" }));
-        throw new Error(errData.detail || "QR Transaction failed");
+        throw new Error(await readHttpErrorMessage(response));
       }
 
       const result = await response.json();

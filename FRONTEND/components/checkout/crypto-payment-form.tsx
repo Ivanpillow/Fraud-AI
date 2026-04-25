@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bitcoin, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
 
@@ -269,8 +269,7 @@ export default function CryptoPaymentForm({ subtotal, resetTrigger = 0, onResult
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({ detail: "Crypto transaction failed" }));
-        throw new Error(errData.detail || "Crypto transaction failed");
+        throw new Error(await readHttpErrorMessage(response));
       }
 
       const result = await response.json();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,9 +70,13 @@ export default function CustomSelect({
     }
   }, [highlightedIndex]);
 
-  // Lógica para decidir si el dropdown se abre hacia arriba o hacia abajo
-  useEffect(() => {
-    if (!isOpen || !buttonRef.current) return;
+  // Posición del listado (viewport): useLayoutEffect evita un frame sin portal y solapa bien otros selects.
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setDropdownPosition(null);
+      return;
+    }
+    if (!buttonRef.current) return;
 
     const updateDropdownPosition = () => {
       if (!buttonRef.current) return;
@@ -126,7 +130,7 @@ export default function CustomSelect({
         "w-full px-4 py-3 text-left text-sm transition-all duration-200 focus:outline-none",
         variant === "dashboard"
           ? "bg-[hsl(220_18%_14%_/_1)] text-foreground hover:bg-[hsl(220_18%_18%_/_1)]"
-          : "hover:bg-white/10",
+          : "bg-transparent text-foreground hover:bg-white/12",
         value === option.value
           ? variant === "dashboard"
             ? "bg-[hsl(168_70%_24%_/_1)] text-foreground border-l-2 border-primary pl-3"
@@ -143,43 +147,26 @@ export default function CustomSelect({
     </button>
   ));
 
-  const inlineDropdown = (
-    <div
-      ref={listRef}
-      role="listbox"
-      className={cn(
-        "absolute left-0 right-0 z-50",
-        openUpward ? "bottom-full mb-2" : "top-full mt-2",
-        "checkout-dropdown-panel rounded-lg",
-        "shadow-lg",
-        "overflow-y-auto",
-        "py-2"
-      )}
-      style={{ maxHeight: `${dropdownMaxHeight}px` }}
-    >
-      {optionButtons}
-    </div>
-  );
-
-  const dashboardPortalDropdown = dropdownPosition ? (
-    <div
-      ref={listRef}
-      role="listbox"
-      className={cn(
-        "fixed z-[9999] pointer-events-auto dashboard-select-panel",
-        "rounded-lg shadow-lg overflow-y-auto py-2"
-      )}
-      style={{
-        left: `${dropdownPosition.left}px`,
-        width: `${dropdownPosition.width}px`,
-        maxHeight: `${dropdownMaxHeight}px`,
-        top: openUpward ? undefined : `${dropdownPosition.top}px`,
-        bottom: openUpward ? `${dropdownPosition.bottom}px` : undefined,
-      }}
-    >
-      {optionButtons}
-    </div>
-  ) : null;
+  const portalDropdown =
+    isOpen && !disabled && dropdownPosition ? (
+      <div
+        ref={listRef}
+        role="listbox"
+        className={cn(
+          "fixed z-[9999] pointer-events-auto rounded-2xl shadow-lg overflow-y-auto py-2",
+          variant === "dashboard" ? "dashboard-select-panel" : "checkout-dropdown-panel"
+        )}
+        style={{
+          left: `${dropdownPosition.left}px`,
+          width: `${dropdownPosition.width}px`,
+          maxHeight: `${dropdownMaxHeight}px`,
+          top: openUpward ? undefined : `${dropdownPosition.top}px`,
+          bottom: openUpward ? `${dropdownPosition.bottom}px` : undefined,
+        }}
+      >
+        {optionButtons}
+      </div>
+    ) : null;
 
   return (
     // Contenedor principal del select personalizado
@@ -188,7 +175,7 @@ export default function CustomSelect({
       className={cn(
         "relative w-full",
         variant === "dashboard" ? "isolate" : "",
-        variant === "dashboard" && isOpen ? "z-[9998]" : "z-10",
+        isOpen ? "z-[100]" : "z-10",
         className
       )}
     >
@@ -198,31 +185,29 @@ export default function CustomSelect({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={cn(
-          "checkout-input flex items-center justify-between w-full",
-          "bg-glass border-1.5 border-glass rounded-lg",
-          "text-right transition-all duration-300",
-          variant === "dashboard" && "dashboard-select-trigger",
+          // Misma base que los inputs del checkout (.checkout-input en globals.css)
+          "checkout-input flex w-full min-h-[2.75rem] items-center justify-between gap-2 transition-all duration-300",
+          variant === "dashboard"
+            ? "text-right dashboard-select-trigger"
+            : "text-left",
           disabled && "opacity-50 cursor-not-allowed"
         )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}  
       >
-        <span className={selectedOption ? "text-foreground" : "text-muted-foreground"}>
+        <span className={cn("min-w-0 flex-1 truncate", selectedOption ? "text-foreground" : "text-muted-foreground")}>
           {selectedOption?.label || placeholder}
         </span>
         <ChevronDown
           size={18}
           className={cn(
-            "transition-transform duration-300 text-white/60",
+            "shrink-0 transition-transform duration-300 text-muted-foreground",
             isOpen && "rotate-180"
           )}
         />
       </button>
 
-      {isOpen && !disabled && variant !== "dashboard" && inlineDropdown}
-      {isOpen && !disabled && variant === "dashboard" && dashboardPortalDropdown
-        ? createPortal(dashboardPortalDropdown, document.body)
-        : null}
+      {portalDropdown ? createPortal(portalDropdown, document.body) : null}
     </div>
   );
 }

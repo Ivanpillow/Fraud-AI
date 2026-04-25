@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 
@@ -20,10 +20,23 @@ class TransactionResponse(TransactionCreate):
 
 class TransactionRawCreate(BaseModel):
     transaction_id: Optional[int] = None
-    user_id: int
+    card_number: str = Field(..., description="PAN solo dígitos o con espacios; identifica al titular en users")
     amount: float
     merchant_category: str
     country: str
     device_type: str
     hour: Optional[int] = None
     day_of_week: Optional[int] = None
+
+    @field_validator("card_number", mode="before")
+    @classmethod
+    def digits_only_card(cls, v: object) -> str:
+        s = "".join(c for c in str(v or "") if c.isdigit())
+        return s
+
+    @field_validator("card_number")
+    @classmethod
+    def card_length(cls, v: str) -> str:
+        if len(v) < 13 or len(v) > 19:
+            raise ValueError("El número de tarjeta debe tener entre 13 y 19 dígitos")
+        return v

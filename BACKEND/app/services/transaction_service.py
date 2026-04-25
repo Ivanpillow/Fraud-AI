@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from sqlalchemy import func
 from app.models.transaction import Transaction
 from app.models.fraud_prediction import FraudPrediction
 from app.models.user import User
@@ -21,7 +22,7 @@ from app.services.user_behavior_service import (
 MEXICO_CITY_TZ = ZoneInfo("America/Mexico_City")
 
 
-def _ensure_user_exists(db, tx_data: dict) -> None:
+def _ensure_user_exists_by_id(db, tx_data: dict) -> None:
     user_id = int(tx_data["user_id"])
     user = db.query(User).filter(User.user_id == user_id).first()
     if user:
@@ -39,6 +40,54 @@ def _ensure_user_exists(db, tx_data: dict) -> None:
         )
     )
     db.flush()
+
+
+def _resolve_user_for_transaction(db, tx_data: dict) -> None:
+    """
+    Asigna tx_data['user_id'] antes de persistir la transacción.
+    Checkout: mismo PAN -> mismo user_id e historial; PAN nuevo -> nuevo registro en users.
+    Endpoint completo (TransactionCreate): sigue usando user_id explícito.
+    """
+    card_digits = tx_data.get("card_number")
+    if card_digits:
+        digits = "".join(c for c in str(card_digits) if c.isdigit())
+        if len(digits) < 13 or len(digits) > 19:
+            raise ValueError("Número de tarjeta inválido")
+
+        # Comparar por PAN normalizado (solo dígitos) para coincidir con filas guardadas con espacios/guiones.
+        pan_norm = func.regexp_replace(func.coalesce(User.card_number, ""), "[^0-9]", "", "g")
+        existing = (
+            db.query(User)
+            .filter(User.card_number.isnot(None))
+            .filter(pan_norm == digits)
+            .first()
+        )
+        if existing:
+            tx_data["user_id"] = int(existing.user_id)
+            return
+
+        country = str(tx_data.get("country") or "MX").upper()[:5]
+        amount = float(tx_data.get("amount") or 0.0)
+        max_id = db.query(func.max(User.user_id)).scalar()
+        new_id = int(max_id or 0) + 1
+
+        db.add(
+            User(
+                user_id=new_id,
+                card_number=digits,
+                country=country,
+                avg_amount_user=round(max(amount, 0.0), 2),
+                risk_profile="medium",
+            )
+        )
+        db.flush()
+        tx_data["user_id"] = new_id
+        return
+
+    if tx_data.get("user_id") is None:
+        raise ValueError("Se requiere user_id o card_number")
+
+    _ensure_user_exists_by_id(db, tx_data)
 
 
 def _score_card_decision(features: dict, model_result: dict, is_new_user: bool) -> tuple[str, float, float]:
@@ -98,7 +147,7 @@ def _score_card_decision(features: dict, model_result: dict, is_new_user: bool) 
 def process_transaction(db, tx_data, merchant_id):
 
     try:
-        _ensure_user_exists(db, tx_data)
+        _resolve_user_for_transaction(db, tx_data)
 
         tx_hour = int(tx_data["hour"]) % 24
         tx_day_of_week = int(tx_data["day_of_week"])
@@ -256,7 +305,7 @@ def process_transaction(db, tx_data, merchant_id):
 
 def process_transaction_simple(db, tx_data, merchant_id):
     try:
-        _ensure_user_exists(db, tx_data)
+        _resolve_user_for_transaction(db, tx_data)
 
         now = datetime.now(MEXICO_CITY_TZ)
 

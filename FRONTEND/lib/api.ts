@@ -107,7 +107,7 @@ export async function createTransaction(
 
 export async function createSimpleTransaction(
   transactionData: {
-    user_id: number;
+    card_number: string;
     amount: number;
     merchant: string;
     category: string;

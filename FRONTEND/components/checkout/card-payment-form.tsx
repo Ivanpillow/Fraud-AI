@@ -9,8 +9,8 @@ import {
   ShieldX,
   AlertTriangle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { createSimpleTransaction, API_BASE_URL } from "@/lib/api";
+import { cn, readHttpErrorMessage } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
 
 /* Deteccion de marcas de tarjeta */
@@ -180,8 +180,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
   // const [expiry, setExpiry] = useState("");
   // const [cvv, setCvv] = useState("");
 
-  // Fraud-relevant fields
-  const [userId, setUserId] = useState("1");
+  // Fraud-relevant fields (el titular se deduce del PAN vía backend)
   const [merchantCategory, setMerchantCategory] = useState("retail");
   const [country, setCountry] = useState("MX");
   const [deviceType, setDeviceType] = useState("desktop");
@@ -232,7 +231,6 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
     setCardName("");
     setExpiry("");
     setCvv("");
-    setUserId("1");
     setMerchantCategory("retail");
     setCountry("MX");
     setDeviceType("desktop");
@@ -248,6 +246,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
   }, [resetTrigger]);
 
   const merchantCategories = [
+    { value: "retail", label: "Retail / General" },
     { value: "grocery", label: "Supermercado" },
     { value: "electronics", label: "Electrónica" },
     { value: "fashion", label: "Moda" },
@@ -326,8 +325,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
       const finalCountry = useShipping ? shippingCountry : country;
 
       const payload = {
-        // transaction_id: txId,
-        user_id: parseInt(userId) || 1,
+        card_number: digits,
         amount: amount,
         merchant_category: merchantCategory,
         country: finalCountry,
@@ -350,8 +348,7 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
       // Para probar en un segundo comercio, usar "Prueba_Comercio_2" en X-API-Key
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({ detail: "Transaction failed" }));
-        throw new Error(errData.detail || "Transaction failed");
+        throw new Error(await readHttpErrorMessage(response));
       }
 
       const result = await response.json();
@@ -483,18 +480,6 @@ export default function CardPaymentForm({ amount, resetTrigger = 0, onResult }: 
           Detalles de la Transacción (para análisis de fraude)
         </h3>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="checkout-label">ID de Usuario</label>
-            <input
-              type="number"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="1"
-              className="checkout-input placeholder:text-muted-foreground/40"
-              min="1"
-              disabled={isSubmitting}
-            />
-          </div>
           <div>
             <label className="checkout-label">Tipo de Dispositivo</label>
             <CustomSelect
