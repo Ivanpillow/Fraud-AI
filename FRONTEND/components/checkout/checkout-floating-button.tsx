@@ -87,7 +87,7 @@ export default function CheckoutFloatingButton({
             "transition-all duration-300 hover:scale-105",
             "group"
           )}
-          title="Go to Payment Page"
+          title="Página de Pago"
         >
           <CreditCard
             size={isLoginAppearance ? 20 : 22}

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import LoginForm from "@/components/login/login-form";
 import CheckoutFloatingButton from "@/components/checkout/checkout-floating-button";
+import CommerceFloatingButton from "@/components/checkout/commerce-floating-button";
 import { ArrowDown, ShieldCheck, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -136,6 +137,7 @@ export default function LoginPage() {
         </section>
       </div>
 
+      <CommerceFloatingButton />
       <CheckoutFloatingButton appearance="login" />
     </main>
   );
