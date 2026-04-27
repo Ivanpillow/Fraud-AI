@@ -1,3 +1,5 @@
+import { DEMO_LIBRERIA_BOOKS } from "@/lib/demo-libreria-data";
+
 export type DemoEcommerceMerchantSlug = "floreria" | "libreria" | "marketplace";
 
 export type DemoEcommerceProduct = {
@@ -6,6 +8,7 @@ export type DemoEcommerceProduct = {
   price: number;
   emoji: string;
   category: string;
+  author?: string;
 };
 
 export type DemoEcommerceMerchant = {
@@ -19,56 +22,75 @@ export type DemoEcommerceMerchant = {
   catalog: DemoEcommerceProduct[];
 };
 
+function createUniformCatalog(
+  products: Array<Pick<DemoEcommerceProduct, "id" | "name" | "price" | "category" >>,
+  emoji: string
+): DemoEcommerceProduct[] {
+  return products.map((product) => ({
+    ...product,
+    emoji,
+  }));
+}
+
+function createBookCatalog(emoji: string): DemoEcommerceProduct[] {
+  return DEMO_LIBRERIA_BOOKS.map((book) => ({
+    id: book.id,
+    name: book.title,
+    price: book.price,
+    emoji,
+    category: book.genre,
+    author: book.author,
+  }));
+}
+
 export const DEMO_ECOMMERCE_MERCHANTS: Record<DemoEcommerceMerchantSlug, DemoEcommerceMerchant> = {
   floreria: {
     slug: "floreria",
-    name: "Jardin y Petalos",
+    name: "Florería Flowers",
     apiKey: "floreria_key", // API Key de la florería
-    tagline: "Flores artesanales con entrega segura",
-    hero: "Coleccion floral para ocasiones especiales",
-    cartLabel: "Mi ramo",
+    tagline: "Flores artesanales",
+    hero: "",
+    cartLabel: "Carrito de Compras",
     accentTone: "rose",
-    catalog: [
-      { id: "f1", name: "Ramo de rosas rojas", price: 450, emoji: "🌹", category: "Ramos" },
-      { id: "f2", name: "Tulipanes silvestres", price: 320, emoji: "🌷", category: "Individual" },
-      { id: "f3", name: "Girasoles premium", price: 280, emoji: "🌻", category: "Individual" },
-      { id: "f4", name: "Orquidea morada", price: 680, emoji: "🪷", category: "Premium" },
-      { id: "f5", name: "Bouquet primaveral", price: 520, emoji: "💐", category: "Ramos" },
-      { id: "f6", name: "Lirios blancos", price: 390, emoji: "🤍", category: "Premium" },
-    ],
+    catalog: createUniformCatalog(
+      [
+        { id: "f1", name: "Ramo de rosas rojas", price: 450, category: "Ramos" },
+        { id: "f2", name: "Tulipanes silvestres", price: 320, category: "Individual" },
+        { id: "f3", name: "Girasoles premium", price: 280, category: "Individual" },
+        { id: "f4", name: "Orquídea morada", price: 680, category: "Premium" },
+        { id: "f5", name: "Bouquet primaveral", price: 520, category: "Ramos" },
+        { id: "f6", name: "Lirios blancos", price: 390, category: "Premium" },
+        { id: "f7", name: "Caja de lirios pastel", price: 410, category: "Premium" },
+        { id: "f8", name: "Arreglo minimalista", price: 360, category: "Moderno" },
+      ],
+      "🌸"
+    ),
   },
   libreria: {
     slug: "libreria",
-    name: "Libreria BookSwap",
-    apiKey: "XXXX", // La supuesta API Key de la librería que no funciona libreria_key
-    tagline: "Catalogo curado para lectores frecuentes",
-    hero: "Libros clasicos, fantasia y ciencia ficcion",
-    cartLabel: "Mi estante",
+    name: "Librería BookSwap",
+    apiKey: "libreria_api_key", // La supuesta API Key de la librería que no funciona libreria_key
+    tagline: "Catálogo de libros varios",
+    hero: "",
+    cartLabel: "Carrito de Compras",
     accentTone: "emerald",
-    catalog: [
-      { id: "l1", name: "Cien Años de Soledad", price: 180, emoji: "📖", category: "Clasicos" },
-      { id: "l2", name: "El Principito", price: 120, emoji: "🌟", category: "Favoritos" },
-      { id: "l3", name: "Pedro Páramo", price: 150, emoji: "📘", category: "Clasicos" },
-      { id: "l4", name: "1984", price: 195, emoji: "📕", category: "Distopia" },
-      { id: "l5", name: "Rayuela", price: 210, emoji: "📙", category: "Vanguardia" },
-      { id: "l6", name: "Ficciones", price: 165, emoji: "📒", category: "Vanguardia" },
-    ],
+    catalog: createBookCatalog("📖"),
   },
   marketplace: {
     slug: "marketplace",
-    name: "MercadoRapido",
+    name: "Marketplace",
     apiKey: "sk_comercio_2_key", // API Key del marketplace
-    tagline: "Tecnologia y hogar con checkout antifraude",
-    hero: "Envio veloz para compras del dia a dia",
-    cartLabel: "Mi carrito",
+    tagline: "Tecnología/Hogar",
+    hero: "",
+    cartLabel: "Carrito de Compras",
     accentTone: "amber",
     catalog: [
-      { id: "m1", name: "Audifonos bluetooth pro", price: 1299, emoji: "🎧", category: "Tecnologia" },
-      { id: "m2", name: "Camara instantanea", price: 899, emoji: "📷", category: "Tecnologia" },
-      { id: "m3", name: "Mochila ultralight 30L", price: 649, emoji: "🎒", category: "Outdoor" },
+      { id: "m1", name: "Audífonos bluetooth pro", price: 1299, emoji: "🎧", category: "Tecnología" },
+      { id: "m2", name: "Cámara instantanea", price: 899, emoji: "📷", category: "Tecnología" },
+      { id: "m3", name: "Mochila ultralight 30L", price: 649, emoji: "🎒", category: "Exteriores" },
       { id: "m4", name: "Termo acero inox 1L", price: 349, emoji: "🫙", category: "Hogar" },
-      { id: "m5", name: "Teclado mecanico RGB", price: 1599, emoji: "⌨️", category: "Tecnologia" },
-      { id: "m6", name: "Silla ergonomica mesh", price: 3499, emoji: "🪑", category: "Oficina" },
+      { id: "m5", name: "Teclado mecánico RGB", price: 1599, emoji: "⌨️", category: "Tecnología" },
+      { id: "m6", name: "Silla ergonómica mesh", price: 3499, emoji: "🪑", category: "Oficina" },
     ],
   },
 };

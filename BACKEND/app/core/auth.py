@@ -3,6 +3,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.api_keys import APIKey
+from app.models.merchants import Merchant
 from app.core.config import settings
 from app.core.security import verify_access_token
 import hashlib
@@ -16,8 +17,10 @@ def get_current_merchant(
 
     api_key = (
         db.query(APIKey)
+        .join(Merchant, Merchant.merchant_id == APIKey.merchant_id)
         .filter(APIKey.key_hash == key_hash)
         .filter(APIKey.status == "active")
+        .filter(Merchant.status == "active")
         .first()
     )
 

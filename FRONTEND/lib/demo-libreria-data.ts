@@ -179,14 +179,14 @@ export const DEMO_LIBRERIA_BOOKS: DemoBook[] = [
     id: "book-classic-1",
     title: "1984",
     author: "George Orwell",
-    genre: "Clasico",
+    genre: "Clásico",
     price: 299,
   },
   {
     id: "book-classic-2",
     title: "Fahrenheit 451",
     author: "Ray Bradbury",
-    genre: "Clasico",
+    genre: "Clásico",
     price: 319,
   },
   {
@@ -195,13 +195,6 @@ export const DEMO_LIBRERIA_BOOKS: DemoBook[] = [
     author: "Dan Brown",
     genre: "Thriller",
     price: 339,
-  },
-  {
-    id: "book-thriller-2",
-    title: "Perdida",
-    author: "Gillian Flynn",
-    genre: "Thriller",
-    price: 359,
   },
 ];
 

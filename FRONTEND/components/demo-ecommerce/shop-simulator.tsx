@@ -90,7 +90,7 @@ export default function DemoEcommerceShopSimulator() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [currentPage, setCurrentPage] = useState(1);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const pageSize = 6;
+  const pageSize = 9;
 
   useEffect(() => {
     setCartState(loadDemoEcommerceCart());
@@ -265,8 +265,7 @@ export default function DemoEcommerceShopSimulator() {
                 Demo Multi Comercio FraudAI
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-muted-foreground md:text-base">
-                Esta demo replica la logica de Libreria: seleccion de comercio, carrito por tienda,
-                contexto antifraude y envio de api key al checkout FraudAI.
+                Simulación de tiendas online con diferentes catálogos y estilos, integradas con el checkout de FraudAI para mostrar su análisis antifraude en acción.
               </p>
             </div>
 
@@ -376,7 +375,12 @@ export default function DemoEcommerceShopSimulator() {
                     <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
                       {product.category}
                     </div>
-                    <h2 className="text-lg font-semibold text-foreground leading-tight">{product.name}</h2>
+                    <h2 className="text-lg font-semibold text-foreground leading-tight">{product.name}</h2> 
+                    {product.author && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                       <span className="text-foreground">{product.author}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
@@ -552,13 +556,12 @@ export default function DemoEcommerceShopSimulator() {
               </div>
             )}
 
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-xs text-muted-foreground">
+            {/* <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">Checkout FraudAI</p>
               <p className="mt-1">
-                El checkout recibe comercio, api key, carrito y returnUrl. Al abrir /demo-ecommerce/checkout,
-                se muestra el comercio activo y se usa esa api key en los requests antifraude.
+                Al proceder al checkout, se abrirá la interfaz de pago de FraudAI en una nueva pestaña, donde podrás ver el análisis antifraude en acción con los productos que has agregado al carrito.
               </p>
-            </div>
+            </div> */}
           </aside>
         </section>
       </div>

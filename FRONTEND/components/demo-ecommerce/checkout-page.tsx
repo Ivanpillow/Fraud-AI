@@ -3,10 +3,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CreditCard, QrCode, Bitcoin } from "lucide-react";
-import DemoLibreriaCardPaymentForm from "@/components/demo-libreria/card-payment-form";
-import DemoLibreriaQRPaymentForm from "@/components/demo-libreria/qr-payment-form";
-import DemoLibreriaCryptoPaymentForm from "@/components/demo-libreria/crypto-payment-form";
-import DemoLibreriaOrderSummary from "@/components/demo-libreria/order-summary";
+import DemoLibreriaCardPaymentForm from "@/components/demo-ecommerce/checkout-ecommerce/card-payment-form";
+import DemoLibreriaQRPaymentForm from "@/components/demo-ecommerce/checkout-ecommerce/qr-payment-form";
+import DemoLibreriaCryptoPaymentForm from "@/components/demo-ecommerce/checkout-ecommerce/crypto-payment-form";
+import DemoLibreriaOrderSummary from "@/components/demo-ecommerce/checkout-ecommerce/order-summary";
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";

@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="flex items-center justify-between px-6 pt-6 md:px-10 lg:px-12">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-12 w-12 overflow-hidden rounded-2xl border border-white/[0.15] bg-white/[0.08] p-2 shadow-[0_14px_36px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+            <div className="relative flex h-12 w-12 overflow-hidden rounded-2xl border border-white/[0.15] bg-white/[0.30] p-2 shadow-[0_14px_36px_rgba(0,0,0,0.35)] backdrop-blur-xl">
               <Image
                 src="/images/fraudai_icon_v2.png"
                 alt="FraudAI logo"
@@ -52,9 +52,6 @@ export default function LoginPage() {
               />
             </div>
             <div className="leading-none">
-              <p className="text-[10px] uppercase tracking-[0.45em] text-white/50">
-                FraudAI
-              </p>
               <p className="mt-1 text-sm font-semibold tracking-[0.22em] text-white/90">
                 FraudAI
               </p>
@@ -77,10 +74,10 @@ export default function LoginPage() {
 
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white text-balance md:text-6xl lg:text-7xl">
-                  Bienvendido a FraudAI
+                  FraudAI
                 </h1>
                 <p className="mx-auto max-w-2xl text-base leading-7 text-white/[0.72] md:text-lg">
-                  Deteccion inteligente de fraude y monitoreo de transacciones en tiempo real.
+                  Detección inteligente de fraude y monitoreo de transacciones en tiempo real.
                 </p>
               </div>
 
@@ -94,7 +91,7 @@ export default function LoginPage() {
                 >
                   <span className="absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(255,255,255,0.28)_50%,transparent_70%)] translate-x-[-140%] transition-transform duration-1000 group-hover:translate-x-[140%]" />
                   <span className="relative flex items-center gap-2">
-                    Inicio de Sesion
+                    Inicio de Sesión
                     <ArrowDown
                       size={16}
                       className={`transition-transform duration-300 ${showLogin ? "rotate-180" : "group-hover:translate-y-0.5"}`}
@@ -126,10 +123,10 @@ export default function LoginPage() {
                   </div>
 
                   <LoginForm />
-
+{/* 
                   <p className="mt-6 text-center text-xs uppercase tracking-[0.3em] text-white/[0.45]">
                     Solamente para uso de administradores.
-                  </p>
+                  </p> */}
                 </div>
               </div>
             )}

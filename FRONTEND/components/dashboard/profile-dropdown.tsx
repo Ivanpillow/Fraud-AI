@@ -34,10 +34,10 @@ export default function ProfileDropdown({ collapsed }: { collapsed: boolean }) {
     };
   }, [isOpen]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setIsOpen(false);
-    router.push("/checkout");
+    router.replace("/login");
   };
 
   const handleAdminPanel = () => {
