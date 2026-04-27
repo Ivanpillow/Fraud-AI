@@ -10,7 +10,7 @@ export default function CommerceFloatingButton() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleNavigate = () => {
-    router.push("/demo-libreria");
+    router.push("/demo-ecommerce");
   };
 
   return (
@@ -20,7 +20,7 @@ export default function CommerceFloatingButton() {
           <button
             onClick={() => setIsExpanded(false)}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.08] transition-all duration-200 hover:bg-white/[0.14]"
-            aria-label="Cerrar acceso a comercio"
+            aria-label="Cerrar acceso a shop simulator"
           >
             <X size={14} className="text-muted-foreground" />
           </button>
@@ -31,9 +31,9 @@ export default function CommerceFloatingButton() {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-amber-300">
-                Ir a Comercio
+                Ir a Shop Simulator
               </p>
-              <p className="text-[10px] text-muted-foreground">Catalogo libreria</p>
+              <p className="text-[10px] text-muted-foreground">Demo ecommerce conectada</p>
             </div>
             <ChevronRight
               size={16}
@@ -48,8 +48,8 @@ export default function CommerceFloatingButton() {
             "glass-floating-button h-12 w-12 rounded-full border border-white/[0.12] bg-white/[0.06] shadow-[0_10px_28px_rgba(0,0,0,0.28)]",
             "group flex items-center justify-center transition-all duration-300 hover:scale-105"
           )}
-          title="Ir a Comercio"
-          aria-label="Ir a Comercio"
+          title="Ir a Shop Simulator"
+          aria-label="Ir a Shop Simulator"
         >
           <BookOpen size={20} className="text-amber-300 transition-transform group-hover:scale-110" />
         </button>
