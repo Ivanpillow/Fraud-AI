@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { QrCode, Loader2, AlertTriangle, ShieldCheck, MapPin } from "lucide-react";
-import { cn, readHttpErrorMessage } from "@/lib/utils";
-import { API_BASE_URL } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
+import { buildQrImageUrl, buildQrSelectionUrl } from "@/lib/qr-checkout";
 import CustomSelect from "./custom-select";
 
 interface Props {
@@ -70,13 +71,24 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState<number | null>(null);
+  const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadFraudAICheckoutContext> | null>(null);
 
-  const qrPattern = useMemo(() => {
-    if (qrSeed === null) return [];
-    return buildStableQrPattern(qrSeed);
-  }, [qrSeed]);
+  const qrSelectionUrl = useMemo(() => {
+    if (!checkoutContext || subtotal <= 0) return "";
+
+    return buildQrSelectionUrl({
+      merchantSlug: checkoutContext.merchant.slug,
+      merchantName: checkoutContext.merchant.name,
+      merchantApiKey: checkoutContext.merchant.apiKey,
+      subtotal,
+      returnUrl: checkoutContext.returnUrl ?? "/checkout",
+    });
+  }, [checkoutContext, subtotal]);
+
+  const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
 
   useEffect(() => {
+    setCheckoutContext(loadFraudAICheckoutContext());
     setUserId("1");
     setCountry("MX");
     setSelectedHour("");
@@ -130,79 +142,25 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
       setError("Primero ingresa un monto válido en el resumen del pedido.");
       return;
     }
+    if (!qrSelectionUrl) {
+      setError("No se encontró el contexto del comercio para abrir el pago QR.");
+      return;
+    }
     setError(null);
     setQrSeed(Date.now());
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     onResult(null);
 
-    if (subtotal <= 0) {
-      setError("Por favor ingrese un monto válido en el resumen del pedido");
+    if (!qrSelectionUrl) {
+      setError("No se encontró la página de pago QR.");
       return;
     }
 
-    if (qrSeed === null) {
-      setError("Genera el código QR antes de realizar el pago.");
-      return;
-    }
-
-    const parsedUserId = parseInt(userId, 10);
-    const parsedLat = parseFloat(latitude);
-    const parsedLon = parseFloat(longitude);
-
-    if (!Number.isFinite(parsedUserId) || parsedUserId <= 0) {
-      setError("ID de usuario inválido.");
-      return;
-    }
-    if (!Number.isFinite(parsedLat) || parsedLat < -90 || parsedLat > 90) {
-      setError("La latitud debe estar entre -90 y 90.");
-      return;
-    }
-    if (!Number.isFinite(parsedLon) || parsedLon < -180 || parsedLon > 180) {
-      setError("La longitud debe estar entre -180 y 180.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const txId = Math.floor(Math.random() * 900000) + 100000;
-      const payload = {
-        transaction_id: txId,
-        user_id: parsedUserId,
-        amount: subtotal,
-        country: country,
-        latitude: parsedLat,
-        longitude: parsedLon,
-        device_change_flag: deviceChange,
-        ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
-        ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
-      };
-
-      const response = await fetch(`${API_BASE_URL}/qr-transactions/simple`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-API-Key": apiKey
-         },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(await readHttpErrorMessage(response));
-      }
-
-      const result = await response.json();
-      onResult(result);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "QR Transaction failed");
-    } finally {
-      setIsSubmitting(false);
-    }
+    window.location.href = qrSelectionUrl;
   };
 
   return (
@@ -218,24 +176,14 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
             qrSeed !== null && "glass-qr-active"
           )}
         >
-          {qrSeed !== null ? (
-            <div className="relative">
-              {/* QR visual estable para evitar regeneración por re-renders */}
-              <div className="w-36 h-36 grid grid-cols-9 gap-[2px] p-2">
-                {qrPattern.map((isDark, i) => {
-                  return (
-                    <div
-                      key={i}
-                      className={cn(
-                        "rounded-sm transition-all duration-300",
-                        isDark ? "bg-foreground/90" : "bg-transparent"
-                      )}
-                      style={{ animationDelay: `${i * 10}ms` }}
-                    />
-                  );
-                })}
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center">
+          {qrSeed !== null && qrImageUrl ? (
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src={qrImageUrl}
+                alt="Código QR para abrir la selección de tarjeta"
+                className="h-40 w-40 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-8 h-8 rounded-lg bg-primary/80 flex items-center justify-center">
                   <QrCode size={16} className="text-primary-foreground" />
                 </div>
@@ -253,9 +201,9 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
             </button>
           )}
         </div>
-        {qrSeed !== null && (
+        {qrSeed !== null && qrImageUrl && (
           <p className="text-xs text-muted-foreground animate-fade-in">
-            Escanea el código QR con tu aplicación bancaria para completar el pago.
+            Escanea el código QR con tu teléfono para elegir tarjeta y completar el pago.
           </p>
         )}
       </div>
@@ -394,14 +342,16 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
         </div>
       )}
 
-      <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-        Modo pruebas activo: el formulario no se reinicia al completar una transacción.
-      </div>
+      {/* {qrSeed !== null && (
+        <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          El código QR ahora abre la página móvil para seleccionar tarjeta y pagar.
+        </div>
+      )} */}
 
       {/* Submit */}
       <button
         type="submit"
-        disabled={isSubmitting || subtotal <= 0 || qrSeed === null}
+        disabled={isSubmitting || subtotal <= 0 || !qrSelectionUrl}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
@@ -411,12 +361,12 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
         {isSubmitting ? (
           <>
             <Loader2 size={18} className="animate-spin" />
-            Analizando transacción QR...
+            Abriendo página QR...
           </>
         ) : (
           <>
-            <ShieldCheck size={18} />
-            Pagar ${subtotal.toFixed(2)} y analizar con QR
+            <QrCode size={18} />
+            Abrir página de pago QR
           </>
         )}
       </button>

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+from sqlalchemy import func
 from app.models.qr_transaction import QRTransaction
 from app.models.fraud_prediction import FraudPrediction
 from app.models.user import User
@@ -18,12 +19,24 @@ from app.queries.fraud_explanation_queries import save_explanations
 MEXICO_CITY_TZ = ZoneInfo("America/Mexico_City")
 
 
+def _normalize_card_number(value: object) -> str:
+    return "".join(char for char in str(value or "") if char.isdigit())
+
+
 def _validate_qr_inputs(tx_data: dict) -> None:
     if float(tx_data["amount"]) <= 0:
         raise ValueError("El monto debe ser mayor a 0")
 
-    if int(tx_data["user_id"]) <= 0:
+    user_id = tx_data.get("user_id")
+    card_number = _normalize_card_number(tx_data.get("card_number"))
+    if (user_id is None or int(user_id) <= 0) and not card_number:
+        raise ValueError("Se requiere user_id o card_number")
+
+    if user_id is not None and int(user_id) <= 0:
         raise ValueError("El user_id debe ser mayor a 0")
+
+    if card_number and (len(card_number) < 13 or len(card_number) > 19):
+        raise ValueError("El número de tarjeta debe tener entre 13 y 19 dígitos")
 
     lat = float(tx_data["latitude"])
     lon = float(tx_data["longitude"])
@@ -42,6 +55,10 @@ def _ensure_user_exists(db, tx_data: dict) -> None:
     user_id = int(tx_data["user_id"])
     user = db.query(User).filter(User.user_id == user_id).first()
     if user:
+        card_number = _normalize_card_number(tx_data.get("card_number"))
+        if card_number and not user.card_number:
+            user.card_number = card_number
+            db.flush()
         return
 
     country = str(tx_data.get("country") or "MX").upper()[:5]
@@ -56,6 +73,46 @@ def _ensure_user_exists(db, tx_data: dict) -> None:
         )
     )
     db.flush()
+
+
+def _resolve_qr_user(db, tx_data: dict) -> None:
+    card_digits = _normalize_card_number(tx_data.get("card_number"))
+    if card_digits:
+        pan_norm = func.regexp_replace(func.coalesce(User.card_number, ""), "[^0-9]", "", "g")
+        existing = (
+            db.query(User)
+            .filter(User.card_number.isnot(None))
+            .filter(pan_norm == card_digits)
+            .first()
+        )
+        if existing:
+            tx_data["user_id"] = int(existing.user_id)
+            tx_data["card_number"] = card_digits
+            return
+
+        country = str(tx_data.get("country") or "MX").upper()[:5]
+        amount = float(tx_data.get("amount") or 0.0)
+        max_id = db.query(func.max(User.user_id)).scalar()
+        new_id = int(max_id or 0) + 1
+
+        db.add(
+            User(
+                user_id=new_id,
+                card_number=card_digits,
+                country=country,
+                avg_amount_user=round(max(amount, 0.0), 2),
+                risk_profile="medium",
+            )
+        )
+        db.flush()
+        tx_data["user_id"] = new_id
+        tx_data["card_number"] = card_digits
+        return
+
+    if tx_data.get("user_id") is None:
+        raise ValueError("Se requiere user_id o card_number")
+
+    _ensure_user_exists(db, tx_data)
 
 
 def _decide_qr_action(prob: float, is_new_user: bool, features: dict, risk_score_rule: float) -> str:
@@ -148,7 +205,8 @@ def _score_qr_decision(features: dict, model_result: dict, is_new_user: bool, ri
 def process_qr_transaction(db, tx_data, merchant_id):
     try:
         _validate_qr_inputs(tx_data)
-        _ensure_user_exists(db, tx_data)
+        # Resolver usuario por card_number si no se proporcionó user_id
+        _resolve_qr_user(db, tx_data)
 
         tx_hour = int(tx_data["hour"]) % 24
         tx_day_of_week = int(tx_data["day_of_week"])

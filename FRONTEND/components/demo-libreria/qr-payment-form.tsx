@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader2, MapPin, QrCode, ShieldCheck } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api";
-import { cn, readHttpErrorMessage } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { loadDemoLibreriaCheckoutContext } from "@/lib/demo-libreria-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
+import { buildQrImageUrl, buildQrSelectionUrl } from "@/lib/qr-checkout";
 
 interface Props {
   subtotal: number;
@@ -58,6 +59,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
   const [error, setError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState<number | null>(null);
   const [runtime, setRuntime] = useState<ReturnType<typeof getDemoLibreriaRuntimeCheckoutContext> | null>(null);
+  const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadDemoLibreriaCheckoutContext> | null>(null);
   const [shippingName, setShippingName] = useState("");
   const [shippingStreet, setShippingStreet] = useState("");
   const [shippingCity, setShippingCity] = useState("");
@@ -66,7 +68,19 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
   const [shippingPhone, setShippingPhone] = useState("");
   const [shippingReference, setShippingReference] = useState("");
 
-  const pattern = useMemo(() => (qrSeed === null ? [] : buildQrPattern(qrSeed)), [qrSeed]);
+  const qrSelectionUrl = useMemo(() => {
+    if (!checkoutContext || subtotal <= 0) return "";
+
+    return buildQrSelectionUrl({
+      merchantSlug: checkoutContext.merchant.slug,
+      merchantName: checkoutContext.merchant.name,
+      merchantApiKey: checkoutContext.merchant.apiKey,
+      subtotal,
+      returnUrl: checkoutContext.returnUrl ?? "/demo-libreria/checkout",
+    });
+  }, [checkoutContext, subtotal]);
+
+  const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
   const hasRequiredShippingFields = [
     shippingName,
     shippingStreet,
@@ -78,6 +92,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
 
   useEffect(() => {
     setRuntime(getDemoLibreriaRuntimeCheckoutContext());
+    setCheckoutContext(loadDemoLibreriaCheckoutContext());
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -96,67 +111,26 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
       return;
     }
 
+    if (!qrSelectionUrl) {
+      setError("No se encontró el contexto del comercio para abrir el pago QR.");
+      return;
+    }
+
     setError(null);
     setQrSeed(Date.now());
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     onResult(null);
 
-    if (subtotal <= 0) {
-      setError("El monto del pedido no es valido.");
+    if (!qrSelectionUrl) {
+      setError("No se encontró la página de pago QR.");
       return;
     }
 
-    if (qrSeed === null) {
-      setError("Primero genera el codigo QR.");
-      return;
-    }
-
-    if (!hasRequiredShippingFields) {
-      setError("Completa la direccion de envio obligatoria.");
-      return;
-    }
-
-    const runtimeNow = runtime ?? getDemoLibreriaRuntimeCheckoutContext();
-
-    const payload = {
-      user_id: runtimeNow.userId,
-      amount: subtotal,
-      country: runtimeNow.country,
-      latitude: runtimeNow.latitude,
-      longitude: runtimeNow.longitude,
-      device_change_flag: runtimeNow.deviceChangeFlag,
-      hour: runtimeNow.hour,
-      day_of_week: runtimeNow.dayOfWeek,
-    };
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/qr-transactions/simple`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": apiKey,
-        },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(await readHttpErrorMessage(response));
-      }
-
-      const result = await response.json();
-      onResult(result);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "No se pudo procesar el pago QR");
-    } finally {
-      setIsSubmitting(false);
-    }
+    window.location.href = qrSelectionUrl;
   };
 
   return (
@@ -198,14 +172,14 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
             qrSeed !== null && "glass-qr-active"
           )}
         >
-          {qrSeed !== null ? (
+          {qrSeed !== null && qrImageUrl ? (
             <div className="relative">
-              <div className="w-36 h-36 grid grid-cols-9 gap-[2px] p-2">
-                {pattern.map((isDark, i) => (
-                  <div key={i} className={cn("rounded-sm", isDark ? "bg-foreground/90" : "bg-transparent")} />
-                ))}
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center">
+              <img
+                src={qrImageUrl}
+                alt="Código QR para abrir la selección de tarjeta"
+                className="h-40 w-40 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-8 h-8 rounded-lg bg-primary/80 flex items-center justify-center">
                   <QrCode size={16} className="text-primary-foreground" />
                 </div>
@@ -215,7 +189,8 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
             <button
               type="button"
               onClick={handleGenerateQR}
-                  className="flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={isSubmitting}
+              className="flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
             >
               <QrCode size={48} className="opacity-40" />
               <span className="text-sm font-medium">Generar codigo QR</span>
@@ -223,24 +198,11 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
           )}
         </div>
 
-            <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Referencia de pago</p>
-                  <p className="text-sm font-semibold text-foreground mt-1">Libreria BookSwap</p>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
-                  {runtime?.country ?? "MX"}
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                El backend recibe latitud, longitud, hora, dia y cambio de dispositivo automaticamente.
-              </p>
-            </div>
-
-        <p className="text-xs text-muted-foreground flex items-center gap-2">
-          <MapPin size={12} /> El contexto geolocalizado se usa automaticamente para el analisis.
-        </p>
+        {qrSeed !== null && qrImageUrl && (
+          <p className="text-xs text-muted-foreground animate-fade-in">
+            Escanea el código QR con tu teléfono para elegir tarjeta y completar el pago.
+          </p>
+        )}
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
@@ -339,9 +301,15 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
         </div>
       )}
 
+      {/* {qrSeed !== null && (
+        <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          El código QR ahora abre la página móvil para seleccionar tarjeta y pagar.
+        </div>
+      )} */}
+
       <button
         type="submit"
-        disabled={isSubmitting || subtotal <= 0}
+        disabled={isSubmitting || subtotal <= 0 || !qrSelectionUrl}
         className={cn(
           "checkout-button-primary w-full py-4 rounded-2xl text-base font-semibold",
           "flex items-center justify-center gap-2",
@@ -350,11 +318,11 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
       >
         {isSubmitting ? (
           <>
-            <Loader2 size={18} className="animate-spin" /> Procesando pago QR...
+            <Loader2 size={18} className="animate-spin" /> Abrir página QR...
           </>
         ) : (
           <>
-            <ShieldCheck size={18} /> Confirmar pago QR
+            <ShieldCheck size={18} /> Abrir página de pago QR
           </>
         )}
       </button>
