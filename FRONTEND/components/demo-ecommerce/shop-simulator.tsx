@@ -542,7 +542,7 @@ export default function DemoEcommerceShopSimulator() {
                     onClick={handleCheckout}
                     className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                   >
-                    <ShoppingCart size={14} /> Proceder al checkout
+                    <ShoppingCart size={14} /> Proceder al pago
                   </Button>
 
                   <Button

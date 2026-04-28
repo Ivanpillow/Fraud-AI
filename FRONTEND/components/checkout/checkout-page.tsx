@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { API_BASE_URL } from "@/lib/api";
 import { readHttpErrorMessage } from "@/lib/utils";
+import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -52,11 +53,17 @@ export default function CheckoutPage() {
   } | null>(null);
 
   const handleTransactionResult = useCallback(
-    (result: typeof fraudResult) => {
-      setFraudResult(result);
+    (result: FraudResultPayload | null) => {
       setIsPolling(false);
+
+      if (!result) {
+        setFraudResult(null);
+        return;
+      }
+
+      navigateToFraudResult(result, returnUrl ?? "/checkout");
     },
-    []
+    [returnUrl]
   );
 
   const handleNewTransaction = useCallback(() => {
@@ -137,15 +144,23 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const ctx = loadFraudAICheckoutContext();
-    if (!ctx) return;
+    
+    // Si hay contexto guardado, usarlo pero SIEMPRE usar /checkout como returnUrl
+    // para el flujo de checkout normal
+    if (ctx) {
+      setMerchantApiKey(ctx.merchant.apiKey);
+      setMerchantName(ctx.merchant.name || null);
+      // IMPORTANTE: El checkout normal siempre regresa a /checkout
+      setReturnUrl("/checkout");
 
-    setMerchantApiKey(ctx.merchant.apiKey);
-    setMerchantName(ctx.merchant.name || null);
-    setReturnUrl(ctx.returnUrl || null);
-
-    // Precargar subtotal (shipping/tax están en 0 en la demo de comercios).
-    if (Number.isFinite(ctx.cart?.subtotal)) {
-      setSubtotal(Number(ctx.cart.subtotal));
+      // Precargar subtotal (shipping/tax están en 0 en la demo de comercios).
+      if (Number.isFinite(ctx.cart?.subtotal)) {
+        setSubtotal(Number(ctx.cart.subtotal));
+      }
+    } else {
+      // Si no hay contexto, usar valores por defecto para el checkout normal
+      setReturnUrl("/checkout");
+      setMerchantApiKey("floreria_key");
     }
   }, []);
 

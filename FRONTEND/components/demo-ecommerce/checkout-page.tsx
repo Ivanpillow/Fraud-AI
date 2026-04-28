@@ -10,6 +10,7 @@ import DemoLibreriaOrderSummary from "@/components/demo-ecommerce/checkout-ecomm
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
+import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -41,10 +42,15 @@ export default function DemoEcommerceCheckoutPage() {
   } | null>(null);
 
   const handleTransactionResult = useCallback(
-    (result: typeof fraudResult) => {
-      setFraudResult(result);
+    (result: FraudResultPayload | null) => {
+      if (!result) {
+        setFraudResult(null);
+        return;
+      }
+
+      navigateToFraudResult(result, returnUrl ?? "/demo-ecommerce");
     },
-    []
+    [returnUrl]
   );
 
   const handleNewTransaction = useCallback(() => {

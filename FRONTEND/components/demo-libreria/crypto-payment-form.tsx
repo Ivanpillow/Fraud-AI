@@ -292,12 +292,12 @@ export default function DemoLibreriaCryptoPaymentForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-foreground">Pago blockchain</h2>
-        <span className="text-xs rounded-full border border-white/10 bg-white/5 px-3 py-1 text-muted-foreground">
+        {/* <span className="text-xs rounded-full border border-white/10 bg-white/5 px-3 py-1 text-muted-foreground">
           Flujo realista
-        </span>
+        </span> */}
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Contexto automatico antifraude</p>
@@ -317,7 +317,7 @@ export default function DemoLibreriaCryptoPaymentForm({
           <p className="text-muted-foreground">Dispositivo: <span className="text-foreground">{runtime?.deviceType ?? "web"}</span></p>
           <p className="text-muted-foreground">Hora: <span className="text-foreground">{runtime ? `${String(runtime.hour).padStart(2, "0")}:00` : "—"}</span></p>
         </div>
-      </div>
+      </div> */}
 
       <div className={cn("rounded-2xl border border-white/10 p-5 shadow-2xl bg-gradient-to-br", selected.gradient)}>
         <div className="flex items-start justify-between gap-4">
@@ -506,9 +506,6 @@ export default function DemoLibreriaCryptoPaymentForm({
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Estos datos son solo visuales para la demo de ecommerce y no se envian al backend antifraude.
-        </p>
       </div>
 
       {paymentStatus && (
@@ -552,9 +549,9 @@ export default function DemoLibreriaCryptoPaymentForm({
         )}
       </button>
 
-      <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
+      {/* <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
         <Bitcoin size={14} /> Hora, pais, categoria y dispositivo se adjuntan automaticamente al backend.
-      </p>
+      </p> */}
     </form>
   );
 }

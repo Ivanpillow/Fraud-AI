@@ -6,6 +6,7 @@ import { CheckCircle2, ChevronLeft, ShieldCheck, CreditCard, Loader2, Sparkles }
 import { API_BASE_URL } from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
 import { readHttpErrorMessage } from "@/lib/utils";
+import { navigateToFraudResult } from "@/lib/fraud-result-routing";
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -106,17 +107,8 @@ export default function QrSelectPage() {
 
       const data = await response.json();
       setResult(data);
-      
-      // Redirigir de vuelta al checkout con el transaction_id
-      const redirectUrl = new URL(returnUrl, window.location.origin);
-      redirectUrl.searchParams.set("transactionId", data.transaction_id.toString());
-      redirectUrl.searchParams.set("decision", data.decision);
-      redirectUrl.searchParams.set("fraud_probability", data.fraud_probability.toString());
-      
-      // Redirigir después de 1.5 segundos para que el usuario vea la confirmación
-      setTimeout(() => {
-        window.location.href = redirectUrl.toString();
-      }, 1500);
+
+      navigateToFraudResult(data, returnUrl);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "No se pudo procesar el pago QR");
     } finally {

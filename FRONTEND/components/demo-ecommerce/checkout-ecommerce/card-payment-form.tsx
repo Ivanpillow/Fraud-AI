@@ -88,6 +88,23 @@ function formatRuntimeDate(dayOfWeek: number, hour: number): string {
   }).format(date);
 }
 
+const USE_TEST_SHIPPING_VALUES = true;
+
+const TEST_SHIPPING_VALUES = {
+  country: "Mexico",
+  state: "Jalisco",
+  city: "Guadalajara",
+  postalCode: "45400",
+  street: "Olimpica 345",
+  reference: "CUCEI",
+  fullName: "Luis Angel De La Cruz Ascencio",
+  phone: "3334757609",
+};
+
+function defaultShippingValue(value: string): string {
+  return USE_TEST_SHIPPING_VALUES ? value : "";
+}
+
 export default function DemoLibreriaCardPaymentForm({
   amount,
   apiKey,
@@ -102,13 +119,14 @@ export default function DemoLibreriaCardPaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [runtime, setRuntime] = useState<DemoRuntimeState | null>(null);
   const [brandFlip, setBrandFlip] = useState(false);
-  const [shippingName, setShippingName] = useState("");
-  const [shippingStreet, setShippingStreet] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
-  const [shippingState, setShippingState] = useState("");
-  const [shippingZip, setShippingZip] = useState("");
-  const [shippingPhone, setShippingPhone] = useState("");
-  const [shippingReference, setShippingReference] = useState("");
+  const [shippingCountry, setShippingCountry] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.country));
+  const [shippingState, setShippingState] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.state));
+  const [shippingCity, setShippingCity] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.city));
+  const [shippingZip, setShippingZip] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+  const [shippingStreet, setShippingStreet] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.street));
+  const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+  const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+  const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
   const cardRef = useRef<HTMLDivElement>(null);
 
   const brand = useMemo(() => detectCardBrand(cardNumber), [cardNumber]);
@@ -128,23 +146,25 @@ export default function DemoLibreriaCardPaymentForm({
     setCardName("");
     setExpiry("");
     setCvv("");
-    setShippingName("");
-    setShippingStreet("");
-    setShippingCity("");
-    setShippingState("");
-    setShippingZip("");
-    setShippingPhone("");
-    setShippingReference("");
+    setShippingCountry(defaultShippingValue(TEST_SHIPPING_VALUES.country));
+    setShippingState(defaultShippingValue(TEST_SHIPPING_VALUES.state));
+    setShippingCity(defaultShippingValue(TEST_SHIPPING_VALUES.city));
+    setShippingZip(defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+    setShippingStreet(defaultShippingValue(TEST_SHIPPING_VALUES.street));
+    setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+    setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+    setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
     setError(null);
   }, [resetTrigger]);
 
   const runtimeDisplay = runtime;
   const hasRequiredShippingFields = [
-    shippingName,
-    shippingStreet,
-    shippingCity,
+    shippingCountry,
     shippingState,
+    shippingCity,
     shippingZip,
+    shippingStreet,
+    shippingName,
     shippingPhone,
   ].every((value) => value.trim().length > 0);
 
@@ -221,7 +241,7 @@ export default function DemoLibreriaCardPaymentForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold text-foreground">Pago con tarjeta</h2>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Contexto automatico antifraude</p>
@@ -241,7 +261,7 @@ export default function DemoLibreriaCardPaymentForm({
           <p className="text-muted-foreground">Hora: <span className="text-foreground">{runtimeDisplay ? `${String(runtimeDisplay.hour).padStart(2, "0")}:00` : "—"}</span></p>
           <p className="text-muted-foreground">Dia: <span className="text-foreground">{runtimeDisplay ? formatDayOfWeek(runtimeDisplay.dayOfWeek) : "—"}</span></p>
         </div>
-      </div>
+      </div> */}
 
       <div
         ref={cardRef}
@@ -275,7 +295,7 @@ export default function DemoLibreriaCardPaymentForm({
             <div>
               <p className="text-[10px] uppercase tracking-[0.3em] text-white/45">Titular</p>
               <p className="text-white text-sm md:text-base font-semibold truncate max-w-[220px]">
-                {cardName || "NOMBRE APELLIDO"}
+                {cardName || "NOMBRE TITULAR"}
               </p>
             </div>
             <div className="text-right">
@@ -287,7 +307,7 @@ export default function DemoLibreriaCardPaymentForm({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
+        <div>
           <label className="checkout-label">Numero de tarjeta</label>
           <input
             value={cardNumber}
@@ -299,12 +319,12 @@ export default function DemoLibreriaCardPaymentForm({
           />
         </div>
 
-        <div className="md:col-span-2">
+        <div>
           <label className="checkout-label">Nombre del titular</label>
           <input
             value={cardName}
             onChange={(e) => setCardName(e.target.value.toUpperCase())}
-            placeholder="NOMBRE APELLIDO"
+            placeholder="Nombre del Titular"
             className="checkout-input"
             disabled={isSubmitting}
           />
@@ -342,33 +362,11 @@ export default function DemoLibreriaCardPaymentForm({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="checkout-label">Nombre completo</label>
-            <input
-              value={shippingName}
-              onChange={(e) => setShippingName(e.target.value)}
-              className="checkout-input"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="checkout-label">Calle y numero</label>
-            <input
-              value={shippingStreet}
-              onChange={(e) => setShippingStreet(e.target.value)}
-              className="checkout-input"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-
           <div>
-            <label className="checkout-label">Ciudad</label>
+            <label className="checkout-label">País</label>
             <input
-              value={shippingCity}
-              onChange={(e) => setShippingCity(e.target.value)}
+              value={shippingCountry}
+              onChange={(e) => setShippingCountry(e.target.value)}
               className="checkout-input"
               disabled={isSubmitting}
               required
@@ -387,10 +385,53 @@ export default function DemoLibreriaCardPaymentForm({
           </div>
 
           <div>
+            <label className="checkout-label">Ciudad</label>
+            <input
+              value={shippingCity}
+              onChange={(e) => setShippingCity(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div>
             <label className="checkout-label">Codigo postal</label>
             <input
               value={shippingZip}
               onChange={(e) => setShippingZip(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Calle y numero</label>
+            <input
+              value={shippingStreet}
+              onChange={(e) => setShippingStreet(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Referencia</label>
+            <input
+              value={shippingReference}
+              onChange={(e) => setShippingReference(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Nombre completo</label>
+            <input
+              value={shippingName}
+              onChange={(e) => setShippingName(e.target.value)}
               className="checkout-input"
               disabled={isSubmitting}
               required
@@ -407,21 +448,8 @@ export default function DemoLibreriaCardPaymentForm({
               required
             />
           </div>
-
-          <div className="md:col-span-2">
-            <label className="checkout-label">Referencia (opcional)</label>
-            <input
-              value={shippingReference}
-              onChange={(e) => setShippingReference(e.target.value)}
-              className="checkout-input"
-              disabled={isSubmitting}
-            />
-          </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Estos datos son solo visuales para la demo de ecommerce y no se envian al backend antifraude.
-        </p>
       </div>
 
       {error && (
@@ -451,9 +479,9 @@ export default function DemoLibreriaCardPaymentForm({
         )}
       </button>
 
-      <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
+      {/* <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
         <CreditCard size={14} /> El checkout toma hora, pais, categoria y dispositivo automaticamente.
-      </p>
+      </p> */}
     </form>
   );
 }

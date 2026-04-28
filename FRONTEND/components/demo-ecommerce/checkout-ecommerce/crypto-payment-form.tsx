@@ -74,6 +74,23 @@ function formatDisplayDate(dayOfWeek: number, hour: number): string {
   }).format(date);
 }
 
+const USE_TEST_SHIPPING_VALUES = true;
+
+const TEST_SHIPPING_VALUES = {
+  country: "Mexico",
+  state: "Jalisco",
+  city: "Guadalajara",
+  postalCode: "45400",
+  street: "Olimpica 345",
+  reference: "CUCEI",
+  fullName: "Luis Angel De La Cruz Ascencio",
+  phone: "3334757609",
+};
+
+function defaultShippingValue(value: string): string {
+  return USE_TEST_SHIPPING_VALUES ? value : "";
+}
+
 const CRYPTOS: CryptoInfo[] = [
   {
     name: "Bitcoin",
@@ -137,13 +154,14 @@ export default function DemoLibreriaCryptoPaymentForm({
   const [paymentStatus, setPaymentStatus] = useState<BCPaymentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [runtime, setRuntime] = useState<ReturnType<typeof getDemoLibreriaRuntimeCheckoutContext> | null>(null);
-  const [shippingName, setShippingName] = useState("");
-  const [shippingStreet, setShippingStreet] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
-  const [shippingState, setShippingState] = useState("");
-  const [shippingZip, setShippingZip] = useState("");
-  const [shippingPhone, setShippingPhone] = useState("");
-  const [shippingReference, setShippingReference] = useState("");
+  const [shippingCountry, setShippingCountry] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.country));
+  const [shippingState, setShippingState] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.state));
+  const [shippingCity, setShippingCity] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.city));
+  const [shippingZip, setShippingZip] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+  const [shippingStreet, setShippingStreet] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.street));
+  const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+  const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+  const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
   const pollTimerRef = useRef<number | null>(null);
 
   const selected = useMemo(
@@ -151,11 +169,12 @@ export default function DemoLibreriaCryptoPaymentForm({
     [selectedSymbol]
   );
   const hasRequiredShippingFields = [
-    shippingName,
-    shippingStreet,
-    shippingCity,
+    shippingCountry,
     shippingState,
+    shippingCity,
     shippingZip,
+    shippingStreet,
+    shippingName,
     shippingPhone,
   ].every((value) => value.trim().length > 0);
 
@@ -172,13 +191,14 @@ export default function DemoLibreriaCryptoPaymentForm({
     setWalletAddress("");
     setIsSubmitting(false);
     setPaymentStatus(null);
-    setShippingName("");
-    setShippingStreet("");
-    setShippingCity("");
-    setShippingState("");
-    setShippingZip("");
-    setShippingPhone("");
-    setShippingReference("");
+    setShippingCountry(defaultShippingValue(TEST_SHIPPING_VALUES.country));
+    setShippingState(defaultShippingValue(TEST_SHIPPING_VALUES.state));
+    setShippingCity(defaultShippingValue(TEST_SHIPPING_VALUES.city));
+    setShippingZip(defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+    setShippingStreet(defaultShippingValue(TEST_SHIPPING_VALUES.street));
+    setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+    setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+    setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
     setError(null);
   }, [resetTrigger]);
 
@@ -292,12 +312,12 @@ export default function DemoLibreriaCryptoPaymentForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-foreground">Pago blockchain</h2>
-        <span className="text-xs rounded-full border border-white/10 bg-white/5 px-3 py-1 text-muted-foreground">
+        {/* <span className="text-xs rounded-full border border-white/10 bg-white/5 px-3 py-1 text-muted-foreground">
           Flujo realista
-        </span>
+        </span> */}
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Contexto automatico antifraude</p>
@@ -317,7 +337,7 @@ export default function DemoLibreriaCryptoPaymentForm({
           <p className="text-muted-foreground">Dispositivo: <span className="text-foreground">{runtime?.deviceType ?? "web"}</span></p>
           <p className="text-muted-foreground">Hora: <span className="text-foreground">{runtime ? `${String(runtime.hour).padStart(2, "0")}:00` : "—"}</span></p>
         </div>
-      </div>
+      </div> */}
 
       <div className={cn("rounded-2xl border border-white/10 p-5 shadow-2xl bg-gradient-to-br", selected.gradient)}>
         <div className="flex items-start justify-between gap-4">
@@ -429,33 +449,11 @@ export default function DemoLibreriaCryptoPaymentForm({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="checkout-label">Nombre completo</label>
-            <input
-              value={shippingName}
-              onChange={(e) => setShippingName(e.target.value)}
-              className="checkout-input"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="checkout-label">Calle y numero</label>
-            <input
-              value={shippingStreet}
-              onChange={(e) => setShippingStreet(e.target.value)}
-              className="checkout-input"
-              disabled={isSubmitting}
-              required
-            />
-          </div>
-
           <div>
-            <label className="checkout-label">Ciudad</label>
+            <label className="checkout-label">País</label>
             <input
-              value={shippingCity}
-              onChange={(e) => setShippingCity(e.target.value)}
+              value={shippingCountry}
+              onChange={(e) => setShippingCountry(e.target.value)}
               className="checkout-input"
               disabled={isSubmitting}
               required
@@ -485,6 +483,49 @@ export default function DemoLibreriaCryptoPaymentForm({
           </div>
 
           <div>
+            <label className="checkout-label">Ciudad</label>
+            <input
+              value={shippingCity}
+              onChange={(e) => setShippingCity(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Calle y numero</label>
+            <input
+              value={shippingStreet}
+              onChange={(e) => setShippingStreet(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Referencia</label>
+            <input
+              value={shippingReference}
+              onChange={(e) => setShippingReference(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Nombre completo</label>
+            <input
+              value={shippingName}
+              onChange={(e) => setShippingName(e.target.value)}
+              className="checkout-input"
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div>
             <label className="checkout-label">Telefono</label>
             <input
               value={shippingPhone}
@@ -494,21 +535,8 @@ export default function DemoLibreriaCryptoPaymentForm({
               required
             />
           </div>
-
-          <div className="md:col-span-2">
-            <label className="checkout-label">Referencia (opcional)</label>
-            <input
-              value={shippingReference}
-              onChange={(e) => setShippingReference(e.target.value)}
-              className="checkout-input"
-              disabled={isSubmitting}
-            />
-          </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Estos datos son solo visuales para la demo de ecommerce y no se envian al backend antifraude.
-        </p>
       </div>
 
       {paymentStatus && (
@@ -552,9 +580,9 @@ export default function DemoLibreriaCryptoPaymentForm({
         )}
       </button>
 
-      <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
+      {/* <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
         <Bitcoin size={14} /> Hora, pais, categoria y dispositivo se adjuntan automaticamente al backend.
-      </p>
+      </p> */}
     </form>
   );
 }

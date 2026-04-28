@@ -137,7 +137,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold text-foreground">Pago con QR</h2>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Contexto automatico antifraude</p>
@@ -163,7 +163,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
           <span>Categoria: <span className="text-foreground">{runtime?.merchantCategory ?? "retail"}</span></span>
           <span>Hora: <span className="text-foreground">{runtime ? `${String(runtime.hour).padStart(2, "0")}:00` : "—"}</span></span>
         </div>
-      </div>
+      </div> */}
 
       <div className="flex flex-col items-center gap-4">
         <div
@@ -289,9 +289,6 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Estos datos son solo visuales para la demo de ecommerce y no se envian al backend antifraude.
-        </p>
       </div>
 
       {error && (

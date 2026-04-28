@@ -221,7 +221,7 @@ export default function DemoLibreriaCardPaymentForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <h2 className="text-lg font-semibold text-foreground">Pago con tarjeta</h2>
 
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Contexto automatico antifraude</p>
@@ -241,7 +241,7 @@ export default function DemoLibreriaCardPaymentForm({
           <p className="text-muted-foreground">Hora: <span className="text-foreground">{runtimeDisplay ? `${String(runtimeDisplay.hour).padStart(2, "0")}:00` : "—"}</span></p>
           <p className="text-muted-foreground">Dia: <span className="text-foreground">{runtimeDisplay ? formatDayOfWeek(runtimeDisplay.dayOfWeek) : "—"}</span></p>
         </div>
-      </div>
+      </div> */}
 
       <div
         ref={cardRef}
@@ -275,7 +275,7 @@ export default function DemoLibreriaCardPaymentForm({
             <div>
               <p className="text-[10px] uppercase tracking-[0.3em] text-white/45">Titular</p>
               <p className="text-white text-sm md:text-base font-semibold truncate max-w-[220px]">
-                {cardName || "NOMBRE APELLIDO"}
+                {cardName || "NOMBRE TITULAR"}
               </p>
             </div>
             <div className="text-right">
@@ -304,7 +304,7 @@ export default function DemoLibreriaCardPaymentForm({
           <input
             value={cardName}
             onChange={(e) => setCardName(e.target.value.toUpperCase())}
-            placeholder="NOMBRE APELLIDO"
+            placeholder="Nombre del titular"
             className="checkout-input"
             disabled={isSubmitting}
           />
@@ -419,9 +419,6 @@ export default function DemoLibreriaCardPaymentForm({
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Estos datos son solo visuales para la demo de ecommerce y no se envian al backend antifraude.
-        </p>
       </div>
 
       {error && (
@@ -451,9 +448,9 @@ export default function DemoLibreriaCardPaymentForm({
         )}
       </button>
 
-      <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
+      {/* <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-2">
         <CreditCard size={14} /> El checkout toma hora, pais, categoria y dispositivo automaticamente.
-      </p>
+      </p> */}
     </form>
   );
 }
