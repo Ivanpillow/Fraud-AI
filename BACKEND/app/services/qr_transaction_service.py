@@ -115,6 +115,22 @@ def _resolve_qr_user(db, tx_data: dict) -> None:
     _ensure_user_exists(db, tx_data)
 
 
+def _resolve_transaction_id(db, tx_data: dict) -> int:
+    provided_transaction_id = tx_data.get("transaction_id")
+    if provided_transaction_id is not None:
+        transaction_id = int(provided_transaction_id)
+        if transaction_id <= 0:
+            raise ValueError("El transaction_id debe ser mayor a 0")
+
+        existing = db.query(QRTransaction).filter(QRTransaction.transaction_id == transaction_id).first()
+        if existing:
+            raise ValueError("El transaction_id de QR ya existe")
+
+        return transaction_id
+
+    return int(datetime.utcnow().timestamp() * 1_000_000)
+
+
 def _decide_qr_action(prob: float, is_new_user: bool, features: dict, risk_score_rule: float) -> str:
     block_threshold = 0.90 if is_new_user else 0.80
     review_threshold = 0.55
@@ -220,8 +236,8 @@ def process_qr_transaction(db, tx_data, merchant_id):
         is_new_user = user_stats["transactions_last_24h"] < 3
         country = str(tx_data["country"]).upper().strip()
 
-        # nuevo transaction_id
-        transaction_id = int(datetime.utcnow().timestamp() * 1_000_000) # ID único basado en timestamp para evitar colisiones
+        # Reutilizar el transaction_id compartido con la PC cuando venga desde el flujo QR
+        transaction_id = _resolve_transaction_id(db, tx_data)
 
         # Guardar QR sin commit 
         qr_tx = QRTransaction(

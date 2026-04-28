@@ -4,6 +4,7 @@ export type QrCheckoutContext = {
   merchantApiKey: string;
   subtotal: number;
   returnUrl?: string;
+  transactionId?: number;
 };
 
 export type DemoQrCard = {
@@ -44,7 +45,14 @@ export function buildQrSelectionUrl(context: QrCheckoutContext): string {
   if (context.returnUrl) {
     url.searchParams.set("returnUrl", context.returnUrl);
   }
+  if (context.transactionId) {
+    url.searchParams.set("transactionId", String(context.transactionId));
+  }
   return url.toString();
+}
+
+export function generateQrTransactionId(): number {
+  return Math.floor(Date.now() * 1000 + Math.floor(Math.random() * 1000));
 }
 
 export function buildQrImageUrl(targetUrl: string): string {

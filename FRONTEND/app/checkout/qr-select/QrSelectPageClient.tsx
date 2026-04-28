@@ -43,6 +43,7 @@ export default function QrSelectPage() {
   const merchantApiKey = searchParams.get("merchantApiKey") ?? "";
   const subtotal = parseNumber(searchParams.get("subtotal"));
   const returnUrl = searchParams.get("returnUrl") ?? "/checkout";
+  const sharedTransactionId = parseNumber(searchParams.get("transactionId"));
 
   const [selectedCardNumber, setSelectedCardNumber] = useState<string>(DEMO_QR_CARDS[0].cardNumber);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +82,7 @@ export default function QrSelectPage() {
       const fallback = getGeoFallback();
       const now = new Date();
       const payload = {
+        ...(sharedTransactionId > 0 ? { transaction_id: sharedTransactionId } : {}),
         card_number: selectedCard?.cardNumber,
         amount: subtotal,
         country: fallback.country,

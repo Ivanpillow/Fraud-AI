@@ -4,13 +4,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { QrCode, Loader2, AlertTriangle, ShieldCheck, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
-import { buildQrImageUrl, buildQrSelectionUrl } from "@/lib/qr-checkout";
+import { buildQrImageUrl, buildQrSelectionUrl, generateQrTransactionId } from "@/lib/qr-checkout";
 import CustomSelect from "./custom-select";
 
 interface Props {
   subtotal: number;
   apiKey: string;
   resetTrigger?: number;
+  onQrSessionCreated?: (transactionId: number | null) => void;
   onResult: (result: {
     transaction_id: number;
     fraud_probability: number;
@@ -58,7 +59,13 @@ function buildStableQrPattern(seed: number): boolean[] {
   });
 }
 
-export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onResult }: Props) {
+export default function QRPaymentForm({
+  subtotal,
+  apiKey,
+  resetTrigger = 0,
+  onQrSessionCreated,
+  onResult,
+}: Props) {
   const [userId, setUserId] = useState("1");
   const [country, setCountry] = useState("MX");
   const [selectedHour, setSelectedHour] = useState("");
@@ -71,10 +78,11 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState<number | null>(null);
+  const [sharedTransactionId, setSharedTransactionId] = useState<number | null>(null);
   const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadFraudAICheckoutContext> | null>(null);
 
   const qrSelectionUrl = useMemo(() => {
-    if (!checkoutContext || subtotal <= 0) return "";
+    if (!checkoutContext || subtotal <= 0 || !sharedTransactionId) return "";
 
     return buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
@@ -82,8 +90,9 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
       merchantApiKey: checkoutContext.merchant.apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
+      transactionId: sharedTransactionId,
     });
-  }, [checkoutContext, subtotal]);
+  }, [checkoutContext, subtotal, sharedTransactionId]);
 
   const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
 
@@ -100,6 +109,8 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
     setIsSubmitting(false);
     setError(null);
     setQrSeed(null);
+    setSharedTransactionId(null);
+    onQrSessionCreated?.(null);
   }, [resetTrigger]);
 
   useEffect(() => {
@@ -142,11 +153,16 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
       setError("Primero ingresa un monto válido en el resumen del pedido.");
       return;
     }
-    if (!qrSelectionUrl) {
+    if (!checkoutContext) {
       setError("No se encontró el contexto del comercio para abrir el pago QR.");
       return;
     }
     setError(null);
+    const transactionId = sharedTransactionId ?? generateQrTransactionId();
+    if (!sharedTransactionId) {
+      setSharedTransactionId(transactionId);
+      onQrSessionCreated?.(transactionId);
+    }
     setQrSeed(Date.now());
   };
 
@@ -155,12 +171,27 @@ export default function QRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onRe
     setError(null);
     onResult(null);
 
-    if (!qrSelectionUrl) {
+    if (!checkoutContext) {
       setError("No se encontró la página de pago QR.");
       return;
     }
 
-    window.location.href = qrSelectionUrl;
+    const transactionId = sharedTransactionId ?? generateQrTransactionId();
+    if (!sharedTransactionId) {
+      setSharedTransactionId(transactionId);
+      onQrSessionCreated?.(transactionId);
+    }
+
+    const selectionUrl = buildQrSelectionUrl({
+      merchantSlug: checkoutContext.merchant.slug,
+      merchantName: checkoutContext.merchant.name,
+      merchantApiKey: checkoutContext.merchant.apiKey,
+      subtotal,
+      returnUrl: checkoutContext.returnUrl ?? "/checkout",
+      transactionId,
+    });
+
+    window.location.href = selectionUrl;
   };
 
   return (

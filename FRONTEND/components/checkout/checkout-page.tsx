@@ -35,6 +35,7 @@ export default function CheckoutPage() {
   const [merchantName, setMerchantName] = useState<string | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [pendingQrTransactionId, setPendingQrTransactionId] = useState<number | null>(null);
 
   const taxRate = selectedTax ? TAX_OPTIONS[selectedTax] : 0;
   const taxAmount = subtotal * taxRate;
@@ -55,6 +56,7 @@ export default function CheckoutPage() {
   const handleTransactionResult = useCallback(
     (result: FraudResultPayload | null) => {
       setIsPolling(false);
+      setPendingQrTransactionId(null);
 
       if (!result) {
         setFraudResult(null);
@@ -68,6 +70,7 @@ export default function CheckoutPage() {
 
   const handleNewTransaction = useCallback(() => {
     setFraudResult(null);
+    setPendingQrTransactionId(null);
     setSubtotal(0);
     setSelectedTax(null);
     setSelectedMethod("card");
@@ -75,6 +78,10 @@ export default function CheckoutPage() {
     // Limpiar parámetros de URL
     router.replace("/checkout");
   }, [router]);
+
+  const handleQrSessionCreated = useCallback((transactionId: number | null) => {
+    setPendingQrTransactionId(transactionId);
+  }, []);
 
   // Polling para obtener resultado de QR después de redirigir desde el móvil
   useEffect(() => {
@@ -141,6 +148,39 @@ export default function CheckoutPage() {
       clearTimeout(timeout);
     };
   }, [searchParams, merchantApiKey, handleTransactionResult]);
+
+  useEffect(() => {
+    if (!pendingQrTransactionId || !merchantApiKey) {
+      return;
+    }
+
+    setIsPolling(true);
+    setSelectedMethod("qr");
+
+    const pollInterval = window.setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/qr-transactions/${pendingQrTransactionId}`, {
+          method: "GET",
+          headers: {
+            "X-API-Key": merchantApiKey,
+          },
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          handleTransactionResult(data);
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.error("Error polling QR transaction result:", error);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [pendingQrTransactionId, merchantApiKey, handleTransactionResult]);
 
   useEffect(() => {
     const ctx = loadFraudAICheckoutContext();
@@ -259,6 +299,7 @@ export default function CheckoutPage() {
                 subtotal={subtotal}
                 apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
+                onQrSessionCreated={handleQrSessionCreated}
                 onResult={handleTransactionResult}
               />
             )}
