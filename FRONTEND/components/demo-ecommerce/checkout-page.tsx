@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
 import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
+import { API_BASE_URL } from "@/lib/api";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -27,6 +28,8 @@ export default function DemoEcommerceCheckoutPage() {
   const [merchantApiKey, setMerchantApiKey] = useState<string>("floreria_key");
   const [merchantName, setMerchantName] = useState<string | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>("/demo-ecommerce");
+  const [isPolling, setIsPolling] = useState(false);
+  const [pendingQrTransactionId, setPendingQrTransactionId] = useState<number | null>(null);
   const total = subtotal;
 
   const [fraudResult, setFraudResult] = useState<{
@@ -48,6 +51,8 @@ export default function DemoEcommerceCheckoutPage() {
         return;
       }
 
+      setIsPolling(false);
+      setPendingQrTransactionId(null);
       navigateToFraudResult(result, returnUrl ?? "/demo-ecommerce");
     },
     [returnUrl]
@@ -55,9 +60,14 @@ export default function DemoEcommerceCheckoutPage() {
 
   const handleNewTransaction = useCallback(() => {
     setFraudResult(null);
+    setPendingQrTransactionId(null);
     setSubtotal(0);
     setSelectedMethod("card");
     setResetTrigger((prev) => prev + 1);
+  }, []);
+
+  const handleQrSessionCreated = useCallback((transactionId: number | null) => {
+    setPendingQrTransactionId(transactionId);
   }, []);
 
   useEffect(() => {
@@ -74,6 +84,39 @@ export default function DemoEcommerceCheckoutPage() {
 
     getDemoLibreriaRuntimeCheckoutContext();
   }, []);
+
+  useEffect(() => {
+    if (!pendingQrTransactionId || !merchantApiKey) {
+      return;
+    }
+
+    setIsPolling(true);
+    setSelectedMethod("qr");
+
+    const pollInterval = window.setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/qr-transactions/${pendingQrTransactionId}`, {
+          method: "GET",
+          headers: {
+            "X-API-Key": merchantApiKey,
+          },
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          handleTransactionResult(data);
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.error("Error polling QR transaction result:", error);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [pendingQrTransactionId, merchantApiKey, handleTransactionResult]);
 
   const paymentMethods = [
     { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },
@@ -156,6 +199,7 @@ export default function DemoEcommerceCheckoutPage() {
                 subtotal={subtotal}
                 apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
+                onQrSessionCreated={handleQrSessionCreated}
                 onResult={handleTransactionResult}
               />
             )}

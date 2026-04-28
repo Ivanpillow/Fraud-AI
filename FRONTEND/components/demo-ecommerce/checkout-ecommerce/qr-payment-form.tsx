@@ -5,12 +5,13 @@ import { AlertTriangle, Loader2, MapPin, QrCode, ShieldCheck } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
-import { buildQrImageUrl, buildQrSelectionUrl } from "@/lib/qr-checkout";
+import { buildQrImageUrl, buildQrSelectionUrl, generateQrTransactionId } from "@/lib/qr-checkout";
 
 interface Props {
   subtotal: number;
   apiKey: string;
   resetTrigger?: number;
+  onQrSessionCreated?: (transactionId: number | null) => void;
   onResult: (result: {
     transaction_id: number;
     fraud_probability: number;
@@ -71,10 +72,17 @@ function defaultShippingValue(value: string): string {
   return USE_TEST_SHIPPING_VALUES ? value : "";
 }
 
-export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigger = 0, onResult }: Props) {
+export default function DemoLibreriaQRPaymentForm({
+  subtotal,
+  apiKey,
+  resetTrigger = 0,
+  onQrSessionCreated,
+  onResult,
+}: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState<number | null>(null);
+  const [sharedTransactionId, setSharedTransactionId] = useState<number | null>(null);
   const [runtime, setRuntime] = useState<ReturnType<typeof getDemoLibreriaRuntimeCheckoutContext> | null>(null);
   const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadFraudAICheckoutContext> | null>(null);
   const [shippingCountry, setShippingCountry] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.country));
@@ -87,7 +95,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
   const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
 
   const qrSelectionUrl = useMemo(() => {
-    if (!checkoutContext || subtotal <= 0) return "";
+    if (!checkoutContext || subtotal <= 0 || !sharedTransactionId) return "";
 
     return buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
@@ -95,8 +103,9 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
       merchantApiKey: checkoutContext.merchant.apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/demo-ecommerce/checkout",
+      transactionId: sharedTransactionId,
     });
-  }, [checkoutContext, subtotal]);
+  }, [checkoutContext, subtotal, sharedTransactionId]);
 
   const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
   const hasRequiredShippingFields = [
@@ -123,6 +132,8 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
     setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
     setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
+    setSharedTransactionId(null);
+    onQrSessionCreated?.(null);
   }, [resetTrigger]);
 
   const handleGenerateQR = () => {
@@ -131,12 +142,17 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
       return;
     }
 
-    if (!qrSelectionUrl) {
+    if (!checkoutContext) {
       setError("No se encontró el contexto del comercio para abrir el pago QR.");
       return;
     }
 
     setError(null);
+    const transactionId = sharedTransactionId ?? generateQrTransactionId();
+    if (!sharedTransactionId) {
+      setSharedTransactionId(transactionId);
+      onQrSessionCreated?.(transactionId);
+    }
     setQrSeed(Date.now());
   };
 
@@ -145,12 +161,27 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     setError(null);
     onResult(null);
 
-    if (!qrSelectionUrl) {
+    if (!checkoutContext) {
       setError("No se encontró la página de pago QR.");
       return;
     }
 
-    window.location.href = qrSelectionUrl;
+    const transactionId = sharedTransactionId ?? generateQrTransactionId();
+    if (!sharedTransactionId) {
+      setSharedTransactionId(transactionId);
+      onQrSessionCreated?.(transactionId);
+    }
+
+    const selectionUrl = buildQrSelectionUrl({
+      merchantSlug: checkoutContext.merchant.slug,
+      merchantName: checkoutContext.merchant.name,
+      merchantApiKey: checkoutContext.merchant.apiKey,
+      subtotal,
+      returnUrl: checkoutContext.returnUrl ?? "/demo-ecommerce/checkout",
+      transactionId,
+    });
+
+    window.location.href = selectionUrl;
   };
 
   return (
