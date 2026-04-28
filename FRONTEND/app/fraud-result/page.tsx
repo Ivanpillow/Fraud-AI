@@ -1,10 +1,5 @@
 import React, { Suspense } from "react";
-import dynamic from "next/dynamic";
-
-const FraudResultPage = dynamic(
-  () => import("@/components/fraud-result-page-client"),
-  { ssr: false }
-);
+import FraudResultPage from "./fraud-result-page-client";
 
 export default function Page() {
   return (
