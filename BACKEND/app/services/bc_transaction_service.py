@@ -16,8 +16,10 @@ from app.models.bc_transaction import BCTransaction
 from app.models.fraud_prediction import FraudPrediction
 from app.models.transaction import Transaction
 from app.models.user import User
+from app.models.user_transaction_details import UserTransactionDetails
 from app.queries.fraud_explanation_queries import save_explanations
 from app.schemas.bc_transaction import BCWebhookEvent
+from app.schemas.bc_transaction import BCWalletSimulationRequest
 from app.services.transaction_detail_service import save_user_transaction_details
 from app.services.user_behavior_service import (
     calculate_amount_vs_avg,
@@ -110,6 +112,57 @@ def _ensure_user_exists(db, tx_data: dict) -> None:
         )
     )
     db.flush()
+
+
+def _first_non_empty(*values: Any) -> str | None:
+    for value in values:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return None
+
+
+def _get_payment_shipping_details(payment: BCTransaction) -> dict[str, Any]:
+    request_payload = payment.request_payload or {}
+    return {
+        "shipping_country": _first_non_empty(
+            request_payload.get("shipping_country"),
+            request_payload.get("shippingCountry"),
+        ),
+        "shipping_state": _first_non_empty(
+            request_payload.get("shipping_state"),
+            request_payload.get("shippingState"),
+        ),
+        "shipping_city": _first_non_empty(
+            request_payload.get("shipping_city"),
+            request_payload.get("shippingCity"),
+        ),
+        "shipping_postal_code": _first_non_empty(
+            request_payload.get("shipping_postal_code"),
+            request_payload.get("shippingZip"),
+            request_payload.get("shipping_zip"),
+        ),
+        "shipping_street": _first_non_empty(
+            request_payload.get("shipping_street"),
+            request_payload.get("shippingStreet"),
+            request_payload.get("shipping_address"),
+            request_payload.get("shippingAddress"),
+        ),
+        "shipping_reference": _first_non_empty(
+            request_payload.get("shipping_reference"),
+            request_payload.get("shippingReference"),
+        ),
+        "shipping_full_name": _first_non_empty(
+            request_payload.get("shipping_full_name"),
+            request_payload.get("shippingName"),
+        ),
+        "shipping_phone": _first_non_empty(
+            request_payload.get("shipping_phone"),
+            request_payload.get("shippingPhone"),
+        ),
+    }
 
 
 def _score_bc_decision(features: dict, model_result: dict, is_new_user: bool) -> tuple[str, float, float]:
@@ -252,6 +305,7 @@ def _build_status_response(payment: BCTransaction) -> dict[str, Any]:
         "fiat_currency": payment.fiat_currency,
         "asset_symbol": payment.asset_symbol,
         "network": payment.network,
+        "wallet_address": payment.wallet_address,
         "tx_hash": payment.tx_hash,
         "confirmations": int(payment.confirmations or 0),
         "required_confirmations": int(payment.required_confirmations or 0),
@@ -259,8 +313,49 @@ def _build_status_response(payment: BCTransaction) -> dict[str, Any]:
         "updated_at": payment.updated_at,
         "confirmed_at": payment.confirmed_at,
         "failed_at": payment.failed_at,
+        **_get_payment_shipping_details(payment),
         "fraud_result": fraud_result,
     }
+
+
+def _build_payment_record(db, tx_data: dict, merchant_id: int) -> BCTransaction:
+    provider = _get_provider()
+    payment_id = int(datetime.utcnow().timestamp() * 1_000_000)
+
+    draft = provider.create_payment_reference(
+        payment_id=payment_id,
+        amount=float(tx_data["amount"]),
+        asset_symbol=str(tx_data.get("asset_symbol") or "BTC"),
+        network=str(tx_data.get("network") or "Bitcoin"),
+    )
+
+    request_payload = {
+        **tx_data,
+        "provider_reference": draft.provider_reference,
+    }
+
+    bc_payment = BCTransaction(
+        payment_id=payment_id,
+        merchant_id=merchant_id,
+        user_id=tx_data["user_id"],
+        amount=tx_data["amount"],
+        fiat_currency="MXN",
+        asset_symbol=str(tx_data.get("asset_symbol") or "BTC"),
+        network=str(tx_data.get("network") or "Bitcoin"),
+        wallet_address=tx_data.get("wallet_address"),
+        provider=draft.provider,
+        provider_reference=draft.provider_reference,
+        status="pending",
+        status_reason="awaiting_wallet_selection",
+        confirmations=0,
+        required_confirmations=int(settings.BC_REQUIRED_CONFIRMATIONS),
+        request_payload=request_payload,
+    )
+
+    db.add(bc_payment)
+    db.commit()
+    db.refresh(bc_payment)
+    return bc_payment
 
 
 def _send_internal_webhook(payload: dict[str, Any]) -> None:
@@ -485,43 +580,8 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
 def process_bc_transaction(db, tx_data, merchant_id, background_tasks=None):
     try:
         _ensure_user_exists(db, tx_data)
-
-        provider = _get_provider()
-        payment_id = int(datetime.utcnow().timestamp() * 1_000_000)
-
-        draft = provider.create_payment_reference(
-            payment_id=payment_id,
-            amount=float(tx_data["amount"]),
-            asset_symbol=str(tx_data.get("asset_symbol") or "BTC"),
-            network=str(tx_data.get("network") or "Bitcoin"),
-        )
-
-        tx_data_for_simulation = {
-            **tx_data,
-            "provider_reference": draft.provider_reference,
-        }
-
-        bc_payment = BCTransaction(
-            payment_id=payment_id,
-            merchant_id=merchant_id,
-            user_id=tx_data["user_id"],
-            amount=tx_data["amount"],
-            fiat_currency="MXN",
-            asset_symbol=str(tx_data.get("asset_symbol") or "BTC"),
-            network=str(tx_data.get("network") or "Bitcoin"),
-            wallet_address=tx_data.get("wallet_address"),
-            provider=draft.provider,
-            provider_reference=draft.provider_reference,
-            status="pending",
-            status_reason="awaiting_chain_confirmation",
-            confirmations=0,
-            required_confirmations=int(settings.BC_REQUIRED_CONFIRMATIONS),
-            request_payload=tx_data_for_simulation,
-        )
-
-        db.add(bc_payment)
-        db.commit()
-        db.refresh(bc_payment)
+        bc_payment = _build_payment_record(db, tx_data, merchant_id)
+        tx_data_for_simulation = dict(bc_payment.request_payload or {})
 
         if background_tasks is not None:
             background_tasks.add_task(
@@ -542,7 +602,6 @@ def process_bc_transaction_simple(db, tx_data, merchant_id, background_tasks=Non
         _ensure_user_exists(db, tx_data)
 
         now = datetime.now(MEXICO_CITY_TZ)
-
         hour_raw = tx_data.get("hour")
         day_of_week_raw = tx_data.get("day_of_week")
 
@@ -553,47 +612,78 @@ def process_bc_transaction_simple(db, tx_data, merchant_id, background_tasks=Non
         if day_of_week < 1 or day_of_week > 7:
             day_of_week = ((day_of_week - 1) % 7) + 1
 
-        user_stats = get_user_stats(db, tx_data["user_id"])
-
-        amount_vs_avg = calculate_amount_vs_avg(
-            amount=tx_data["amount"],
-            avg_amount_user=user_stats["avg_amount_user"],
-        )
-
-        is_international = tx_data["country"].upper() != "MX"
-
         full_tx = {
             **tx_data,
             "hour": hour,
             "day_of_week": day_of_week,
-            "transactions_last_24h": user_stats["transactions_last_24h"],
-            "avg_amount_user": user_stats["avg_amount_user"],
-            "amount_vs_avg": amount_vs_avg,
-            "failed_attempts": user_stats["failed_attempts"],
-            "is_international": is_international,
             "asset_symbol": str(tx_data.get("asset_symbol") or "BTC").upper(),
             "network": str(tx_data.get("network") or "Bitcoin"),
         }
 
-        return process_bc_transaction(db, full_tx, merchant_id, background_tasks=background_tasks)
+        bc_payment = _build_payment_record(db, full_tx, merchant_id)
+        return _build_status_response(bc_payment)
     except Exception as e:
         db.rollback()
         raise e
 
 
-def get_bc_payment_status(db, payment_id: int, merchant_id: int) -> dict[str, Any] | None:
-    payment = (
-        db.query(BCTransaction)
-        .filter(
-            BCTransaction.payment_id == payment_id,
-            BCTransaction.merchant_id == merchant_id,
-        )
-        .first()
-    )
+def get_bc_payment_status(db, payment_id: int, merchant_id: int | None = None) -> dict[str, Any] | None:
+    query = db.query(BCTransaction).filter(BCTransaction.payment_id == payment_id)
+    if merchant_id is not None:
+        query = query.filter(BCTransaction.merchant_id == merchant_id)
+
+    payment = query.first()
     if not payment:
         return None
 
     return _build_status_response(payment)
+
+
+def simulate_bc_wallet_payment(
+    db,
+    payment_id: int,
+    wallet_request: BCWalletSimulationRequest,
+    background_tasks=None,
+) -> dict[str, Any] | None:
+    payment = db.query(BCTransaction).filter(BCTransaction.payment_id == payment_id).first()
+    if not payment:
+        return None
+
+    if payment.status.lower().strip() in FINAL_STATUSES:
+        return _build_status_response(payment)
+
+    request_payload = dict(payment.request_payload or {})
+    request_payload["wallet_address"] = wallet_request.wallet_address.strip()
+    if wallet_request.wallet_name:
+        request_payload["wallet_name"] = wallet_request.wallet_name.strip()
+
+    payment.wallet_address = wallet_request.wallet_address.strip()
+    payment.request_payload = request_payload
+    payment.status = "confirming"
+    payment.status_reason = "wallet_selected"
+    payment.confirmations = max(int(payment.confirmations or 0), 1)
+    db.commit()
+    db.refresh(payment)
+
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _simulate_blockchain_confirmation,
+            int(payment.payment_id),
+            request_payload,
+            int(payment.merchant_id),
+        )
+
+    return _build_status_response(payment)
+
+
+def get_bc_payments_by_wallet(db, wallet_address: str) -> list[dict[str, Any]]:
+    payments = (
+        db.query(BCTransaction)
+        .filter(BCTransaction.wallet_address == wallet_address)
+        .order_by(BCTransaction.created_at.desc())
+        .all()
+    )
+    return [_build_status_response(payment) for payment in payments]
 
 
 def apply_internal_webhook_event(db, payload: dict[str, Any]) -> dict[str, Any] | None:

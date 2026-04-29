@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Bitcoin, Loader2, MapPin, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Bitcoin, Loader2, MapPin, QrCode, ShieldCheck } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { cn, readHttpErrorMessage } from "@/lib/utils";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
+import { buildBcPaymentUrl, buildQrImageUrl } from "@/lib/qr-checkout";
 
 interface Props {
   subtotal: number;
@@ -162,6 +163,7 @@ export default function DemoLibreriaCryptoPaymentForm({
   const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
   const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
   const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
+  const [paymentQrUrl, setPaymentQrUrl] = useState<string>("");
   const pollTimerRef = useRef<number | null>(null);
 
   const selected = useMemo(
@@ -199,6 +201,7 @@ export default function DemoLibreriaCryptoPaymentForm({
     setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
     setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
     setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
+    setPaymentQrUrl("");
     setError(null);
   }, [resetTrigger]);
 
@@ -308,6 +311,7 @@ export default function DemoLibreriaCryptoPaymentForm({
 
       const created = (await response.json()) as BCPaymentStatus;
       setPaymentStatus(created);
+      setPaymentQrUrl(buildQrImageUrl(buildBcPaymentUrl(created.payment_id)));
       scheduleStatusPoll(created.payment_id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "No se pudo crear el pago blockchain");
@@ -325,27 +329,7 @@ export default function DemoLibreriaCryptoPaymentForm({
         </span> */}
       </div>
 
-      {/* <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Contexto automatico antifraude</p>
-            <p className="text-sm text-foreground mt-1">
-              {runtime
-                ? `${dayLabel(runtime.dayOfWeek)} ${formatDisplayDate(runtime.dayOfWeek, runtime.hour)}`
-                : "Cargando contexto real..."}
-            </p>
-          </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
-            {runtime?.country ?? "MX"}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <p className="text-muted-foreground">Usuario: <span className="text-foreground">{runtime ? `#${runtime.userId}` : "—"}</span></p>
-          <p className="text-muted-foreground">Categoria: <span className="text-foreground">{runtime?.merchantCategory ?? "retail"}</span></p>
-          <p className="text-muted-foreground">Dispositivo: <span className="text-foreground">{runtime?.deviceType ?? "web"}</span></p>
-          <p className="text-muted-foreground">Hora: <span className="text-foreground">{runtime ? `${String(runtime.hour).padStart(2, "0")}:00` : "—"}</span></p>
-        </div>
-      </div> */}
+        
 
       <div className={cn("rounded-2xl border border-white/10 p-5 shadow-2xl bg-gradient-to-br", selected.gradient)}>
         <div className="flex items-start justify-between gap-4">
@@ -565,6 +549,26 @@ export default function DemoLibreriaCryptoPaymentForm({
         <div className="glass-checkout-alert-error rounded-2xl p-4 flex items-center gap-3 animate-fade-in">
           <AlertTriangle size={18} className="text-red-400 shrink-0" />
           <p className="text-sm text-red-300">{error}</p>
+        </div>
+      )}
+
+      
+      {paymentQrUrl && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <QrCode size={16} className="text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">QR de pago</h3>
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <img
+              src={paymentQrUrl}
+              alt="Código QR del pago cripto"
+              className="h-44 w-44 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
+            />
+            <p className="text-xs text-muted-foreground text-center max-w-md">
+              Escanea este QR desde el celular para abrir la pantalla de confirmación. El QR sólo contiene el identificador del pago.
+            </p>
+          </div>
         </div>
       )}
 
