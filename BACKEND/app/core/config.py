@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     # Blockchain simulated provider settings
     BC_PROVIDER_NAME: str = "fake_blockchain"
     BC_REQUIRED_CONFIRMATIONS: int = 2
-    BC_CONFIRMATION_MIN_SECONDS: int = 2
-    BC_CONFIRMATION_MAX_SECONDS: int = 4
+    BC_CONFIRMATION_MIN_SECONDS: int = 3
+    BC_CONFIRMATION_MAX_SECONDS: int = 8
     BC_INTERNAL_WEBHOOK_SECRET: str = "dev_bc_webhook_secret"
     BC_INTERNAL_WEBHOOK_URL: str = "http://127.0.0.1:8000/bc-transactions/webhook/internal"
 
