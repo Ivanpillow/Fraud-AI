@@ -651,7 +651,7 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
               className="h-44 w-44 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
             />
             <p className="text-xs text-muted-foreground text-center max-w-md">
-              Escanea este QR para abrir la pantalla de confirmación.
+              Escanea este QR desde el celular para abrir la pantalla de confirmación. El QR sólo contiene el identificador del pago.
             </p>
           </div>
         </div>
