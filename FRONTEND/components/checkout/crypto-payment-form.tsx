@@ -681,7 +681,7 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
         ) : (
           <>
             <ShieldCheck size={18} />
-            Pagar con {selected.name} y analizar
+            Generar QR
           </>
         )}
       </button>

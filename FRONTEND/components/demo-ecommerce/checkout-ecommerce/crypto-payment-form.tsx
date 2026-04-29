@@ -587,7 +587,7 @@ export default function DemoLibreriaCryptoPaymentForm({
           </>
         ) : (
           <>
-            <ShieldCheck size={18} /> Pagar con {selected.name}
+            Generar QR
           </>
         )}
       </button>

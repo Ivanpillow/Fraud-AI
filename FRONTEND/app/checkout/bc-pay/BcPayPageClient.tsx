@@ -306,7 +306,13 @@ export default function BcPayPageClient() {
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => navigateToFraudResult(order.fraud_result!, returnUrl)}
+                    onClick={() => {
+                      if (order.fraud_result) {
+                        navigateToFraudResult(order.fraud_result, returnUrl);
+                      } else {
+                        router.push(returnUrl);
+                      }
+                    }}
                     className="rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     Ver resultado
@@ -337,7 +343,7 @@ export default function BcPayPageClient() {
                   </>
                 ) : (
                   <>
-                    <ShieldCheck size={18} /> Confirmar pago simulado
+                    <ShieldCheck size={18} /> Confirmar pago
                   </>
                 )}
               </button>
