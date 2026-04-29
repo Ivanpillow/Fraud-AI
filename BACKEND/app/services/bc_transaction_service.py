@@ -2,6 +2,7 @@ import random
 import secrets
 import time
 from dataclasses import dataclass
+import threading
 from datetime import datetime, timezone
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
@@ -676,6 +677,20 @@ def simulate_bc_wallet_payment(
             request_payload,
             int(payment.merchant_id),
         )
+
+    # As an extra-safety fallback, spawn a daemon thread to run the simulation
+    # so that environments where FastAPI BackgroundTasks are not executed
+    # (or misconfigured workers) will still progress the payment lifecycle.
+    try:
+        thread = threading.Thread(
+            target=_simulate_blockchain_confirmation,
+            args=(int(payment.payment_id), request_payload, int(payment.merchant_id)),
+            daemon=True,
+        )
+        thread.start()
+    except Exception:
+        # If threading fails for some reason, rely on BackgroundTasks (if present)
+        pass
 
     return _build_status_response(payment)
 

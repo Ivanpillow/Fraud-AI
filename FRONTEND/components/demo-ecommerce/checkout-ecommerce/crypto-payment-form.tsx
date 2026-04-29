@@ -566,7 +566,7 @@ export default function DemoLibreriaCryptoPaymentForm({
               className="h-44 w-44 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
             />
             <p className="text-xs text-muted-foreground text-center max-w-md">
-              Escanea este QR desde el celular para abrir la pantalla de confirmación. El QR sólo contiene el identificador del pago.
+              Escanea este QR para abrir la pantalla de confirmación.
             </p>
           </div>
         </div>
