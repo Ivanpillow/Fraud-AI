@@ -588,8 +588,14 @@ def process_bc_transaction(db, tx_data, merchant_id, background_tasks=None):
         bc_payment = _build_payment_record(db, tx_data, merchant_id)
         tx_data_for_simulation = dict(bc_payment.request_payload or {})
 
-        # Simplified synchronous simulation: do not schedule background tasks here.
-        # The confirmation will be triggered by the client via the simulate-payment endpoint.
+        if background_tasks is not None:
+            background_tasks.add_task(
+                _simulate_blockchain_confirmation,
+                int(bc_payment.payment_id),
+                tx_data_for_simulation,
+                merchant_id,
+            )
+
         return _build_status_response(bc_payment)
     except Exception as e:
         db.rollback()
@@ -658,51 +664,33 @@ def simulate_bc_wallet_payment(
 
     payment.wallet_address = wallet_request.wallet_address.strip()
     payment.request_payload = request_payload
-    # Mark as confirming briefly
     payment.status = "confirming"
     payment.status_reason = "wallet_selected"
     payment.confirmations = max(int(payment.confirmations or 0), 1)
     db.commit()
     db.refresh(payment)
 
-    # Run fraud analysis synchronously and finalize the payment immediately.
-    fraud_result = _run_blockchain_fraud_analysis(db, request_payload, int(payment.merchant_id))
-    decision = str(fraud_result["decision"] or "").lower().strip()
-    provider = _get_provider()
-    tx_hash = provider.build_tx_hash(request_payload.get("network") or "")
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _simulate_blockchain_confirmation,
+            int(payment.payment_id),
+            request_payload,
+            int(payment.merchant_id),
+        )
 
-    if decision == "block":
-        final_status = "failed"
-        status_reason = "fraud_blocked"
-    elif decision == "review":
-        final_status = "failed"
-        status_reason = "manual_review_required"
-    else:
-        final_status = "confirmed"
-        status_reason = "onchain_confirmed"
-
-    # Apply final state directly
-    payment.status = final_status
-    payment.status_reason = status_reason
-    payment.tx_hash = tx_hash
-    payment.confirmations = int(settings.BC_REQUIRED_CONFIRMATIONS)
-    payment.required_confirmations = int(settings.BC_REQUIRED_CONFIRMATIONS)
-    now_utc = datetime.now(timezone.utc)
-    if final_status == "confirmed":
-        payment.confirmed_at = now_utc
-    else:
-        payment.failed_at = now_utc
-
-    # Attach fraud result to payment
-    request_payload["fraud_model_scores"] = fraud_result.get("model_scores", {})
-    request_payload["fraud_explanations"] = fraud_result.get("explanations")
-    payment.request_payload = request_payload
-    payment.fraud_transaction_id = int(fraud_result["transaction_id"])
-    payment.fraud_decision = str(fraud_result["decision"])
-    payment.fraud_probability = float(fraud_result["fraud_probability"])
-
-    db.commit()
-    db.refresh(payment)
+    # As an extra-safety fallback, spawn a daemon thread to run the simulation
+    # so that environments where FastAPI BackgroundTasks are not executed
+    # (or misconfigured workers) will still progress the payment lifecycle.
+    try:
+        thread = threading.Thread(
+            target=_simulate_blockchain_confirmation,
+            args=(int(payment.payment_id), request_payload, int(payment.merchant_id)),
+            daemon=True,
+        )
+        thread.start()
+    except Exception:
+        # If threading fails for some reason, rely on BackgroundTasks (if present)
+        pass
 
     return _build_status_response(payment)
 
