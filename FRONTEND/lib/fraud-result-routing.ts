@@ -41,25 +41,39 @@ export function buildFraudResultUrl(result: FraudResultPayload, backUrl: string)
   const url = new URL("/fraud-result", window.location.origin);
   url.searchParams.set("backUrl", backUrl);
   // Ensure all numeric values are properly stringified
-  url.searchParams.set("transaction_id", String(result.transaction_id));
-  url.searchParams.set("fraud_probability", String(Number(result.fraud_probability).toFixed(6)));
-  url.searchParams.set("decision", String(result.decision));
-  url.searchParams.set("random_forest", String(Number(result.model_scores.random_forest).toFixed(6)));
-  url.searchParams.set("logistic_regression", String(Number(result.model_scores.logistic_regression).toFixed(6)));
-  url.searchParams.set("kmeans_anomaly", String(Number(result.model_scores.kmeans_anomaly).toFixed(6)));
+  url.searchParams.set("transaction_id", String(result.transaction_id ?? 0));
+  url.searchParams.set("fraud_probability", String(Number(result.fraud_probability ?? 0).toFixed(6)));
+  url.searchParams.set("decision", String(result.decision ?? "unknown"));
+
+  const scores = result.model_scores ?? { random_forest: 0, logistic_regression: 0, kmeans_anomaly: 0 };
+  url.searchParams.set("random_forest", String(Number(scores.random_forest ?? 0).toFixed(6)));
+  url.searchParams.set("logistic_regression", String(Number(scores.logistic_regression ?? 0).toFixed(6)));
+  url.searchParams.set("kmeans_anomaly", String(Number(scores.kmeans_anomaly ?? 0).toFixed(6)));
   return url.toString();
 }
 
-export function navigateToFraudResult(result: FraudResultPayload, backUrl: string) {
+export function navigateToFraudResult(result: any, backUrl: string) {
   if (typeof window === "undefined") return;
 
-  // Validate result before persisting
-  if (!result.fraud_probability || result.fraud_probability === 0) {
-    console.warn("[FraudResult] Warning: fraud_probability is missing or zero", result);
+  // Ensure required fields exist and normalize the payload
+  const normalized = {
+    transaction_id: Number(result?.transaction_id ?? 0),
+    fraud_probability: Number(result?.fraud_probability ?? 0),
+    decision: String(result?.decision ?? "unknown"),
+    model_scores: {
+      random_forest: Number(result?.model_scores?.random_forest ?? result?.model_scores?.random_forest ?? 0),
+      logistic_regression: Number(result?.model_scores?.logistic_regression ?? result?.model_scores?.logistic_regression ?? 0),
+      kmeans_anomaly: Number(result?.model_scores?.kmeans_anomaly ?? result?.model_scores?.kmeans_anomaly ?? 0),
+    },
+    explanations: result?.explanations,
+  } as FraudResultPayload;
+
+  if (!normalized.fraud_probability || normalized.fraud_probability === 0) {
+    console.warn("[FraudResult] Warning: fraud_probability is missing or zero", normalized);
   }
 
-  persistFraudResult(result);
-  window.location.href = buildFraudResultUrl(result, backUrl);
+  persistFraudResult(normalized);
+  window.location.href = buildFraudResultUrl(normalized, backUrl);
 }
 
 export function parseFraudResultFromSearchParams(searchParams: { get(name: string): string | null }): FraudResultPayload | null {

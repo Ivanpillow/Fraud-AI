@@ -361,11 +361,15 @@ def _build_payment_record(db, tx_data: dict, merchant_id: int) -> BCTransaction:
 def _send_internal_webhook(payload: dict[str, Any]) -> None:
     try:
         with httpx.Client(timeout=10.0) as client:
-            client.post(
+            response = client.post(
                 settings.BC_INTERNAL_WEBHOOK_URL,
                 json=payload,
                 headers={"X-BC-Webhook-Secret": settings.BC_INTERNAL_WEBHOOK_SECRET},
             )
+
+            # Treat non-2xx responses as failures so the local fallback runs
+            if response.status_code < 200 or response.status_code >= 300:
+                raise RuntimeError(f"Internal webhook returned status {response.status_code}")
     except Exception:
         # El estado final se mantiene con fallback local para no dejar pagos colgados.
         db = SessionLocal()
