@@ -16,6 +16,14 @@ class QRTransactionCreate(BaseModel):
     day_of_week: int = Field(ge=1, le=7)
 
     device_change_flag: Optional[bool] = False
+    shipping_country: Optional[str] = None
+    shipping_state: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
+    shipping_street: Optional[str] = None
+    shipping_reference: Optional[str] = None
+    shipping_full_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
 
     @field_validator("card_number", mode="before")
     @classmethod
@@ -53,6 +61,14 @@ class QRTransactionRawCreate(BaseModel):
     device_change_flag: Optional[bool] = False
     hour: Optional[int] = Field(default=None, ge=0, le=23)
     day_of_week: Optional[int] = Field(default=None, ge=1, le=7)
+    shipping_country: Optional[str] = None
+    shipping_state: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
+    shipping_street: Optional[str] = None
+    shipping_reference: Optional[str] = None
+    shipping_full_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
 
     @field_validator("card_number", mode="before")
     @classmethod

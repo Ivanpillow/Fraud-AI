@@ -12,6 +12,7 @@ import {
   Users,
   Key,
   Store,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProfileDropdown from "@/components/dashboard/profile-dropdown";
@@ -33,6 +34,11 @@ const navItems = [
     label: "Revisiones",
     href: "/dashboard/review",
     icon: ShieldAlert,
+  },
+  {
+    label: "Historial",
+    href: "/dashboard/history",
+    icon: CheckCircle2,
   },
 
   {
@@ -70,7 +76,7 @@ export default function Sidebar() {
 
   const visibleNavItems = navItems
     .filter((item) => {
-      if (item.href === "/dashboard/review") {
+      if (item.href === "/dashboard/review" || item.href === "/dashboard/history") {
         return !isSuperadmin;
       }
 

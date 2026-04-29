@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Bitcoin, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Bitcoin, Loader2, ShieldCheck, AlertTriangle, MapPin } from "lucide-react";
 import { cn, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
@@ -58,6 +58,23 @@ const CRYPTOS: CryptoInfo[] = [
   },
 ];
 
+const USE_TEST_SHIPPING_VALUES = true;
+
+const TEST_SHIPPING_VALUES = {
+  country: "Mexico",
+  state: "Jalisco",
+  city: "Guadalajara",
+  postalCode: "45400",
+  street: "Olimpica 345",
+  reference: "CUCEI",
+  fullName: "Luis Angel De La Cruz Ascencio",
+  phone: "3334757609",
+};
+
+function defaultShippingValue(value: string): string {
+  return USE_TEST_SHIPPING_VALUES ? value : "";
+}
+
 interface Props {
   subtotal: number;
   apiKey: string;
@@ -109,6 +126,14 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
   const [deviceType, setDeviceType] = useState("desktop");
   const [selectedHour, setSelectedHour] = useState("");
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
+  const [shippingCountry, setShippingCountry] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.country));
+  const [shippingState, setShippingState] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.state));
+  const [shippingCity, setShippingCity] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.city));
+  const [shippingZip, setShippingZip] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+  const [shippingStreet, setShippingStreet] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.street));
+  const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+  const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+  const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<BCPaymentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +161,14 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     setDeviceType("desktop");
     setSelectedHour("");
     setSelectedDayOfWeek("");
+    setShippingCountry(defaultShippingValue(TEST_SHIPPING_VALUES.country));
+    setShippingState(defaultShippingValue(TEST_SHIPPING_VALUES.state));
+    setShippingCity(defaultShippingValue(TEST_SHIPPING_VALUES.city));
+    setShippingZip(defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+    setShippingStreet(defaultShippingValue(TEST_SHIPPING_VALUES.street));
+    setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+    setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+    setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
     setIsSubmitting(false);
     setPaymentStatus(null);
     setError(null);
@@ -225,6 +258,16 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     })),
   ];
 
+  const hasRequiredShippingFields = [
+    shippingCountry,
+    shippingState,
+    shippingCity,
+    shippingZip,
+    shippingStreet,
+    shippingName,
+    shippingPhone,
+  ].every((value) => value.trim().length > 0);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     stopPolling();
@@ -243,6 +286,11 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
       return;
     }
 
+    if (!hasRequiredShippingFields) {
+      setError("Completa la dirección de envío obligatoria.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -255,6 +303,14 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
         asset_symbol: selected.symbol,
         network: selected.network,
         wallet_address: walletAddress || undefined,
+        shipping_country: shippingCountry,
+        shipping_state: shippingState,
+        shipping_city: shippingCity,
+        shipping_postal_code: shippingZip,
+        shipping_street: shippingStreet,
+        shipping_reference: shippingReference,
+        shipping_full_name: shippingName,
+        shipping_phone: shippingPhone,
         ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
         ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
       };
@@ -300,17 +356,17 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Pago Blockchain</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Prototipo visual de pago cripto para demo de interfaz.
-          </p>
+          {/* <p className="text-sm text-muted-foreground mt-1">
+            Prototipo visual de pago cripto
+          </p> */}
         </div>
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground flex items-center gap-2">
           <Bitcoin size={14} className="text-amber-400" />
-          Blockchain Prototype
+          Blockchain
         </div>
       </div>
 
-      <div className="glass-checkout-alert-info rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
+      {/* <div className="glass-checkout-alert-info rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
         <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
           <span className="text-xs text-amber-300">i</span>
         </div>
@@ -320,7 +376,7 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
             Esta sección usa endpoint dedicado de blockchain y mantiene el flujo simple sin Coinbase Commerce por ahora.
           </p>
         </div>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-5 gap-3">
         {CRYPTOS.map((crypto) => {
@@ -479,8 +535,106 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
         </div>
       )}
 
-      <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+      {/* <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
         Flujo blockchain simulado profesional: crea pago pendiente, pasa por confirming y finaliza por webhook interno.
+      </div> */}
+
+
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <MapPin size={16} className="text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Dirección de envío</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="checkout-label">País</label>
+            <input
+              value={shippingCountry}
+              onChange={(e) => setShippingCountry(e.target.value)}
+              placeholder="Mexico"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Estado</label>
+            <input
+              value={shippingState}
+              onChange={(e) => setShippingState(e.target.value)}
+              placeholder="Jalisco"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Ciudad</label>
+            <input
+              value={shippingCity}
+              onChange={(e) => setShippingCity(e.target.value)}
+              placeholder="Guadalajara"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Código postal</label>
+            <input
+              value={shippingZip}
+              onChange={(e) => setShippingZip(e.target.value)}
+              placeholder="44100"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Calle y número</label>
+            <input
+              value={shippingStreet}
+              onChange={(e) => setShippingStreet(e.target.value)}
+              placeholder="Av. Vallarta 1234"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Referencia</label>
+            <input
+              value={shippingReference}
+              onChange={(e) => setShippingReference(e.target.value)}
+              placeholder="CUCEI"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Nombre completo</label>
+            <input
+              value={shippingName}
+              onChange={(e) => setShippingName(e.target.value)}
+              placeholder="Juan Pérez García"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Teléfono</label>
+            <input
+              value={shippingPhone}
+              onChange={(e) => setShippingPhone(e.target.value)}
+              placeholder="3334757609"
+              className="checkout-input"
+              disabled={isSubmitting}
+            />
+          </div>
+        </div>
       </div>
 
       <button

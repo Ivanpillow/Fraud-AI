@@ -279,6 +279,14 @@ export default function DemoLibreriaCryptoPaymentForm({
       asset_symbol: selected.symbol,
       network: selected.network,
       wallet_address: walletAddress || undefined,
+      shipping_country: shippingCountry,
+      shipping_state: shippingState,
+      shipping_city: shippingCity,
+      shipping_postal_code: shippingZip,
+      shipping_street: shippingStreet,
+      shipping_reference: shippingReference,
+      shipping_full_name: shippingName,
+      shipping_phone: shippingPhone,
     };
 
     setIsSubmitting(true);

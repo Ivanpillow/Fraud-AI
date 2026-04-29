@@ -12,6 +12,7 @@ from app.services.user_behavior_service import (
 )
 from app.ml.utils.explainability import explain_transaction
 from app.queries.fraud_explanation_queries import save_explanations
+from app.services.transaction_detail_service import save_user_transaction_details
 
 from app.services.user_behavior_service import (
     get_user_stats,
@@ -88,6 +89,74 @@ def _resolve_user_for_transaction(db, tx_data: dict) -> None:
         raise ValueError("Se requiere user_id o card_number")
 
     _ensure_user_exists_by_id(db, tx_data)
+
+
+def _evaluate_allow_confidence(
+    decision: str,
+    prob: float,
+    decision_score: float,
+    risk_score_rule: float,
+    features: dict,
+    is_new_user: bool
+) -> tuple[str | None, bool]:
+    """
+    Evalúa la confianza de un ALLOW para determinar si se finaliza automáticamente o requiere revisión.
+    
+    Retorna: (final_decision, reviewed)
+    - ('allow', True): Auto-finalizar con confianza alta
+    - (None, False): Requiere revisión humana (incertidumbre)
+    - (None, False): Para review/block, nunca se auto-finaliza
+    """
+    
+    if decision != "allow":
+        return None, False
+    
+    # Criterios de confianza para auto-finalizar
+    # 1. Probabilidad de fraude baja (bajo riesgo)
+    prob_is_safe = prob < 0.35
+    
+    # 2. Usuario establecido (no es nuevo)
+    user_is_established = not is_new_user  # transactions_last_24h >= 3
+    
+    # 3. Monto normal (cercano al promedio)
+    amount_is_normal = float(features["amount_vs_avg"]) < 1.5
+    
+    # 4. Sin intentos fallidos recientes
+    no_failed_attempts = int(features["failed_attempts"]) == 0
+    
+    # 5. Risk score bajo (reglas heurísticas tranquilas)
+    risk_score_is_low = risk_score_rule < 0.40
+    
+    # 6. Transacción nacional o en horario normal
+    is_domestic = not bool(features["is_international"])
+    normal_hour = int(features["hour"]) >= 6 and int(features["hour"]) <= 23
+    geo_friendly = is_domestic or normal_hour
+    
+    # Contador de factores seguros
+    confidence_factors = 0
+    if prob_is_safe:
+        confidence_factors += 1
+    if user_is_established:
+        confidence_factors += 1
+    if amount_is_normal:
+        confidence_factors += 1
+    if no_failed_attempts:
+        confidence_factors += 1
+    if risk_score_is_low:
+        confidence_factors += 1
+    if geo_friendly:
+        confidence_factors += 1
+    
+    # Lógica híbrida:
+    # - Si >= 5 factores seguros: auto-finalizar (confianza alta)
+    # - Si 3-4 factores: requiere revisión (zona gris)
+    # - Si < 3 factores: requiere revisión (incertidumbre)
+    
+    if confidence_factors >= 5:
+        return "allow", True
+    else:
+        # Requiere intervención humana
+        return None, False
 
 
 def _score_card_decision(features: dict, model_result: dict, is_new_user: bool) -> tuple[str, float, float]:
@@ -176,6 +245,7 @@ def process_transaction(db, tx_data, merchant_id):
 
         db.add(transaction)
         db.flush()  # NO commit para que no se guarde hasta el final
+        save_user_transaction_details(db, tx_data, transaction.transaction_id, tx_data["user_id"], "card")
 
         # Obtener comportamiento usuario
         user_stats = get_user_stats(db, tx_data["user_id"])
@@ -214,6 +284,16 @@ def process_transaction(db, tx_data, merchant_id):
 
         decision, risk_score_rule, decision_score = _score_card_decision(features, result, is_new_user)
 
+        # Evaluación de confianza para ALLOW: determinar si se auto-finaliza o requiere revisión
+        final_decision, reviewed = _evaluate_allow_confidence(
+            decision=decision,
+            prob=prob,
+            decision_score=decision_score,
+            risk_score_rule=risk_score_rule,
+            features=features,
+            is_new_user=is_new_user
+        )
+
         # Guardar predicción
         fraud_pred = FraudPrediction(
             transaction_id=transaction.transaction_id,
@@ -224,6 +304,8 @@ def process_transaction(db, tx_data, merchant_id):
             prediction_label=prediction,
             risk_score_rule=risk_score_rule,
             decision=decision,
+            final_decision=final_decision,
+            reviewed=reviewed,
             rf_probability=result["rf_probability"],
             logistic_probability=result["logistic_probability"],
             kmeans_score=result["kmeans_score"]
@@ -232,8 +314,8 @@ def process_transaction(db, tx_data, merchant_id):
         db.add(fraud_pred)
         db.flush()
 
-        # Actualizar promedio usuario
-        if decision != "block":
+        # Actualizar promedio usuario: solo cuando la transacción fue aprobada (allow).
+        if decision == "allow":
             update_user_avg_amount(
                 db=db,
                 user_id=tx_data["user_id"],

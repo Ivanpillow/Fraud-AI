@@ -209,6 +209,14 @@ export default function DemoLibreriaCardPaymentForm({
       device_type: runtimeNow.deviceType,
       hour: runtimeNow.hour,
       day_of_week: runtimeNow.dayOfWeek,
+      shipping_country: shippingCountry,
+      shipping_state: shippingState,
+      shipping_city: shippingCity,
+      shipping_postal_code: shippingZip,
+      shipping_street: shippingStreet,
+      shipping_reference: shippingReference,
+      shipping_full_name: shippingName,
+      shipping_phone: shippingPhone,
     };
 
     setIsSubmitting(true);

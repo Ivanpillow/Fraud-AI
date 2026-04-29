@@ -18,6 +18,7 @@ from app.models.transaction import Transaction
 from app.models.user import User
 from app.queries.fraud_explanation_queries import save_explanations
 from app.schemas.bc_transaction import BCWebhookEvent
+from app.services.transaction_detail_service import save_user_transaction_details
 from app.services.user_behavior_service import (
     calculate_amount_vs_avg,
     calculate_risk_score_rule,
@@ -163,6 +164,73 @@ def _score_bc_decision(features: dict, model_result: dict, is_new_user: bool) ->
     return decision, round(risk_rule, 4), round(decision_score, 4)
 
 
+def _evaluate_allow_confidence(
+    decision: str,
+    prob: float,
+    decision_score: float,
+    risk_score_rule: float,
+    features: dict,
+    is_new_user: bool
+) -> tuple[str | None, bool]:
+    """
+    Evalúa la confianza de un ALLOW para determinar si se finaliza automáticamente o requiere revisión.
+    
+    Retorna: (final_decision, reviewed)
+    - ('allow', True): Auto-finalizar con confianza alta
+    - (None, False): Requiere revisión humana (incertidumbre)
+    - (None, False): Para review/block, nunca se auto-finaliza
+    """
+    
+    if decision != "allow":
+        return None, False
+    
+    # Criterios de confianza para auto-finalizar
+    # 1. Probabilidad de fraude baja (bajo riesgo)
+    prob_is_safe = prob < 0.35
+    
+    # 2. Usuario establecido (no es nuevo)
+    user_is_established = not is_new_user  # transactions_last_24h >= 3
+    
+    # 3. Monto normal (cercano al promedio)
+    amount_is_normal = float(features["amount_vs_avg"]) < 1.5
+    
+    # 4. Sin intentos fallidos recientes
+    no_failed_attempts = int(features["failed_attempts"]) == 0
+    
+    # 5. Risk score bajo (reglas heurísticas tranquilas) - muy estricto para blockchain
+    risk_score_is_low = risk_score_rule < 0.30
+    
+    # 6. Transacción nacional o en horario normal
+    is_domestic = not bool(features["is_international"])
+    normal_hour = int(features["hour"]) >= 6 and int(features["hour"]) <= 23
+    geo_friendly = is_domestic or normal_hour
+    
+    # Contador de factores seguros
+    confidence_factors = 0
+    if prob_is_safe:
+        confidence_factors += 1
+    if user_is_established:
+        confidence_factors += 1
+    if amount_is_normal:
+        confidence_factors += 1
+    if no_failed_attempts:
+        confidence_factors += 1
+    if risk_score_is_low:
+        confidence_factors += 1
+    if geo_friendly:
+        confidence_factors += 1
+    
+    # Lógica híbrida: Blockchain es más estricto que QR y Card
+    # - Si >= 5 factores seguros: auto-finalizar (confianza alta)
+    # - Sino: requiere revisión humana
+    
+    if confidence_factors >= 5:
+        return "allow", True
+    else:
+        # Requiere intervención humana
+        return None, False
+
+
 def _build_status_response(payment: BCTransaction) -> dict[str, Any]:
     fraud_result = None
     if payment.fraud_transaction_id and payment.fraud_decision:
@@ -294,6 +362,7 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
 
     db.add(transaction)
     db.flush()
+    save_user_transaction_details(db, tx_data, transaction.transaction_id, tx_data["user_id"], "blockchain")
 
     user_stats = get_user_stats(db, tx_data["user_id"])
     is_new_user = user_stats["transactions_last_24h"] < 3
@@ -324,6 +393,16 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
 
     decision, risk_score_rule, decision_score = _score_bc_decision(features, result, is_new_user)
 
+    # Evaluación de confianza para ALLOW: determinar si se auto-finaliza o requiere revisión
+    final_decision, reviewed = _evaluate_allow_confidence(
+        decision=decision,
+        prob=prob,
+        decision_score=decision_score,
+        risk_score_rule=risk_score_rule,
+        features=features,
+        is_new_user=is_new_user
+    )
+
     fraud_pred = FraudPrediction(
         transaction_id=transaction.transaction_id,
         merchant_id=merchant_id,
@@ -333,6 +412,8 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
         prediction_label=prediction,
         risk_score_rule=risk_score_rule,
         decision=decision,
+        final_decision=final_decision,
+        reviewed=reviewed,
         rf_probability=result["rf_probability"],
         logistic_probability=result["logistic_probability"],
         kmeans_score=result["kmeans_score"],
@@ -341,7 +422,8 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
     db.add(fraud_pred)
     db.flush()
 
-    if decision != "block":
+    # Actualizar promedio usuario: sólo cuando la transacción fue aprobada (allow).
+    if decision == "allow":
         update_user_avg_amount(
             db=db,
             user_id=tx_data["user_id"],

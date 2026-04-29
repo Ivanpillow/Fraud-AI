@@ -43,6 +43,23 @@ const COUNTRIES: CountryOption[] = [
   { value: "IN", label: "India", defaultLat: "28.6139", defaultLon: "77.2090" },
 ];
 
+const USE_TEST_SHIPPING_VALUES = true;
+
+const TEST_SHIPPING_VALUES = {
+  country: "Mexico",
+  state: "Jalisco",
+  city: "Guadalajara",
+  postalCode: "45400",
+  street: "Olimpica 345",
+  reference: "CUCEI",
+  fullName: "Luis Angel De La Cruz Ascencio",
+  phone: "3334757609",
+};
+
+function defaultShippingValue(value: string): string {
+  return USE_TEST_SHIPPING_VALUES ? value : "";
+}
+
 function buildStableQrPattern(seed: number): boolean[] {
   return Array.from({ length: 81 }, (_, i) => {
     const row = Math.floor(i / 9);
@@ -70,6 +87,14 @@ export default function QRPaymentForm({
   const [country, setCountry] = useState("MX");
   const [selectedHour, setSelectedHour] = useState("");
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
+  const [shippingCountry, setShippingCountry] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.country));
+  const [shippingState, setShippingState] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.state));
+  const [shippingCity, setShippingCity] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.city));
+  const [shippingZip, setShippingZip] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+  const [shippingStreet, setShippingStreet] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.street));
+  const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+  const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+  const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
   const [latitude, setLatitude] = useState("19.4326");
   const [longitude, setLongitude] = useState("-99.1332");
   const [hasCustomCoordinates, setHasCustomCoordinates] = useState(false);
@@ -91,8 +116,28 @@ export default function QRPaymentForm({
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
       transactionId: sharedTransactionId,
+      shippingCountry,
+      shippingState,
+      shippingCity,
+      shippingPostalCode: shippingZip,
+      shippingStreet,
+      shippingReference,
+      shippingFullName: shippingName,
+      shippingPhone,
     });
-  }, [checkoutContext, subtotal, sharedTransactionId]);
+  }, [
+    checkoutContext,
+    subtotal,
+    sharedTransactionId,
+    shippingCountry,
+    shippingState,
+    shippingCity,
+    shippingZip,
+    shippingStreet,
+    shippingReference,
+    shippingName,
+    shippingPhone,
+  ]);
 
   const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
 
@@ -102,6 +147,14 @@ export default function QRPaymentForm({
     setCountry("MX");
     setSelectedHour("");
     setSelectedDayOfWeek("");
+    setShippingCountry(defaultShippingValue(TEST_SHIPPING_VALUES.country));
+    setShippingState(defaultShippingValue(TEST_SHIPPING_VALUES.state));
+    setShippingCity(defaultShippingValue(TEST_SHIPPING_VALUES.city));
+    setShippingZip(defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+    setShippingStreet(defaultShippingValue(TEST_SHIPPING_VALUES.street));
+    setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+    setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+    setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
     setLatitude("19.4326");
     setLongitude("-99.1332");
     setHasCustomCoordinates(false);
@@ -140,6 +193,16 @@ export default function QRPaymentForm({
     })),
   ];
 
+  const hasRequiredShippingFields = [
+    shippingCountry,
+    shippingState,
+    shippingCity,
+    shippingZip,
+    shippingStreet,
+    shippingName,
+    shippingPhone,
+  ].every((value) => value.trim().length > 0);
+
   const handleApplyCountryCoordinates = () => {
     const selected = COUNTRIES.find((item) => item.value === country);
     if (!selected) return;
@@ -151,6 +214,10 @@ export default function QRPaymentForm({
   const handleGenerateQR = () => {
     if (subtotal <= 0) {
       setError("Primero ingresa un monto válido en el resumen del pedido.");
+      return;
+    }
+    if (!hasRequiredShippingFields) {
+      setError("Completa la dirección de envío obligatoria.");
       return;
     }
     if (!checkoutContext) {
@@ -171,6 +238,11 @@ export default function QRPaymentForm({
     setError(null);
     onResult(null);
 
+    if (!hasRequiredShippingFields) {
+      setError("Completa la dirección de envío obligatoria.");
+      return;
+    }
+
     if (!checkoutContext) {
       setError("No se encontró la página de pago QR.");
       return;
@@ -189,6 +261,14 @@ export default function QRPaymentForm({
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
       transactionId,
+      shippingCountry,
+      shippingState,
+      shippingCity,
+      shippingPostalCode: shippingZip,
+      shippingStreet,
+      shippingReference,
+      shippingFullName: shippingName,
+      shippingPhone,
     });
 
     window.location.href = selectionUrl;
@@ -245,7 +325,7 @@ export default function QRPaymentForm({
           Detalles de la transacción
         </h3>
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          {/* <div>
             <label className="checkout-label">ID de Usuario</label>
             <input
               type="number"
@@ -255,7 +335,7 @@ export default function QRPaymentForm({
               min="1"
               disabled={isSubmitting}
             />
-          </div>
+          </div> */}
           <div>
             <label className="checkout-label">País</label>
             <CustomSelect
@@ -319,9 +399,9 @@ export default function QRPaymentForm({
           <MapPin size={14} />
           Datos de Ubicación
         </h3>
-        <p className="text-xs text-muted-foreground mb-4">
+        {/* <p className="text-xs text-muted-foreground mb-4">
           Usa coordenadas reales aproximadas del lugar de pago. Latitud: -90 a 90, Longitud: -180 a 180.
-        </p>
+        </p> */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="checkout-label">Latitud</label>
@@ -352,7 +432,7 @@ export default function QRPaymentForm({
             />
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        {/* <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Ejemplo México (CDMX): 19.4326, -99.1332</span>
           <button
             type="button"
@@ -362,6 +442,112 @@ export default function QRPaymentForm({
           >
             Usar coordenadas sugeridas del país
           </button>
+        </div> */}
+      </div>
+
+
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <MapPin size={16} className="text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Dirección de envío</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="checkout-label">País</label>
+            <input
+              type="text"
+              value={shippingCountry}
+              onChange={(e) => setShippingCountry(e.target.value)}
+              placeholder="Mexico"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Estado</label>
+            <input
+              type="text"
+              value={shippingState}
+              onChange={(e) => setShippingState(e.target.value)}
+              placeholder="Jalisco"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Ciudad</label>
+            <input
+              type="text"
+              value={shippingCity}
+              onChange={(e) => setShippingCity(e.target.value)}
+              placeholder="Guadalajara"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Código postal</label>
+            <input
+              type="text"
+              value={shippingZip}
+              onChange={(e) => setShippingZip(e.target.value)}
+              placeholder="44100"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Calle y número</label>
+            <input
+              type="text"
+              value={shippingStreet}
+              onChange={(e) => setShippingStreet(e.target.value)}
+              placeholder="Av. Vallarta 1234"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Referencia</label>
+            <input
+              type="text"
+              value={shippingReference}
+              onChange={(e) => setShippingReference(e.target.value)}
+              placeholder="CUCEI"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Nombre completo</label>
+            <input
+              type="text"
+              value={shippingName}
+              onChange={(e) => setShippingName(e.target.value)}
+              placeholder="Juan Pérez García"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Teléfono</label>
+            <input
+              type="text"
+              value={shippingPhone}
+              onChange={(e) => setShippingPhone(e.target.value)}
+              placeholder="3334757609"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
         </div>
       </div>
 

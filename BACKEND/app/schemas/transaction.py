@@ -13,6 +13,14 @@ class TransactionCreate(BaseModel):
     is_international: bool
     device_type: str
     amount_vs_avg: float
+    shipping_country: Optional[str] = None
+    shipping_state: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
+    shipping_street: Optional[str] = None
+    shipping_reference: Optional[str] = None
+    shipping_full_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
 
 class TransactionResponse(TransactionCreate):
     is_fraud: bool
@@ -27,6 +35,14 @@ class TransactionRawCreate(BaseModel):
     device_type: str
     hour: Optional[int] = None
     day_of_week: Optional[int] = None
+    shipping_country: Optional[str] = None
+    shipping_state: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
+    shipping_street: Optional[str] = None
+    shipping_reference: Optional[str] = None
+    shipping_full_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
 
     @field_validator("card_number", mode="before")
     @classmethod

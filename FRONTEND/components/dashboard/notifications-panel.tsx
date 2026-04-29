@@ -69,10 +69,12 @@ export default function NotificationsPanel() {
   }
 
   useEffect(() => {
+    let isMounted = true;
+
     async function load() {
       if (user) {
         const res = await fetchNotifications();
-        if (res.data) {
+        if (isMounted && res.data) {
           const formattedNotifications = res.data.map(n => ({
             id: n.id,
             type: n.type,
@@ -86,10 +88,23 @@ export default function NotificationsPanel() {
           setNotifications(formattedNotifications);
         }
       }
-      setIsLoading(false);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     }
 
     load();
+
+    const handleRefresh = () => {
+      load();
+    };
+
+    window.addEventListener("fraud-decision-updated", handleRefresh);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("fraud-decision-updated", handleRefresh);
+    };
   }, [user]);
 
   const handleNotificationClick = (notification: Notification) => {

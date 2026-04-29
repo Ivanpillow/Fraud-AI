@@ -18,6 +18,14 @@ class BCTransactionCreate(BaseModel):
     asset_symbol: str = Field(default="BTC", min_length=2, max_length=12)
     network: str = Field(default="Bitcoin", min_length=2, max_length=32)
     wallet_address: Optional[str] = Field(default=None, max_length=160)
+    shipping_country: Optional[str] = None
+    shipping_state: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
+    shipping_street: Optional[str] = None
+    shipping_reference: Optional[str] = None
+    shipping_full_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
 
     @field_validator("country")
     @classmethod
@@ -37,6 +45,14 @@ class BCTransactionRawCreate(BaseModel):
     asset_symbol: str = Field(default="BTC", min_length=2, max_length=12)
     network: str = Field(default="Bitcoin", min_length=2, max_length=32)
     wallet_address: Optional[str] = Field(default=None, max_length=160)
+    shipping_country: Optional[str] = None
+    shipping_state: Optional[str] = None
+    shipping_city: Optional[str] = None
+    shipping_postal_code: Optional[str] = None
+    shipping_street: Optional[str] = None
+    shipping_reference: Optional[str] = None
+    shipping_full_name: Optional[str] = None
+    shipping_phone: Optional[str] = None
 
     @field_validator("country")
     @classmethod

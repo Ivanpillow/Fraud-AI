@@ -24,6 +24,9 @@ class FraudPrediction(Base):
     risk_score_rule = Column(Numeric(5,4))
     decision = Column(String(10))
 
+    final_decision = Column(String(10))
+    reviewed = Column(Boolean, default=False)
+
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     rf_probability = Column(Numeric(6,5))

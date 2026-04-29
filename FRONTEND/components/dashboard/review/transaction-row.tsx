@@ -10,12 +10,22 @@ import {
 } from "lucide-react";
 import { cn, formatCurrencyMXN } from "@/lib/utils";
 import { updateNotificationDecision } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Transaction {
   id: string;
   prediction_id: number;
   amount: number;
-  status: "block" | "review" | "clean";
+  status: "block" | "review" | "allow" | "clean";
   user_email?: string;
   timestamp: string;
   reason?: string;
@@ -24,6 +34,17 @@ interface Transaction {
   fraud_probability?: number;
   channel?: string;
   transaction_id?: number;
+  decision?: string | null;
+  final_decision?: string | null;
+  reviewed?: boolean;
+  shipping_country?: string | null;
+  shipping_state?: string | null;
+  shipping_city?: string | null;
+  shipping_postal_code?: string | null;
+  shipping_street?: string | null;
+  shipping_reference?: string | null;
+  shipping_full_name?: string | null;
+  shipping_phone?: string | null;
   explanations?: Array<{
     feature_name?: string;
     contribution_value?: number;
@@ -34,6 +55,7 @@ interface Transaction {
 interface TransactionRowProps {
   transaction: Transaction;
   onAction: (id: string, action: "approve" | "block" | "review") => void;
+  isHistory?: boolean; // Si es True, no muestra botones de acción
 }
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -76,10 +98,32 @@ function formatDate(ts: string): string {
 export default function TransactionRow({
   transaction: tx,
   onAction,
+  isHistory = false,
 }: TransactionRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"approve" | "block" | null>(null);
   const topExplanations = (tx.explanations || []).slice(0, 4);
+  const shippingFields = [
+    ["País", tx.shipping_country],
+    ["Estado", tx.shipping_state],
+    ["Ciudad", tx.shipping_city],
+    ["Código postal", tx.shipping_postal_code],
+    ["Calle", tx.shipping_street],
+    ["Referencia", tx.shipping_reference],
+    ["Nombre", tx.shipping_full_name],
+    ["Teléfono", tx.shipping_phone],
+  ].filter(([, value]) => Boolean(value));
+  const isSystemApproved = isHistory && tx.final_decision === "allow" && tx.decision === "allow";
+  const statusLabel = tx.status === "block"
+    ? "Bloqueada"
+    : isHistory
+      ? isSystemApproved
+        ? "Aprobada por el sistema"
+        : tx.status === "allow"
+          ? "Aprobada"
+          : "Revisada"
+      : "En Revisión";
 
   const handleAction = async (action: "approve" | "block" | "review") => {
     setActionLoading(action);
@@ -93,6 +137,7 @@ export default function TransactionRow({
       if (result.data) {
         // Si la actualización fue exitosa, notificar al padre para sincronizar estado local
         onAction(tx.id, action);
+        window.dispatchEvent(new CustomEvent("fraud-decision-updated"));
       } else {
         console.error("Error updating decision:", result.error);
         alert("Error al actualizar la decisión. Por favor intenta de nuevo.");
@@ -123,7 +168,9 @@ export default function TransactionRow({
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
             tx.status === "block"
               ? "bg-destructive/10 text-destructive"
-              : "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]"
+              : isHistory
+                ? "bg-emerald-500/10 text-emerald-500"
+                : "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]"
           )}
         >
           {tx.status === "block" ? (
@@ -144,10 +191,12 @@ export default function TransactionRow({
                 "text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full",
                 tx.status === "block"
                   ? "bg-destructive/10 text-destructive"
-                  : "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]"
+                  : isHistory
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]"
               )}
             >
-              {tx.status === "block" ? "Bloqueada" : "En Revisión"}
+              {statusLabel}
             </span>
           </div>
           <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -195,6 +244,21 @@ export default function TransactionRow({
             </p>
           </div>
 
+          {shippingFields.length > 0 && (
+            <div className="glass rounded-lg p-3 mb-4">
+              <p className="text-xs text-foreground font-medium mb-2">
+                Dirección de envío:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                {shippingFields.map(([label, value]) => (
+                  <div key={`${tx.id}-${label}`} className="rounded-md border border-white/5 bg-white/[0.02] px-3 py-2">
+                    <span className="text-foreground/80">{label}:</span> {value}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="glass rounded-lg p-3 mb-4">
             <p className="text-xs text-foreground font-medium mb-2">
               Factores relevantes de la predicción:
@@ -236,46 +300,72 @@ export default function TransactionRow({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleAction("approve")}
-              disabled={actionLoading !== null}
-              className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/20 transition-all active:scale-[0.97] disabled:opacity-50"
-            >
-              {actionLoading === "approve" ? (
-                <span className="h-3 w-3 animate-spin rounded-full border border-primary border-t-transparent" />
-              ) : (
+          {!isHistory && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPendingAction("approve")}
+                disabled={actionLoading !== null}
+                className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/20 transition-all active:scale-[0.97] disabled:opacity-50"
+              >
                 <ShieldCheck size={14} />
-              )}
-              Aprobar
-            </button>
-            <button
-              onClick={() => handleAction("review")}
-              disabled={actionLoading !== null}
-              className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--warning))]/10 px-4 py-2 text-xs font-medium text-[hsl(var(--warning))] hover:bg-[hsl(var(--warning))]/20 transition-all active:scale-[0.97] disabled:opacity-50"
-            >
-              {actionLoading === "review" ? (
-                <span className="h-3 w-3 animate-spin rounded-full border border-[hsl(var(--warning))] border-t-transparent" />
-              ) : (
-                <Clock size={14} />
-              )}
-              En Revisión
-            </button>
-            <button
-              onClick={() => handleAction("block")}
-              disabled={actionLoading !== null}
-              className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-4 py-2 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all active:scale-[0.97] disabled:opacity-50"
-            >
-              {actionLoading === "block" ? (
-                <span className="h-3 w-3 animate-spin rounded-full border border-destructive border-t-transparent" />
-              ) : (
+                Aprobar
+              </button>
+              <button
+                onClick={() => setPendingAction("block")}
+                disabled={actionLoading !== null}
+                className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-4 py-2 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all active:scale-[0.97] disabled:opacity-50"
+              >
                 <ShieldX size={14} />
-              )}
-              Rechazar
-            </button>
-          </div>
+                Bloquear
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      <AlertDialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction === "approve" ? "Confirmar aprobación" : "Confirmar bloqueo"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction === "approve"
+                ? "La transacción se aprobará y saldrá de las alertas pendientes."
+                : "La transacción se bloqueará y saldrá de las alertas pendientes."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading !== null}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionLoading !== null}
+              className={cn(
+                pendingAction === "approve"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              )}
+              onClick={(event) => {
+                event.preventDefault();
+                if (pendingAction) {
+                  const action = pendingAction;
+                  setPendingAction(null);
+                  void handleAction(action);
+                }
+              }}
+            >
+              {actionLoading === pendingAction ? (
+                <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+              ) : pendingAction === "approve" ? (
+                "Sí, aprobar"
+              ) : (
+                "Sí, bloquear"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

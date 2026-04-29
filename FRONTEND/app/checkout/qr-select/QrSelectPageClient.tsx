@@ -44,6 +44,14 @@ export default function QrSelectPage() {
   const subtotal = parseNumber(searchParams.get("subtotal"));
   const returnUrl = searchParams.get("returnUrl") ?? "/checkout";
   const sharedTransactionId = parseNumber(searchParams.get("transactionId"));
+  const shippingCountry = searchParams.get("shippingCountry") ?? undefined;
+  const shippingState = searchParams.get("shippingState") ?? undefined;
+  const shippingCity = searchParams.get("shippingCity") ?? undefined;
+  const shippingPostalCode = searchParams.get("shippingPostalCode") ?? undefined;
+  const shippingStreet = searchParams.get("shippingStreet") ?? undefined;
+  const shippingReference = searchParams.get("shippingReference") ?? undefined;
+  const shippingFullName = searchParams.get("shippingFullName") ?? undefined;
+  const shippingPhone = searchParams.get("shippingPhone") ?? undefined;
 
   const [selectedCardNumber, setSelectedCardNumber] = useState<string>(DEMO_QR_CARDS[0].cardNumber);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +99,14 @@ export default function QrSelectPage() {
         device_change_flag: false,
         hour: now.getHours(),
         day_of_week: dayOfWeekToIso(now.getDay()),
+        shipping_country: shippingCountry,
+        shipping_state: shippingState,
+        shipping_city: shippingCity,
+        shipping_postal_code: shippingPostalCode,
+        shipping_street: shippingStreet,
+        shipping_reference: shippingReference,
+        shipping_full_name: shippingFullName,
+        shipping_phone: shippingPhone,
       };
 
       const response = await fetch(`${API_BASE_URL}/qr-transactions/simple`, {

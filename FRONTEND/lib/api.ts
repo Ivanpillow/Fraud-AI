@@ -344,12 +344,57 @@ export async function fetchNotifications(token?: string) {
     transaction_id: number;
     channel: string;
     fraud_probability: number;
+    decision?: string | null;
+    final_decision?: "allow" | "block" | "review" | null;
+    reviewed?: boolean;
+    shipping_country?: string | null;
+    shipping_state?: string | null;
+    shipping_city?: string | null;
+    shipping_postal_code?: string | null;
+    shipping_street?: string | null;
+    shipping_reference?: string | null;
+    shipping_full_name?: string | null;
+    shipping_phone?: string | null;
     explanations?: Array<{
       feature_name?: string;
       contribution_value?: number;
       direction?: string;
     }>;
   }>>("/notifications", {
+    method: "GET",
+    token,
+  });
+}
+
+// Endpoint para obtener el historial de transacciones revisadas
+export async function fetchFraudHistory(token?: string) {
+  return apiRequest<Array<{
+    id: string;
+    prediction_id: number;
+    type: "block" | "review" | "allow";
+    message: string;
+    amount: number;
+    timestamp: string;
+    transaction_id: number;
+    channel: string;
+    fraud_probability: number;
+    decision?: string | null;
+    final_decision?: "allow" | "block" | "review" | null;
+    reviewed?: boolean;
+    shipping_country?: string | null;
+    shipping_state?: string | null;
+    shipping_city?: string | null;
+    shipping_postal_code?: string | null;
+    shipping_street?: string | null;
+    shipping_reference?: string | null;
+    shipping_full_name?: string | null;
+    shipping_phone?: string | null;
+    explanations?: Array<{
+      feature_name?: string;
+      contribution_value?: number;
+      direction?: string;
+    }>;
+  }>>("/notifications/history", {
     method: "GET",
     token,
   });

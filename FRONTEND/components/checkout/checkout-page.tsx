@@ -222,14 +222,14 @@ export default function CheckoutPage() {
               Comercio: <span className="text-foreground">{merchantName}</span>
             </div>
           )}
-          {returnUrl && (
+          {/* {returnUrl && (
             <a
               href={returnUrl}
               className="rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/10 transition-all"
             >
               Volver a la tienda
             </a>
-          )}
+          )} */}
         </div>
         <p className="text-muted-foreground mt-1 text-sm md:text-base">
           Realiza tu pago y obtén una evaluación de riesgo instantánea para tu transacción.

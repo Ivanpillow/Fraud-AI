@@ -179,6 +179,14 @@ export default function DemoLibreriaQRPaymentForm({
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/demo-ecommerce/checkout",
       transactionId,
+      shippingCountry,
+      shippingState,
+      shippingCity,
+      shippingPostalCode: shippingZip,
+      shippingStreet,
+      shippingReference,
+      shippingFullName: shippingName,
+      shippingPhone,
     });
 
     window.location.href = selectionUrl;

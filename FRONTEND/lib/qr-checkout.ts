@@ -5,6 +5,14 @@ export type QrCheckoutContext = {
   subtotal: number;
   returnUrl?: string;
   transactionId?: number;
+  shippingCountry?: string;
+  shippingState?: string;
+  shippingCity?: string;
+  shippingPostalCode?: string;
+  shippingStreet?: string;
+  shippingReference?: string;
+  shippingFullName?: string;
+  shippingPhone?: string;
 };
 
 export type DemoQrCard = {
@@ -48,6 +56,14 @@ export function buildQrSelectionUrl(context: QrCheckoutContext): string {
   if (context.transactionId) {
     url.searchParams.set("transactionId", String(context.transactionId));
   }
+  if (context.shippingCountry) url.searchParams.set("shippingCountry", context.shippingCountry);
+  if (context.shippingState) url.searchParams.set("shippingState", context.shippingState);
+  if (context.shippingCity) url.searchParams.set("shippingCity", context.shippingCity);
+  if (context.shippingPostalCode) url.searchParams.set("shippingPostalCode", context.shippingPostalCode);
+  if (context.shippingStreet) url.searchParams.set("shippingStreet", context.shippingStreet);
+  if (context.shippingReference) url.searchParams.set("shippingReference", context.shippingReference);
+  if (context.shippingFullName) url.searchParams.set("shippingFullName", context.shippingFullName);
+  if (context.shippingPhone) url.searchParams.set("shippingPhone", context.shippingPhone);
   return url.toString();
 }
 

@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   ShieldX,
   AlertTriangle,
+  MapPin,
 } from "lucide-react";
 import { cn, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
@@ -24,6 +25,23 @@ interface CardBrandInfo {
   lengths: number[];
   cvvLength: number;
   logo: string;
+}
+
+const USE_TEST_SHIPPING_VALUES = true;
+
+const TEST_SHIPPING_VALUES = {
+  country: "Mexico",
+  state: "Jalisco",
+  city: "Guadalajara",
+  postalCode: "45400",
+  street: "Olimpica 345",
+  reference: "CUCEI",
+  fullName: "Luis Angel De La Cruz Ascencio",
+  phone: "3334757609",
+};
+
+function defaultShippingValue(value: string): string {
+  return USE_TEST_SHIPPING_VALUES ? value : "";
 }
 
 const CARD_BRANDS: Record<CardBrand, CardBrandInfo> = {
@@ -201,11 +219,14 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
 
-  const [shippingName, setShippingName] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
-  const [shippingCountry, setShippingCountry] = useState("MX");
-  const [shippingZip, setShippingZip] = useState("");
+  const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+  const [shippingState, setShippingState] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.state));
+  const [shippingAddress, setShippingAddress] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.street));
+  const [shippingCity, setShippingCity] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.city));
+  const [shippingCountry, setShippingCountry] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.country));
+  const [shippingZip, setShippingZip] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+  const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+  const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -237,12 +258,14 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
     setDeviceType("desktop");
     setSelectedHour("");
     setSelectedDayOfWeek("");
-    setShippingName("");
-    setShippingAddress("");
-    setShippingCity("");
-    setShippingCountry("MX");
-    setShippingZip("");
-    setUseShipping(false);
+    setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
+    setShippingState(defaultShippingValue(TEST_SHIPPING_VALUES.state));
+    setShippingAddress(defaultShippingValue(TEST_SHIPPING_VALUES.street));
+    setShippingCity(defaultShippingValue(TEST_SHIPPING_VALUES.city));
+    setShippingCountry(defaultShippingValue(TEST_SHIPPING_VALUES.country));
+    setShippingZip(defaultShippingValue(TEST_SHIPPING_VALUES.postalCode));
+    setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
+    setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
     setError(null);
   }, [resetTrigger]);
 
@@ -287,7 +310,15 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
     })),
   ];
 
-  const [useShipping, setUseShipping] = useState(false);
+  const hasRequiredShippingFields = [
+    shippingName,
+    shippingState,
+    shippingAddress,
+    shippingCity,
+    shippingCountry,
+    shippingZip,
+    shippingPhone,
+  ].every((value) => value.trim().length > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -319,18 +350,28 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
       return;
     }
 
+    if (!hasRequiredShippingFields) {
+      setError("Completa la dirección de envío obligatoria.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // const txId = Math.floor(Math.random() * 900000) + 100000;
-      const finalCountry = useShipping ? shippingCountry : country;
-
       const payload = {
         card_number: digits,
         amount: amount,
         merchant_category: merchantCategory,
-        country: finalCountry,
+        country,
         device_type: deviceType,
+        shipping_country: shippingCountry,
+        shipping_state: shippingState,
+        shipping_city: shippingCity,
+        shipping_postal_code: shippingZip,
+        shipping_street: shippingAddress,
+        shipping_reference: shippingReference,
+        shipping_full_name: shippingName,
+        shipping_phone: shippingPhone,
         ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
         ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
       };
@@ -532,84 +573,110 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
-        <label className="text-sm">Usar dirección de envío</label>
-        <input className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          type="checkbox"
-          checked={useShipping}
-          onChange={() => setUseShipping(!useShipping)}
-          disabled={isSubmitting}
-        />
-      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <MapPin size={16} className="text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Dirección de envío</h3>
+        </div>
 
-      {/* Variables de envio, pero no afectan el costo */}
-      {useShipping && (
-        <div className="border-t border-white/10 pt-5">
-          <h3 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider mb-1">
-            Dirección de Envío
-          </h3>
-          <p className="text-xs text-muted-foreground mb-4">
-            Requerida para análisis de fraude — no se calculará costo de envío ni se validará dirección.
-          </p>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="checkout-label">Nombre Completo</label>
-              <input
-                type="text"
-                value={shippingName}
-                onChange={(e) => setShippingName(e.target.value)}
-                placeholder="Juan Pérez García"
-                className="checkout-input placeholder:text-muted-foreground/40"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div>
-              <label className="checkout-label">Dirección</label>
-              <input
-                type="text"
-                value={shippingAddress}
-                onChange={(e) => setShippingAddress(e.target.value)}
-                placeholder="Av. Vallarta 1234, Col. Centro"
-                className="checkout-input placeholder:text-muted-foreground/40"
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="checkout-label">Ciudad</label>
-                <input
-                  type="text"
-                  value={shippingCity}
-                  onChange={(e) => setShippingCity(e.target.value)}
-                  placeholder="Guadalajara"
-                  className="checkout-input placeholder:text-muted-foreground/40"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="checkout-label">País</label>
-                <CustomSelect
-                  value={shippingCountry}
-                  onChange={setShippingCountry}
-                  options={countries}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="checkout-label">Código Postal</label>
-                <input
-                  type="text"
-                  value={shippingZip}
-                  onChange={(e) => setShippingZip(e.target.value)}
-                  placeholder="44100"
-                  className="checkout-input placeholder:text-muted-foreground/40"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="checkout-label">País</label>
+            <input
+              type="text"
+              value={shippingCountry}
+              onChange={(e) => setShippingCountry(e.target.value)}
+              placeholder="Mexico"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Estado</label>
+            <input
+              type="text"
+              value={shippingState}
+              onChange={(e) => setShippingState(e.target.value)}
+              placeholder="Jalisco"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Ciudad</label>
+            <input
+              type="text"
+              value={shippingCity}
+              onChange={(e) => setShippingCity(e.target.value)}
+              placeholder="Guadalajara"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Código Postal</label>
+            <input
+              type="text"
+              value={shippingZip}
+              onChange={(e) => setShippingZip(e.target.value)}
+              placeholder="44100"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Dirección</label>
+            <input
+              type="text"
+              value={shippingAddress}
+              onChange={(e) => setShippingAddress(e.target.value)}
+              placeholder="Av. Vallarta 1234, Col. Centro"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Referencia</label>
+            <input
+              type="text"
+              value={shippingReference}
+              onChange={(e) => setShippingReference(e.target.value)}
+              placeholder="Entre calles o punto de referencia"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Nombre completo</label>
+            <input
+              type="text"
+              value={shippingName}
+              onChange={(e) => setShippingName(e.target.value)}
+              placeholder="Juan Pérez García"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="checkout-label">Teléfono</label>
+            <input
+              type="text"
+              value={shippingPhone}
+              onChange={(e) => setShippingPhone(e.target.value)}
+              placeholder="3334757609"
+              className="checkout-input placeholder:text-muted-foreground/40"
+              disabled={isSubmitting}
+            />
           </div>
         </div>
-      )}
+      </div>
 
       {/* Error */}
       {error && (
@@ -619,9 +686,9 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
         </div>
       )}
 
-      <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+      {/* <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
         Modo pruebas activo: el formulario no se reinicia al completar una transacción.
-      </div>
+      </div> */}
 
       {/* Boton para enviar */}
       <button
