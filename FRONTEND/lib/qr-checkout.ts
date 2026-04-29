@@ -74,10 +74,3 @@ export function generateQrTransactionId(): number {
 export function buildQrImageUrl(targetUrl: string): string {
   return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(targetUrl)}`;
 }
-
-export function buildBcPaymentUrl(paymentId: number): string {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const url = new URL("/checkout/bc-pay", origin || "http://localhost");
-  url.searchParams.set("paymentId", String(paymentId));
-  return url.toString();
-}

@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Bitcoin, Loader2, ShieldCheck, AlertTriangle, MapPin, QrCode } from "lucide-react";
+import { Bitcoin, Loader2, ShieldCheck, AlertTriangle, MapPin } from "lucide-react";
 import { cn, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
-import { buildBcPaymentUrl, buildQrImageUrl } from "@/lib/qr-checkout";
 
 interface CryptoInfo {
   name: string;
@@ -135,7 +134,6 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
   const [shippingReference, setShippingReference] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.reference));
   const [shippingName, setShippingName] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
   const [shippingPhone, setShippingPhone] = useState(() => defaultShippingValue(TEST_SHIPPING_VALUES.phone));
-  const [paymentQrUrl, setPaymentQrUrl] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<BCPaymentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -171,7 +169,6 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     setShippingReference(defaultShippingValue(TEST_SHIPPING_VALUES.reference));
     setShippingName(defaultShippingValue(TEST_SHIPPING_VALUES.fullName));
     setShippingPhone(defaultShippingValue(TEST_SHIPPING_VALUES.phone));
-    setPaymentQrUrl("");
     setIsSubmitting(false);
     setPaymentStatus(null);
     setError(null);
@@ -334,7 +331,6 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
 
       const result = await response.json();
       setPaymentStatus(result as BCPaymentStatus);
-      setPaymentQrUrl(buildQrImageUrl(buildBcPaymentUrl((result as BCPaymentStatus).payment_id)));
       scheduleStatusPoll(result.payment_id as number);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Crypto transaction failed");
@@ -447,7 +443,24 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
             </p>
           </div>
         </div>
-        
+        {paymentStatus && (
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground space-y-1">
+            <p>
+              Payment ID: <span className="text-foreground">{paymentStatus.payment_id}</span>
+            </p>
+            <p>
+              Confirmaciones: <span className="text-foreground">{paymentStatus.confirmations}/{paymentStatus.required_confirmations}</span>
+            </p>
+            <p>
+              Provider ref: <span className="text-foreground break-all">{paymentStatus.provider_reference}</span>
+            </p>
+            {paymentStatus.tx_hash && (
+              <p>
+                Tx hash: <span className="text-foreground break-all">{paymentStatus.tx_hash}</span>
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div>
@@ -515,6 +528,12 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
         </div>
       </div>
 
+      {error && (
+        <div className="glass-checkout-alert-error rounded-2xl p-4 flex items-center gap-3 animate-fade-in">
+          <AlertTriangle size={18} className="text-red-400 shrink-0" />
+          <p className="text-sm text-red-300">{error}</p>
+        </div>
+      )}
 
       {/* <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
         Flujo blockchain simulado profesional: crea pago pendiente, pasa por confirming y finaliza por webhook interno.
@@ -617,52 +636,6 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
           </div>
         </div>
       </div>
-
-      {paymentStatus && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground space-y-1">
-          <p>
-            Payment ID: <span className="text-foreground">{paymentStatus.payment_id}</span>
-          </p>
-          <p>
-            Confirmaciones: <span className="text-foreground">{paymentStatus.confirmations}/{paymentStatus.required_confirmations}</span>
-          </p>
-          <p>
-            Provider ref: <span className="text-foreground break-all">{paymentStatus.provider_reference}</span>
-          </p>
-          {paymentStatus.tx_hash && (
-            <p>
-              Tx hash: <span className="text-foreground break-all">{paymentStatus.tx_hash}</span>
-            </p>
-          )}
-        </div>
-      )}
-
-      
-      {paymentQrUrl && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <QrCode size={16} className="text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">QR de pago</h3>
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            <img
-              src={paymentQrUrl}
-              alt="Código QR del pago cripto"
-              className="h-44 w-44 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
-            />
-            <p className="text-xs text-muted-foreground text-center max-w-md">
-              Escanea este QR desde el celular para abrir la pantalla de confirmación. El QR sólo contiene el identificador del pago.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="glass-checkout-alert-error rounded-2xl p-4 flex items-center gap-3 animate-fade-in">
-          <AlertTriangle size={18} className="text-red-400 shrink-0" />
-          <p className="text-sm text-red-300">{error}</p>
-        </div>
-      )}
 
       <button
         type="submit"

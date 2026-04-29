@@ -78,7 +78,6 @@ class BCPaymentStatusResponse(BaseModel):
     fiat_currency: str
     asset_symbol: str
     network: str
-    wallet_address: Optional[str] = None
     tx_hash: Optional[str] = None
     confirmations: int
     required_confirmations: int
@@ -86,20 +85,7 @@ class BCPaymentStatusResponse(BaseModel):
     updated_at: Optional[datetime] = None
     confirmed_at: Optional[datetime] = None
     failed_at: Optional[datetime] = None
-    shipping_country: Optional[str] = None
-    shipping_state: Optional[str] = None
-    shipping_city: Optional[str] = None
-    shipping_postal_code: Optional[str] = None
-    shipping_street: Optional[str] = None
-    shipping_reference: Optional[str] = None
-    shipping_full_name: Optional[str] = None
-    shipping_phone: Optional[str] = None
     fraud_result: Optional[BCFraudResult] = None
-
-
-class BCWalletSimulationRequest(BaseModel):
-    wallet_address: str = Field(min_length=10, max_length=160)
-    wallet_name: Optional[str] = Field(default=None, max_length=80)
 
 
 class BCWebhookFraudResult(BaseModel):
