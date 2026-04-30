@@ -358,6 +358,9 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
     setIsSubmitting(true);
 
     try {
+      const now = new Date();
+      const autoHour = now.getHours();
+      const autoDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
       const payload = {
         card_number: digits,
         amount: amount,
@@ -372,8 +375,8 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
         shipping_reference: shippingReference,
         shipping_full_name: shippingName,
         shipping_phone: shippingPhone,
-        ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
-        ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
+        hour: selectedHour !== "" ? parseInt(selectedHour, 10) : autoHour,
+        day_of_week: selectedDayOfWeek !== "" ? parseInt(selectedDayOfWeek, 10) : autoDayOfWeek,
       };
 
       // console.log("PAYLOAD:", payload);
