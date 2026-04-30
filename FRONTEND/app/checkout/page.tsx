@@ -3,7 +3,7 @@
 import React, { Suspense } from "react";
 import dynamic from "next/dynamic";
 
-const CheckoutPage = dynamic(() => import("@/components/checkout/checkout-page"), {
+const CheckoutPage = dynamic(() => import("@/components/checkout/checkout-page-pruebas"), {
   ssr: false,
 });
 

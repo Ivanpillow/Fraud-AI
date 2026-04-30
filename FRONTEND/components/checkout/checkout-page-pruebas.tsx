@@ -7,6 +7,7 @@ import CardPaymentForm from "./card-payment-form";
 import QRPaymentForm from "./qr-payment-form";
 import CryptoPaymentForm from "./crypto-payment-form";
 import OrderSummary from "./order-summary";
+import CustomSelect from "./custom-select";
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { API_BASE_URL } from "@/lib/api";
@@ -22,6 +23,19 @@ const TAX_OPTIONS: Record<"MX" | "US" | "EU", number> = {
   US: 0.08,
   EU: 0.20,
 };
+
+const MERCHANT_KEY_OPTIONS = [
+  { value: "floreria_key", label: "Florería - floreria_key" },
+  { value: "sk_test_demo_merchant", label: "Librería demo - libreria_key / libreria_api_key" },
+  { value: "sk_comercio_2_key", label: "Marketplace - Prueba_Comercio_2 / sk_comercio_2_key" },
+  { value: "libros_book", label: "Libros Book - libros_book" },
+];
+
+function normalizeTestMerchantApiKey(apiKey: string): string {
+  if (apiKey === "libreria_key" || apiKey === "libreria_api_key") return "sk_test_demo_merchant";
+  if (apiKey === "Prueba_Comercio_2") return "sk_comercio_2_key";
+  return apiKey;
+}
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
@@ -188,7 +202,7 @@ export default function CheckoutPage() {
     // Si hay contexto guardado, usarlo pero SIEMPRE usar /checkout como returnUrl
     // para el flujo de checkout normal
     if (ctx) {
-      setMerchantApiKey(ctx.merchant.apiKey);
+      setMerchantApiKey(normalizeTestMerchantApiKey(ctx.merchant.apiKey));
       setMerchantName(ctx.merchant.name || null);
       // IMPORTANTE: El checkout normal siempre regresa a /checkout
       setReturnUrl("/checkout");
@@ -222,6 +236,14 @@ export default function CheckoutPage() {
               Comercio: <span className="text-foreground">{merchantName}</span>
             </div>
           )}
+          <div className="w-full max-w-md">
+            <CustomSelect
+              value={merchantApiKey}
+              onChange={setMerchantApiKey}
+              options={MERCHANT_KEY_OPTIONS}
+              placeholder="Selecciona la llave de comercio"
+            />
+          </div>
           {/* {returnUrl && (
             <a
               href={returnUrl}

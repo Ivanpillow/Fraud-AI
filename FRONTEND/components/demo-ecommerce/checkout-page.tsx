@@ -15,7 +15,7 @@ import { API_BASE_URL } from "@/lib/api";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
-function normalizeDemoMerchantApiKey(apiKey: string): string {
+function normalizeDemoMerchantApiKey(ap iKey: string): string {
   if (apiKey === "libreria_key") return "sk_test_demo_merchant";
   if (apiKey === "Prueba_Comercio_2") return "sk_comercio_2_key";
   return apiKey;
