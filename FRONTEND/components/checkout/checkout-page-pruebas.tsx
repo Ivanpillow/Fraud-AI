@@ -10,9 +10,11 @@ import OrderSummary from "./order-summary";
 import CustomSelect from "./custom-select";
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetchQrSessionStatus } from "@/lib/api";
 import { readHttpErrorMessage } from "@/lib/utils";
 import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
+import { clearDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
+import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -195,6 +197,30 @@ export default function CheckoutPage() {
       clearInterval(pollInterval);
     };
   }, [pendingQrTransactionId, merchantApiKey, handleTransactionResult]);
+
+  useEffect(() => {
+    if (!pendingQrTransactionId || !merchantApiKey) return;
+
+    const interval = window.setInterval(async () => {
+      const res = await fetchQrSessionStatus(merchantApiKey, pendingQrTransactionId);
+      if (!res.data) return;
+
+      if (res.data.status === "cancelled") {
+        setIsPolling(false);
+        setPendingQrTransactionId(null);
+        setSelectedMethod("card");
+      }
+    }, 1500);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [pendingQrTransactionId, merchantApiKey]);
+
+  useEffect(() => {
+    clearDemoEcommerceCart();
+    clearDemoLibreriaCart();
+  }, []);
 
   useEffect(() => {
     const ctx = loadFraudAICheckoutContext();

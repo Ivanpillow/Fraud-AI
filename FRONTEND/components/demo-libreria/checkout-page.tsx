@@ -10,6 +10,7 @@ import DemoLibreriaOrderSummary from "@/components/demo-libreria/order-summary";
 import { cn } from "@/lib/utils";
 import { loadDemoLibreriaCheckoutContext } from "@/lib/demo-libreria-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
+import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -62,6 +63,11 @@ export default function DemoLibreriaCheckoutPage() {
 
     getDemoLibreriaRuntimeCheckoutContext();
   }, []);
+
+  useEffect(() => {
+    if (!fraudResult) return;
+    clearDemoLibreriaCart();
+  }, [fraudResult]);
 
   const paymentMethods = [
     { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },

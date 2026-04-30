@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { buildQrImageUrl, buildQrSelectionUrl, generateQrTransactionId } from "@/lib/qr-checkout";
 import CustomSelect from "./custom-select";
+import { createQrSession } from "@/lib/api";
 
 interface Props {
   subtotal: number;
@@ -106,6 +107,15 @@ export default function QRPaymentForm({
   const [sharedTransactionId, setSharedTransactionId] = useState<number | null>(null);
   const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadFraudAICheckoutContext> | null>(null);
 
+  const cartItems = useMemo(
+    () =>
+      checkoutContext?.cart?.items?.map((item) => ({
+        id: item.id,
+        qty: item.qty,
+      })) ?? [],
+    [checkoutContext]
+  );
+
   const qrSelectionUrl = useMemo(() => {
     if (!checkoutContext || subtotal <= 0 || !sharedTransactionId) return "";
 
@@ -116,6 +126,7 @@ export default function QRPaymentForm({
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
       transactionId: sharedTransactionId,
+      cartItems,
       shippingCountry,
       shippingState,
       shippingCity,
@@ -129,6 +140,7 @@ export default function QRPaymentForm({
     checkoutContext,
     subtotal,
     sharedTransactionId,
+    cartItems,
     shippingCountry,
     shippingState,
     shippingCity,
@@ -165,6 +177,12 @@ export default function QRPaymentForm({
     setSharedTransactionId(null);
     onQrSessionCreated?.(null);
   }, [resetTrigger]);
+
+  const persistQrSessionContext = (transactionId: number) => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem("qr_session_transaction_id", String(transactionId));
+    window.sessionStorage.setItem("qr_session_api_key", apiKey);
+  };
 
   useEffect(() => {
     if (hasCustomCoordinates) return;
@@ -230,6 +248,8 @@ export default function QRPaymentForm({
       setSharedTransactionId(transactionId);
       onQrSessionCreated?.(transactionId);
     }
+    persistQrSessionContext(transactionId);
+    void createQrSession(apiKey, transactionId).catch(() => undefined);
     setQrSeed(Date.now());
   };
 
@@ -253,6 +273,8 @@ export default function QRPaymentForm({
       setSharedTransactionId(transactionId);
       onQrSessionCreated?.(transactionId);
     }
+    persistQrSessionContext(transactionId);
+    void createQrSession(apiKey, transactionId).catch(() => undefined);
 
     const selectionUrl = buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
@@ -261,6 +283,7 @@ export default function QRPaymentForm({
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
       transactionId,
+      cartItems,
       shippingCountry,
       shippingState,
       shippingCity,

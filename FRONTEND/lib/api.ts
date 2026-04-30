@@ -161,6 +161,86 @@ export async function createSimpleQRTransaction(
   });
 }
 
+export type QrSessionStatus = "pending" | "cancelled" | "completed" | "returned";
+
+async function qrSessionRequest<T = unknown>(
+  endpoint: string,
+  apiKey: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  if (!apiKey) {
+    return { data: null, error: "Missing API key", status: 0 };
+  }
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    ...(options.headers || {}),
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+
+    let data = null;
+    let error = null;
+
+    if (response.ok) {
+      data = await response.json();
+    } else {
+      const errorData = await response.json().catch(() => ({ detail: "Request failed" }));
+      error = errorData.detail || errorData.message || "Request failed";
+    }
+
+    return { data, error, status: response.status };
+  } catch {
+    return { data: null, error: "Network error. Please try again.", status: 0 };
+  }
+}
+
+export async function createQrSession(
+  apiKey: string,
+  transactionId: number,
+  status: QrSessionStatus = "pending"
+) {
+  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus }>(
+    "/qr-sessions",
+    apiKey,
+    {
+      method: "POST",
+      body: JSON.stringify({ transaction_id: transactionId, status }),
+    }
+  );
+}
+
+export async function fetchQrSessionStatus(apiKey: string, transactionId: number) {
+  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string }>(
+    `/qr-sessions/${transactionId}`,
+    apiKey,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function updateQrSessionStatus(
+  apiKey: string,
+  transactionId: number,
+  status: QrSessionStatus
+) {
+  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus }>(
+    `/qr-sessions/${transactionId}`,
+    apiKey,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }
+  );
+}
+
 // Retroalimentación de fraude
 export async function submitFraudFeedback(
   feedbackData: {

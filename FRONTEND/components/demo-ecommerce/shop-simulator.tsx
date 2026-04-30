@@ -221,6 +221,10 @@ export default function DemoEcommerceShopSimulator() {
     updateMerchantCart(() => ({}));
   }, [updateMerchantCart]);
 
+  const handleFraudAiLogin = useCallback(() => {
+    clearMerchantCart();
+  }, [clearMerchantCart]);
+
   const selectMerchant = (merchantSlug: DemoEcommerceMerchantSlug) => {
     setSelectedMerchantSlug(merchantSlug);
     setCheckoutError(null);
@@ -566,7 +570,7 @@ export default function DemoEcommerceShopSimulator() {
         </section>
       </div>
 
-      <FraudAiLoginFloatingButton />
+      <FraudAiLoginFloatingButton onLogin={handleFraudAiLogin} />
     </main>
   );
 }

@@ -5,7 +5,8 @@ import { AlertTriangle, Loader2, MapPin, QrCode, ShieldCheck } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { loadDemoLibreriaCheckoutContext } from "@/lib/demo-libreria-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
-import { buildQrImageUrl, buildQrSelectionUrl } from "@/lib/qr-checkout";
+import { buildQrImageUrl, buildQrSelectionUrl, generateQrTransactionId } from "@/lib/qr-checkout";
+import { createQrSession } from "@/lib/api";
 
 interface Props {
   subtotal: number;
@@ -58,6 +59,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrSeed, setQrSeed] = useState<number | null>(null);
+  const [sharedTransactionId, setSharedTransactionId] = useState<number | null>(null);
   const [runtime, setRuntime] = useState<ReturnType<typeof getDemoLibreriaRuntimeCheckoutContext> | null>(null);
   const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadDemoLibreriaCheckoutContext> | null>(null);
   const [shippingName, setShippingName] = useState("");
@@ -68,8 +70,17 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
   const [shippingPhone, setShippingPhone] = useState("");
   const [shippingReference, setShippingReference] = useState("");
 
+  const cartItems = useMemo(
+    () =>
+      checkoutContext?.cart?.items?.map((item) => ({
+        id: item.id,
+        qty: item.qty,
+      })) ?? [],
+    [checkoutContext]
+  );
+
   const qrSelectionUrl = useMemo(() => {
-    if (!checkoutContext || subtotal <= 0) return "";
+    if (!checkoutContext || subtotal <= 0 || !sharedTransactionId) return "";
 
     return buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
@@ -77,8 +88,10 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
       merchantApiKey: checkoutContext.merchant.apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/demo-libreria/checkout",
+      transactionId: sharedTransactionId,
+      cartItems,
     });
-  }, [checkoutContext, subtotal]);
+  }, [checkoutContext, subtotal, sharedTransactionId, cartItems]);
 
   const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
   const hasRequiredShippingFields = [
@@ -103,7 +116,14 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     setShippingZip("");
     setShippingPhone("");
     setShippingReference("");
+    setSharedTransactionId(null);
   }, [resetTrigger]);
+
+  const persistQrSessionContext = (transactionId: number) => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem("qr_session_transaction_id", String(transactionId));
+    window.sessionStorage.setItem("qr_session_api_key", apiKey);
+  };
 
   const handleGenerateQR = () => {
     if (subtotal <= 0) {
@@ -111,12 +131,18 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
       return;
     }
 
-    if (!qrSelectionUrl) {
+    if (!checkoutContext) {
       setError("No se encontró el contexto del comercio para abrir el pago QR.");
       return;
     }
 
     setError(null);
+    const transactionId = sharedTransactionId ?? generateQrTransactionId();
+    if (!sharedTransactionId) {
+      setSharedTransactionId(transactionId);
+    }
+    persistQrSessionContext(transactionId);
+    void createQrSession(apiKey, transactionId).catch(() => undefined);
     setQrSeed(Date.now());
   };
 
@@ -125,12 +151,29 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     setError(null);
     onResult(null);
 
-    if (!qrSelectionUrl) {
+    if (!checkoutContext) {
       setError("No se encontró la página de pago QR.");
       return;
     }
 
-    window.location.href = qrSelectionUrl;
+    const transactionId = sharedTransactionId ?? generateQrTransactionId();
+    if (!sharedTransactionId) {
+      setSharedTransactionId(transactionId);
+    }
+    persistQrSessionContext(transactionId);
+    void createQrSession(apiKey, transactionId).catch(() => undefined);
+
+    const selectionUrl = buildQrSelectionUrl({
+      merchantSlug: checkoutContext.merchant.slug,
+      merchantName: checkoutContext.merchant.name,
+      merchantApiKey: checkoutContext.merchant.apiKey,
+      subtotal,
+      returnUrl: checkoutContext.returnUrl ?? "/demo-libreria/checkout",
+      transactionId,
+      cartItems,
+    });
+
+    window.location.href = selectionUrl;
   };
 
   return (

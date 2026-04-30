@@ -7,9 +7,10 @@ from app.services.metrics_service import collect_metrics, get_dashboard_metrics
 from sqlalchemy import func
 from app.db.session import get_db
 from app.models.transaction import Transaction
+from app.models.qr_transaction import QRTransaction
+from app.models.bc_transaction import BCTransaction
 from app.models.fraud_prediction import FraudPrediction
 from datetime import datetime, timedelta
-from app.models.user import User
 
 router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
@@ -52,7 +53,7 @@ def weekly_transactions(
     today = datetime.utcnow()
     last_7_days = today - timedelta(days=7)
 
-    results = (
+    card_results = (
         db.query(
             func.date(Transaction.timestamp).label("date"),
             func.sum(Transaction.amount).label("total_amount")
@@ -60,16 +61,53 @@ def weekly_transactions(
         .filter(Transaction.timestamp >= last_7_days)
         .filter(Transaction.merchant_id == merchant_scope)
         .group_by(func.date(Transaction.timestamp))
-        .order_by(func.date(Transaction.timestamp))
         .all()
     )
 
+    qr_results = (
+        db.query(
+            func.date(QRTransaction.created_at).label("date"),
+            func.sum(QRTransaction.amount).label("total_amount")
+        )
+        .filter(QRTransaction.created_at >= last_7_days)
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .group_by(func.date(QRTransaction.created_at))
+        .all()
+    )
+
+    bc_results = (
+        db.query(
+            func.date(BCTransaction.created_at).label("date"),
+            func.sum(BCTransaction.amount).label("total_amount")
+        )
+        .filter(BCTransaction.created_at >= last_7_days)
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .group_by(func.date(BCTransaction.created_at))
+        .all()
+    )
+
+    totals = {}
+    for date, total in card_results:
+        if date is None:
+            continue
+        totals[date] = totals.get(date, 0.0) + float(total or 0)
+
+    for date, total in qr_results:
+        if date is None:
+            continue
+        totals[date] = totals.get(date, 0.0) + float(total or 0)
+
+    for date, total in bc_results:
+        if date is None:
+            continue
+        totals[date] = totals.get(date, 0.0) + float(total or 0)
+
     return [
         {
-            "date": str(r.date),
-            "total": float(r.total_amount)
+            "date": str(date),
+            "total": round(total, 2),
         }
-        for r in results
+        for date, total in sorted(totals.items())
     ]
 
 
@@ -84,8 +122,8 @@ def fraud_funnel(
     merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
     total = (
-        db.query(func.count(Transaction.transaction_id))
-        .filter(Transaction.merchant_id == merchant_scope)
+        db.query(func.count(FraudPrediction.prediction_id))
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .scalar()
     )
 
@@ -118,24 +156,45 @@ def transactions_by_country(
 
     merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
-    results = (
+    card_results = (
         db.query(
             Transaction.country,
             func.sum(Transaction.amount).label("total_amount")
         )
         .filter(Transaction.merchant_id == merchant_scope)
         .group_by(Transaction.country)
-        .order_by(func.sum(Transaction.amount).desc())
-        .limit(5)
         .all()
     )
 
+    qr_results = (
+        db.query(
+            QRTransaction.country,
+            func.sum(QRTransaction.amount).label("total_amount")
+        )
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .group_by(QRTransaction.country)
+        .all()
+    )
+
+    totals: dict[str, float] = {}
+    for country, total in card_results:
+        if not country:
+            continue
+        totals[country] = totals.get(country, 0.0) + float(total or 0)
+
+    for country, total in qr_results:
+        if not country:
+            continue
+        totals[country] = totals.get(country, 0.0) + float(total or 0)
+
+    ranked = sorted(totals.items(), key=lambda item: item[1], reverse=True)[:5]
+
     return [
         {
-            "name": r.country,
-            "value": float(r.total_amount)
+            "name": country,
+            "value": float(total),
         }
-        for r in results
+        for country, total in ranked
     ]
 
 
@@ -148,38 +207,78 @@ def overview_metrics(
 
     merchant_scope = _resolve_merchant_scope(user, merchant_id)
 
-    # Usuarios totales 
-    total_users = (
-        db.query(func.count(func.distinct(Transaction.user_id)))
+    card_user_ids = (
+        db.query(Transaction.user_id)
         .filter(Transaction.merchant_id == merchant_scope)
-        .scalar()
+        .distinct()
+        .all()
+    )
+    qr_user_ids = (
+        db.query(QRTransaction.user_id)
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .distinct()
+        .all()
+    )
+    bc_user_ids = (
+        db.query(BCTransaction.user_id)
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .distinct()
+        .all()
     )
 
-    # Transacciones totales 
-    total_transactions = (
+    user_ids = {row[0] for row in card_user_ids}
+    user_ids.update(row[0] for row in qr_user_ids)
+    user_ids.update(row[0] for row in bc_user_ids)
+    total_users = len(user_ids)
+
+    card_total = (
         db.query(func.count(Transaction.transaction_id))
         .filter(Transaction.merchant_id == merchant_scope)
         .scalar()
-    )
+    ) or 0
+    qr_total = (
+        db.query(func.count(QRTransaction.transaction_id))
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .scalar()
+    ) or 0
+    bc_total = (
+        db.query(func.count(BCTransaction.payment_id))
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .scalar()
+    ) or 0
 
-    # Ingresos totales (considerando solo transacciones permitidas)
-    total_revenue = (
+    total_transactions = card_total + qr_total + bc_total
+
+    card_revenue = (
         db.query(func.sum(Transaction.amount))
         .filter(Transaction.merchant_id == merchant_scope)
         .scalar()
     ) or 0
+    qr_revenue = (
+        db.query(func.sum(QRTransaction.amount))
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .scalar()
+    ) or 0
+    bc_revenue = (
+        db.query(func.sum(BCTransaction.amount))
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .scalar()
+    ) or 0
 
-    # Tasa de fraude (bloqueos vs total)
+    total_revenue = float(card_revenue or 0) + float(qr_revenue or 0) + float(bc_revenue or 0)
+
     fraud_count = (
         db.query(func.count())
         .filter(FraudPrediction.decision == "block")
         .filter(FraudPrediction.merchant_id == merchant_scope)
         .scalar()
-    )
-    fraud_rate = (
-        (fraud_count / total_transactions) * 100
-        if total_transactions > 0 else 0
-    )
+    ) or 0
+    total_predictions = (
+        db.query(func.count())
+        .filter(FraudPrediction.merchant_id == merchant_scope)
+        .scalar()
+    ) or 0
+    fraud_rate = (fraud_count / total_predictions) * 100 if total_predictions > 0 else 0
     
 
     # Decisiones antifraude
@@ -192,7 +291,7 @@ def overview_metrics(
     decision_map = {d[0]: d[1] for d in decisions}
 
     # Transacciones por hora
-    tx_by_hour = (
+    card_by_hour = (
         db.query(
             Transaction.hour,
             func.sum(Transaction.amount),
@@ -202,6 +301,43 @@ def overview_metrics(
         .group_by(Transaction.hour)
         .all()
     )
+
+    qr_by_hour = (
+        db.query(
+            QRTransaction.hour,
+            func.sum(QRTransaction.amount),
+            func.count(QRTransaction.transaction_id)
+        )
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .group_by(QRTransaction.hour)
+        .all()
+    )
+
+    bc_by_hour = (
+        db.query(
+            func.extract("hour", BCTransaction.created_at).label("hour"),
+            func.sum(BCTransaction.amount),
+            func.count(BCTransaction.payment_id)
+        )
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .group_by("hour")
+        .all()
+    )
+
+    hourly_totals: dict[int, dict[str, float]] = {}
+
+    def merge_hourly(rows):
+        for hour, amount, count in rows:
+            if hour is None:
+                continue
+            hour_key = int(hour)
+            entry = hourly_totals.setdefault(hour_key, {"amount": 0.0, "count": 0})
+            entry["amount"] += float(amount or 0)
+            entry["count"] += int(count or 0)
+
+    merge_hourly(card_by_hour)
+    merge_hourly(qr_by_hour)
+    merge_hourly(bc_by_hour)
 
     return {
         "stats": {
@@ -213,11 +349,11 @@ def overview_metrics(
         "decisions": decision_map,
         "transactions_by_hour": [
             {
-                "hour": r[0],
-                "amount": float(r[1]),
-                "count": r[2]
+                "hour": hour,
+                "amount": float(values["amount"]),
+                "count": int(values["count"]),
             }
-            for r in tx_by_hour
+            for hour, values in sorted(hourly_totals.items())
         ]
     }
 
@@ -238,8 +374,7 @@ def trends(
     today = datetime.utcnow()
     last_7_days = today - timedelta(days=7)
 
-    # Revenue + transactions por día
-    daily = (
+    daily_card = (
         db.query(
             func.date(Transaction.timestamp),
             func.count(Transaction.transaction_id),
@@ -248,9 +383,47 @@ def trends(
         .filter(Transaction.timestamp >= last_7_days)
         .filter(Transaction.merchant_id == merchant_scope)
         .group_by(func.date(Transaction.timestamp))
-        .order_by(func.date(Transaction.timestamp))
         .all()
     )
+
+    daily_qr = (
+        db.query(
+            func.date(QRTransaction.created_at),
+            func.count(QRTransaction.transaction_id),
+            func.sum(QRTransaction.amount)
+        )
+        .filter(QRTransaction.created_at >= last_7_days)
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .group_by(func.date(QRTransaction.created_at))
+        .all()
+    )
+
+    daily_bc = (
+        db.query(
+            func.date(BCTransaction.created_at),
+            func.count(BCTransaction.payment_id),
+            func.sum(BCTransaction.amount)
+        )
+        .filter(BCTransaction.created_at >= last_7_days)
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .group_by(func.date(BCTransaction.created_at))
+        .all()
+    )
+
+    daily_totals: dict[str, dict[str, float]] = {}
+
+    def merge_daily(rows):
+        for day, count, amount in rows:
+            if day is None:
+                continue
+            key = str(day)
+            entry = daily_totals.setdefault(key, {"transactions": 0, "revenue": 0.0})
+            entry["transactions"] += int(count or 0)
+            entry["revenue"] += float(amount or 0)
+
+    merge_daily(daily_card)
+    merge_daily(daily_qr)
+    merge_daily(daily_bc)
 
     # Transacciones por tipo de dispositivo
     device = (
@@ -263,8 +436,7 @@ def trends(
         .all()
     )
 
-    # Scatter de monto vs hora del día para detectar patrones de comportamiento
-    scatter = (
+    card_scatter = (
         db.query(
             Transaction.hour,
             func.sum(Transaction.amount),
@@ -275,14 +447,51 @@ def trends(
         .all()
     )
 
+    qr_scatter = (
+        db.query(
+            QRTransaction.hour,
+            func.sum(QRTransaction.amount),
+            func.count(QRTransaction.transaction_id)
+        )
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .group_by(QRTransaction.hour)
+        .all()
+    )
+
+    bc_scatter = (
+        db.query(
+            func.extract("hour", BCTransaction.created_at).label("hour"),
+            func.sum(BCTransaction.amount),
+            func.count(BCTransaction.payment_id)
+        )
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .group_by("hour")
+        .all()
+    )
+
+    scatter_totals: dict[int, dict[str, float]] = {}
+
+    def merge_scatter(rows):
+        for hour, amount, count in rows:
+            if hour is None:
+                continue
+            hour_key = int(hour)
+            entry = scatter_totals.setdefault(hour_key, {"amount": 0.0, "count": 0})
+            entry["amount"] += float(amount or 0)
+            entry["count"] += int(count or 0)
+
+    merge_scatter(card_scatter)
+    merge_scatter(qr_scatter)
+    merge_scatter(bc_scatter)
+
     return {
         "line": [
             {
-                "name": str(d[0]),
-                "transactions": d[1],
-                "revenue": float(d[2] or 0)
+                "name": day,
+                "transactions": int(values["transactions"]),
+                "revenue": float(values["revenue"]),
             }
-            for d in daily
+            for day, values in sorted(daily_totals.items())
         ],
         "bar": [
             {
@@ -293,10 +502,10 @@ def trends(
         ],
         "scatter": [
             {
-                "hour": d[0],
-                "amount": float(d[1] or 0),
-                "count": d[2]
+                "hour": hour,
+                "amount": float(values["amount"]),
+                "count": int(values["count"]),
             }
-            for d in scatter
+            for hour, values in sorted(scatter_totals.items())
         ]
     }

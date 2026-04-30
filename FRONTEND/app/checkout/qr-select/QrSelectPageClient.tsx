@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ShieldCheck, CreditCard, Loader2, Sparkles } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, createQrSession, fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
 import { readHttpErrorMessage } from "@/lib/utils";
 import { navigateToFraudResult } from "@/lib/fraud-result-routing";
+import { saveDemoLibreriaCart } from "@/lib/demo-libreria-cart";
+import { loadDemoEcommerceCart, saveDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
+import { isDemoEcommerceMerchantSlug } from "@/lib/demo-ecommerce-merchants";
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -34,6 +37,33 @@ function getGeoFallback() {
   };
 }
 
+type QrCartItem = { id: string; qty: number };
+
+function parseCartItems(raw: string | null): QrCartItem[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as Array<{ id?: unknown; qty?: unknown }>;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item) => typeof item?.id === "string" && Number.isFinite(item?.qty))
+      .map((item) => ({
+        id: String(item.id),
+        qty: Math.max(0, Math.floor(Number(item.qty))),
+      }))
+      .filter((item) => item.qty > 0);
+  } catch {
+    return [];
+  }
+}
+
+function clearQrSessionStorage() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem("qr_session_api_key");
+  window.sessionStorage.removeItem("qr_session_transaction_id");
+}
+
 export default function QrSelectPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,6 +74,7 @@ export default function QrSelectPage() {
   const subtotal = parseNumber(searchParams.get("subtotal"));
   const returnUrl = searchParams.get("returnUrl") ?? "/checkout";
   const sharedTransactionId = parseNumber(searchParams.get("transactionId"));
+  const cartItems = useMemo(() => parseCartItems(searchParams.get("cart")), [searchParams]);
   const shippingCountry = searchParams.get("shippingCountry") ?? undefined;
   const shippingState = searchParams.get("shippingState") ?? undefined;
   const shippingCity = searchParams.get("shippingCity") ?? undefined;
@@ -68,12 +99,78 @@ export default function QrSelectPage() {
     explanations?: unknown;
   } | null>(null);
 
+  const hasNavigatedRef = useRef(false);
+
   const selectedCard = useMemo<DemoQrCard | undefined>(
     () => DEMO_QR_CARDS.find((card) => card.cardNumber === selectedCardNumber) ?? DEMO_QR_CARDS[0],
     [selectedCardNumber]
   );
 
   const canSubmit = Boolean(merchantSlug && merchantApiKey && subtotal > 0 && selectedCard);
+
+  const restoreCartForReturn = () => {
+    if (cartItems.length === 0) return;
+
+    const nextCart = Object.fromEntries(cartItems.map((item) => [item.id, item.qty]));
+    const returnPath = new URL(returnUrl, window.location.origin).pathname;
+
+    if (returnPath.startsWith("/demo-libreria")) {
+      saveDemoLibreriaCart(nextCart);
+      return;
+    }
+
+    if (returnPath.startsWith("/demo-ecommerce") && isDemoEcommerceMerchantSlug(merchantSlug)) {
+      const current = loadDemoEcommerceCart();
+      const updated = {
+        ...current,
+        [merchantSlug]: nextCart,
+      };
+      saveDemoEcommerceCart(updated);
+    }
+  };
+
+  const handleBack = () => {
+    hasNavigatedRef.current = true;
+    if (merchantApiKey && sharedTransactionId > 0) {
+      void updateQrSessionStatus(merchantApiKey, sharedTransactionId, "cancelled").catch(() => undefined);
+    }
+    restoreCartForReturn();
+    clearQrSessionStorage();
+    router.push(returnUrl);
+  };
+
+  useEffect(() => {
+    if (!merchantApiKey || sharedTransactionId <= 0) return;
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("qr_session_api_key", merchantApiKey);
+      window.sessionStorage.setItem("qr_session_transaction_id", String(sharedTransactionId));
+    }
+
+    void createQrSession(merchantApiKey, sharedTransactionId).catch(() => undefined);
+  }, [merchantApiKey, sharedTransactionId]);
+
+  useEffect(() => {
+    if (!merchantApiKey || sharedTransactionId <= 0) return;
+
+    const interval = window.setInterval(async () => {
+      const res = await fetchQrSessionStatus(merchantApiKey, sharedTransactionId);
+      if (hasNavigatedRef.current || !res.data) return;
+
+      if (res.data.status === "cancelled" || res.data.status === "returned") {
+        hasNavigatedRef.current = true;
+        if (res.data.status === "cancelled") {
+          restoreCartForReturn();
+        }
+        clearQrSessionStorage();
+        router.push(returnUrl);
+      }
+    }, 1500);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [merchantApiKey, sharedTransactionId, returnUrl, cartItems, merchantSlug, router]);
 
   const handlePay = async () => {
     setError(null);
@@ -126,6 +223,10 @@ export default function QrSelectPage() {
       const data = await response.json();
       setResult(data);
 
+      if (merchantApiKey && sharedTransactionId > 0) {
+        void updateQrSessionStatus(merchantApiKey, sharedTransactionId, "completed").catch(() => undefined);
+      }
+
       navigateToFraudResult(data, returnUrl);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "No se pudo procesar el pago QR");
@@ -147,7 +248,7 @@ export default function QrSelectPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => router.push(returnUrl)}
+              onClick={handleBack}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
             >
               <ChevronLeft size={14} /> Volver
@@ -235,7 +336,14 @@ export default function QrSelectPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={() => router.push(returnUrl)}
+                  onClick={() => {
+                    hasNavigatedRef.current = true;
+                    if (merchantApiKey && sharedTransactionId > 0) {
+                      void updateQrSessionStatus(merchantApiKey, sharedTransactionId, "returned").catch(() => undefined);
+                    }
+                    clearQrSessionStorage();
+                    router.push(returnUrl);
+                  }}
                   className="rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   Volver a la tienda

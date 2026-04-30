@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ShieldAlert, ShieldCheck, ShieldX, Sparkles } from "lucide-react";
 import {
@@ -11,6 +11,12 @@ import {
   type FraudResultPayload,
 } from "@/lib/fraud-result-routing";
 import { cn } from "@/lib/utils";
+import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
+import { clearDemoEcommerceMerchantCart } from "@/lib/demo-ecommerce-cart";
+import { isDemoEcommerceMerchantSlug } from "@/lib/demo-ecommerce-merchants";
+import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
+import { loadDemoLibreriaCheckoutContext } from "@/lib/demo-libreria-checkout-context";
+import { fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 
 function getDecisionMeta(decision: string) {
   switch (decision) {
@@ -71,10 +77,47 @@ function ScoreRow({ label, value }: { label: string; value: number | undefined }
   );
 }
 
+function resolveQrSessionApiKey(): string | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.sessionStorage.getItem("qr_session_api_key");
+  if (stored) return stored;
+
+  const checkoutContext = loadFraudAICheckoutContext();
+  if (checkoutContext?.merchant?.apiKey) return checkoutContext.merchant.apiKey;
+
+  const libreriaContext = loadDemoLibreriaCheckoutContext();
+  if (libreriaContext?.merchant?.apiKey) return libreriaContext.merchant.apiKey;
+
+  return null;
+}
+
+function clearQrSessionStorage() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem("qr_session_api_key");
+  window.sessionStorage.removeItem("qr_session_transaction_id");
+}
+
+function clearCartForBackUrl(backUrl: string) {
+  if (typeof window === "undefined") return;
+  const resolved = new URL(backUrl, window.location.origin);
+
+  if (resolved.pathname.startsWith("/demo-libreria")) {
+    clearDemoLibreriaCart();
+    return;
+  }
+
+  if (resolved.pathname.startsWith("/demo-ecommerce")) {
+    const merchantSlug = resolved.searchParams.get("merchant") ?? "";
+    if (isDemoEcommerceMerchantSlug(merchantSlug)) {
+      clearDemoEcommerceMerchantCart(merchantSlug);
+    }
+  }
+}
 export default function FraudResultPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [result, setResult] = useState<FraudResultPayload | null>(null);
+  const hasNavigatedRef = useRef(false);
 
   const backUrl = searchParams.get("backUrl") || "/checkout";
 
@@ -105,6 +148,43 @@ export default function FraudResultPage() {
       clearPersistedFraudResult();
     };
   }, []);
+
+  useEffect(() => {
+    if (!result?.transaction_id) return;
+    const apiKey = resolveQrSessionApiKey();
+    if (!apiKey) return;
+
+    const interval = window.setInterval(async () => {
+      const res = await fetchQrSessionStatus(apiKey, result.transaction_id);
+      if (hasNavigatedRef.current || !res.data) return;
+
+      if (res.data.status === "returned") {
+        hasNavigatedRef.current = true;
+        clearCartForBackUrl(backUrl);
+        clearQrSessionStorage();
+        router.push(backUrl);
+      }
+    }, 1500);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [result?.transaction_id, backUrl, router]);
+
+  const handleReturn = () => {
+    hasNavigatedRef.current = true;
+    clearCartForBackUrl(backUrl);
+
+    if (result?.transaction_id) {
+      const apiKey = resolveQrSessionApiKey();
+      if (apiKey) {
+        void updateQrSessionStatus(apiKey, result.transaction_id, "returned").catch(() => undefined);
+      }
+    }
+
+    clearQrSessionStorage();
+    router.push(backUrl);
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden px-4 py-6 md:px-8 md:py-10 checkout-bg">
@@ -163,7 +243,7 @@ export default function FraudResultPage() {
           <div className="flex flex-wrap gap-3 pt-2">
             <button
               type="button"
-              onClick={() => router.push(backUrl)}
+              onClick={handleReturn}
               className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
             >
               <ArrowLeft size={16} /> Regresar

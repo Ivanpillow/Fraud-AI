@@ -68,6 +68,21 @@ export function saveDemoEcommerceCart(cart: DemoEcommerceCartState): void {
   window.sessionStorage.setItem(DEMO_ECOMMERCE_CART_KEY, JSON.stringify(sanitized));
 }
 
+export function clearDemoEcommerceCart(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(DEMO_ECOMMERCE_CART_KEY);
+}
+
+export function clearDemoEcommerceMerchantCart(merchantSlug: DemoEcommerceMerchantSlug): void {
+  if (typeof window === "undefined") return;
+  const current = loadDemoEcommerceCart();
+  const nextState: DemoEcommerceCartState = {
+    ...current,
+    [merchantSlug]: {},
+  };
+  saveDemoEcommerceCart(nextState);
+}
+
 export function getDemoEcommerceMerchantCart(
   cart: DemoEcommerceCartState,
   merchantSlug: DemoEcommerceMerchantSlug

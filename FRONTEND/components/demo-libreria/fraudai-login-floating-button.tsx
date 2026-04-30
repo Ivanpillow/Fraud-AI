@@ -4,11 +4,16 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Shield, X } from "lucide-react";
 
-export default function FraudAiLoginFloatingButton() {
+type FraudAiLoginFloatingButtonProps = {
+  onLogin?: () => void;
+};
+
+export default function FraudAiLoginFloatingButton({ onLogin }: FraudAiLoginFloatingButtonProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const goToLogin = () => {
+    onLogin?.();
     router.push("/login");
   };
 

@@ -8,6 +8,8 @@ import { useEffect } from "react";
 import Sidebar from "@/components/dashboard/sidebar";
 import MobileSidebar from "@/components/dashboard/mobile-sidebar";
 import NotificationsPanel from "@/components/dashboard/notifications-panel";
+import { clearDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
+import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 
 export default function DashboardLayout({
   children,
@@ -23,6 +25,11 @@ export default function DashboardLayout({
       router.push("/login");
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    clearDemoEcommerceCart();
+    clearDemoLibreriaCart();
+  }, []);
 
   if (isLoading) {
     return (

@@ -8,6 +8,7 @@ from .fraud_prediction import FraudPrediction
 from .merchant_config import MerchantConfig
 from .merchants import Merchant
 from .qr_transaction import QRTransaction
+from .qr_session import QRSession
 from .role import Role
 from .transaction import Transaction
 from .user_behavior_features import UserBehaviorFeatures

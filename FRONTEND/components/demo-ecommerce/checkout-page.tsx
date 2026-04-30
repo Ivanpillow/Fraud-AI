@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { getDemoLibreriaRuntimeCheckoutContext } from "@/lib/demo-libreria-runtime-context";
 import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 
 type PaymentMethod = "card" | "qr" | "crypto";
 
@@ -118,6 +118,25 @@ export default function DemoEcommerceCheckoutPage() {
     };
   }, [pendingQrTransactionId, merchantApiKey, handleTransactionResult]);
 
+  useEffect(() => {
+    if (!pendingQrTransactionId || !merchantApiKey) return;
+
+    const interval = window.setInterval(async () => {
+      const res = await fetchQrSessionStatus(merchantApiKey, pendingQrTransactionId);
+      if (!res.data) return;
+
+      if (res.data.status === "cancelled") {
+        setIsPolling(false);
+        setPendingQrTransactionId(null);
+        setSelectedMethod("card");
+      }
+    }, 1500);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [pendingQrTransactionId, merchantApiKey]);
+
   const paymentMethods = [
     { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },
     { id: "qr" as PaymentMethod, label: "Codigo QR", icon: QrCode },
@@ -139,6 +158,11 @@ export default function DemoEcommerceCheckoutPage() {
           {returnUrl && (
             <Link
               href={returnUrl}
+              onClick={() => {
+                if (pendingQrTransactionId && merchantApiKey) {
+                  void updateQrSessionStatus(merchantApiKey, pendingQrTransactionId, "cancelled").catch(() => undefined);
+                }
+              }}
               className="inline-flex items-center gap-2 rounded-2xl border border-primary/35 bg-primary/20 px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:bg-primary/30 hover:border-primary/50"
             >
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/25 text-[10px]">

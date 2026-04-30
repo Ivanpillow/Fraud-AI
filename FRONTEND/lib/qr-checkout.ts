@@ -5,6 +5,7 @@ export type QrCheckoutContext = {
   subtotal: number;
   returnUrl?: string;
   transactionId?: number;
+  cartItems?: Array<{ id: string; qty: number }>;
   shippingCountry?: string;
   shippingState?: string;
   shippingCity?: string;
@@ -55,6 +56,9 @@ export function buildQrSelectionUrl(context: QrCheckoutContext): string {
   }
   if (context.transactionId) {
     url.searchParams.set("transactionId", String(context.transactionId));
+  }
+  if (context.cartItems?.length) {
+    url.searchParams.set("cart", JSON.stringify(context.cartItems));
   }
   if (context.shippingCountry) url.searchParams.set("shippingCountry", context.shippingCountry);
   if (context.shippingState) url.searchParams.set("shippingState", context.shippingState);
