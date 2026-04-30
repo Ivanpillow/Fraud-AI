@@ -231,11 +231,6 @@ export default function CheckoutPage() {
           Checkout
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          {merchantName && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
-              Comercio: <span className="text-foreground">{merchantName}</span>
-            </div>
-          )}
           <div className="w-full max-w-md">
             <CustomSelect
               value={merchantApiKey}
