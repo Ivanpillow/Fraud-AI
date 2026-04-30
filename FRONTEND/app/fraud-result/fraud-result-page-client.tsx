@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 import { clearDemoEcommerceMerchantCart } from "@/lib/demo-ecommerce-cart";
 import { isDemoEcommerceMerchantSlug } from "@/lib/demo-ecommerce-merchants";
-import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
+import { clearFraudAICheckoutContext, loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { loadDemoLibreriaCheckoutContext } from "@/lib/demo-libreria-checkout-context";
 import { fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 
@@ -113,6 +113,23 @@ function clearCartForBackUrl(backUrl: string) {
     }
   }
 }
+
+function prepareReturnNavigation(backUrl: string) {
+  if (typeof window === "undefined") return backUrl;
+
+  const resolved = new URL(backUrl, window.location.origin);
+
+  if (resolved.pathname.startsWith("/checkout")) {
+    clearFraudAICheckoutContext();
+    return "/checkout";
+  }
+
+  if (resolved.pathname.startsWith("/demo-ecommerce")) {
+    return "/demo-ecommerce";
+  }
+
+  return resolved.pathname + resolved.search + resolved.hash;
+}
 export default function FraudResultPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -162,7 +179,7 @@ export default function FraudResultPage() {
         hasNavigatedRef.current = true;
         clearCartForBackUrl(backUrl);
         clearQrSessionStorage();
-        router.push(backUrl);
+        router.push(prepareReturnNavigation(backUrl));
       }
     }, 1500);
 
@@ -174,6 +191,7 @@ export default function FraudResultPage() {
   const handleReturn = () => {
     hasNavigatedRef.current = true;
     clearCartForBackUrl(backUrl);
+    const returnTarget = prepareReturnNavigation(backUrl);
 
     if (result?.transaction_id) {
       const apiKey = resolveQrSessionApiKey();
@@ -183,7 +201,7 @@ export default function FraudResultPage() {
     }
 
     clearQrSessionStorage();
-    router.push(backUrl);
+    router.push(returnTarget);
   };
 
   return (

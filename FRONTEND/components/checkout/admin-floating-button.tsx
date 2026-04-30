@@ -32,10 +32,10 @@ export default function AdminFloatingButton() {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                Login as Admin
+                Iniciar sesión como Admin
               </p>
               <p className="text-[10px] text-muted-foreground">
-                Go to admin panel
+                Ir al panel de Admin
               </p>
             </div>
             <ChevronRight
@@ -53,7 +53,7 @@ export default function AdminFloatingButton() {
             "transition-all duration-300 hover:scale-105",
             "group"
           )}
-          title="Login as Admin"
+          title="Iniciar sesión como Admin"
         >
           <Shield
             size={22}

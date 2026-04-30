@@ -35,8 +35,20 @@ def get_metrics(db: Session = Depends(get_db)):
     return collect_metrics(db)
 
 @router.get("/dashboard-stats")
-def get_dashboard_stats(db: Session = Depends(get_db)):
-    return get_dashboard_metrics(db)
+def get_dashboard_stats(
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    print("=== DEBUG dashboard-stats ===")
+    print(f"User object: {user}")
+    print(f"User keys: {user.keys() if isinstance(user, dict) else 'NOT A DICT'}")
+    
+    user_merchant_id = int(user.get("merchant_id", 0))
+    print(f"Extracted merchant_id from user: {user_merchant_id}")
+    
+    result = get_dashboard_metrics(db, merchant_id=user_merchant_id)
+    print(f"Dashboard metrics result: {result}")
+    return result
 
 
 

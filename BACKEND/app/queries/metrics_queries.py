@@ -1,8 +1,17 @@
 from sqlalchemy import func
 from app.models.transaction import Transaction
 from app.models.qr_transaction import QRTransaction
+from app.models.bc_transaction import BCTransaction
 from app.models.fraud_prediction import FraudPrediction
-from app.models.user import User
+
+
+def _reviewed_predictions_query(db, merchant_id: int | None = None):
+    query = db.query(FraudPrediction).filter(FraudPrediction.reviewed.is_(True))
+
+    if merchant_id is not None:
+        query = query.filter(FraudPrediction.merchant_id == merchant_id)
+
+    return query
 
 def get_global_metrics(db):
     """
@@ -129,36 +138,58 @@ def decisions_distribution(db):
         .all()
     )
 
-def get_dashboard_stats(db):
+def get_dashboard_stats(db, merchant_id: int | None = None):
+    print("Merchant ID recibido en get_dashboard_stats:", merchant_id)
     """
     Obtiene estadísticas del dashboard:
-    - Total de transacciones (card + QR)
-    - Total de usuarios
+    - Total de transacciones (card + QR + crypto)
+    - Total de usuarios con compras en el comercio
     - Usuarios activos (igual a total de usuarios por ahora)
     - Total de fraudes
     - Total de ingresos (suma de todas las transacciones)
     - Cambios porcentuales (datos dummy para "looks")
     """
-    # Total de transacciones
-    total_card_tx = db.query(func.count(Transaction.transaction_id)).scalar() or 0
-    total_qr_tx = db.query(func.count(QRTransaction.transaction_id)).scalar() or 0
-    total_transactions = total_card_tx + total_qr_tx
-    
-    # Total de usuarios
-    total_users = db.query(func.count(User.user_id)).scalar() or 0
-    active_users = total_users  # Por ahora, usuarios activos = total de usuarios
-    
-    # Total de fraudes
-    total_frauds = (
-        db.query(func.count(FraudPrediction.prediction_id))
-        .filter(FraudPrediction.prediction_label == True)
-        .scalar() or 0
+    reviewed_predictions = _reviewed_predictions_query(db, merchant_id)
+
+    card_rows = (
+        reviewed_predictions.filter(FraudPrediction.channel == "card")
+        .join(Transaction, Transaction.transaction_id == FraudPrediction.transaction_id)
+        .with_entities(Transaction.transaction_id, Transaction.user_id, Transaction.amount)
+        .all()
     )
-    
-    # Total de ingresos (suma de todas las transacciones)
-    card_revenue = db.query(func.sum(Transaction.amount)).scalar() or 0
-    qr_revenue = db.query(func.sum(QRTransaction.amount)).scalar() or 0
-    total_revenue = float(card_revenue) + float(qr_revenue)
+    qr_rows = (
+        reviewed_predictions.filter(FraudPrediction.channel == "qr")
+        .join(QRTransaction, QRTransaction.transaction_id == FraudPrediction.transaction_id)
+        .with_entities(QRTransaction.transaction_id, QRTransaction.user_id, QRTransaction.amount)
+        .all()
+    )
+    crypto_rows = (
+        reviewed_predictions.filter(FraudPrediction.channel == "blockchain")
+        .join(BCTransaction, BCTransaction.fraud_transaction_id == FraudPrediction.transaction_id)
+        .with_entities(BCTransaction.payment_id, BCTransaction.user_id, BCTransaction.amount)
+        .all()
+    )
+
+    total_card_tx = len(card_rows)
+    total_qr_tx = len(qr_rows)
+    total_crypto_tx = len(crypto_rows)
+    total_transactions = total_card_tx + total_qr_tx + total_crypto_tx
+
+    # Total de usuarios que han comprado en el comercio
+    total_users = len({
+        row.user_id
+        for row in card_rows + qr_rows + crypto_rows
+        if row.user_id is not None
+    })
+    active_users = total_users  # Por ahora, usuarios activos = total de usuarios
+
+    # Total de fraudes
+    total_frauds = reviewed_predictions.filter(FraudPrediction.prediction_label.is_(True)).count()
+
+    total_revenue = sum(float(row.amount or 0) for row in card_rows + qr_rows + crypto_rows)
+
+    reviewed_total = reviewed_predictions.count()
+    fraud_rate = (total_frauds / reviewed_total) if reviewed_total > 0 else 0
     
     # Cambios porcentuales (datos dummy para "looks")
     users_change = 5.2  # +5.2%
@@ -172,8 +203,10 @@ def get_dashboard_stats(db):
         "total_revenue": round(total_revenue, 2),
         "active_users": active_users,
         "total_frauds": total_frauds,
+        "total_crypto_transactions": total_crypto_tx,
         "users_change": users_change,
         "transactions_change": transactions_change,
         "revenue_change": revenue_change,
+        "fraud_rate": round(fraud_rate, 4),
         "frauds_change": frauds_change,
     }

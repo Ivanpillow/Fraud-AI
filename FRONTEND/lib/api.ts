@@ -269,6 +269,8 @@ export async function fetchDashboardStats(token?: string) {
     transactions_change: number;
     revenue_change: number;
     frauds_change: number;
+    fraud_rate: number;
+    total_crypto_transactions?: number;
   }>("/metrics/dashboard-stats", { token });
 }
 
@@ -730,6 +732,10 @@ export async function fetchOverviewMetrics(token?: string, merchantId?: number) 
       total_transactions: number;
       total_revenue: number;
       active_users: number;
+      users_change: number;
+      transactions_change: number;
+      revenue_change: number;
+      fraud_change: number;
     };
     decisions: Record<string, number>;
     transactions_by_hour: Array<{

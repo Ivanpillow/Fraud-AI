@@ -13,7 +13,7 @@ import ConversionFunnel from "@/components/dashboard/charts/conversion-funnel";
 import { useAuth } from "@/lib/auth-context";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchMerchants, fetchOverviewMetrics } from "@/lib/api";
+import { fetchDashboardStats, fetchMerchants, fetchOverviewMetrics } from "@/lib/api";
 
 type MerchantOption = {
   merchant_id: number;
@@ -25,11 +25,12 @@ export default function OverviewPage() {
   const isSuperadmin = !!currentUser?.is_superadmin;
 
   const [overviewData, setOverviewData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [merchants, setMerchants] = useState<MerchantOption[]>([]);
   const [selectedMerchantId, setSelectedMerchantId] = useState<number | undefined>(undefined);
 
   const searchParams = useSearchParams();
-  const stats = overviewData?.stats;
+  const stats = dashboardData?.stats;
   const totalRevenue = Number(stats?.total_revenue ?? 0);
   const deniedSection = searchParams.get("denied");
   const deniedMessage =
@@ -93,12 +94,18 @@ export default function OverviewPage() {
 
   useEffect(() => {
     const load = async () => {
-      const res = await fetchOverviewMetrics(
-        undefined,
-        isSuperadmin ? selectedMerchantId : undefined
-      );
-      if (res.data) {
-        setOverviewData(res.data);
+      const merchantId = isSuperadmin ? selectedMerchantId : undefined;
+      const [overviewRes, dashboardRes] = await Promise.all([
+        fetchOverviewMetrics(undefined, merchantId),
+        fetchDashboardStats(undefined),
+      ]);
+
+      if (overviewRes.data) {
+        setOverviewData(overviewRes.data);
+      }
+
+      if (dashboardRes.data) {
+        setDashboardData(dashboardRes.data);
       }
     };
 
@@ -114,6 +121,25 @@ export default function OverviewPage() {
       <DashboardHeader title="Resumen" />
 
       <div className="flex-1 p-4 md:p-6 flex flex-col gap-5 stagger-children">
+        <section className="glass-card rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6 animate-fade-in">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-primary/90">
+                Métricas verificadas
+              </p>
+              <h1 className="mt-2 text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                Resumen de transacciones verificadas
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
+                Solo se muestran las transacciones revisadas y validadas.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+              Tarjeta + QR + Crypto
+            </div>
+          </div>
+        </section>
+
         {deniedMessage && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             {deniedMessage}
@@ -145,7 +171,7 @@ export default function OverviewPage() {
             accent
           />
           <StatCard
-            label="Transaccions Totales"
+            label="Transacciones Totales"
             value={stats?.total_transactions || 0}
             change={stats?.transactions_change || 0}
             icon={CreditCard}
@@ -159,7 +185,7 @@ export default function OverviewPage() {
           />
           <StatCard
             label="Porcentaje de Fraude"
-            value={`${stats?.fraud_rate || 0}%`}
+            value={`${Number(stats?.fraud_rate ?? 0) > 1 ? Number(stats?.fraud_rate).toFixed(2) : (Number(stats?.fraud_rate ?? 0) * 100).toFixed(2)}%`}
             change={stats?.fraud_change || 0}
             icon={Percent}
           />

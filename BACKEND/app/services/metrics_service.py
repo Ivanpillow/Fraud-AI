@@ -32,8 +32,8 @@ def collect_metrics(db):
         "decisions": decisions
     }
 
-def get_dashboard_metrics(db):
+def get_dashboard_metrics(db, merchant_id: int | None = None):
     """
     Obtiene las estadísticas del dashboard con datos reales de la BD.
     """
-    return get_dashboard_stats(db)
+    return get_dashboard_stats(db, merchant_id=merchant_id)
