@@ -747,18 +747,23 @@ export async function fetchOverviewMetrics(token?: string, merchantId?: number) 
     fetchVisibleTransactionsMetrics(token, merchantId),
   ]);
 
-  if (visibleMetrics.error || !visibleMetrics.data) {
+  if (statsRes.error || !statsRes.data) {
     return {
       data: null,
-      error: visibleMetrics.error || "No se pudieron cargar métricas",
-      status: visibleMetrics.status,
+      error: statsRes.error || "No se pudieron cargar métricas",
+      status: statsRes.status,
     };
   }
 
-  const baseStats = statsRes.data?.stats;
-  const totalTransactions = visibleMetrics.data.totalTransactions;
-  const totalRevenue = visibleMetrics.data.totalRevenue;
-  const totalFrauds = visibleMetrics.data.decisions.block;
+  const baseStats = statsRes.data.stats;
+  const fallbackDecisions = statsRes.data.decisions || {};
+  const fallbackByHour = statsRes.data.transactions_by_hour || [];
+
+  const totalTransactions = visibleMetrics.data?.totalTransactions ?? baseStats.total_transactions ?? 0;
+  const totalRevenue = visibleMetrics.data?.totalRevenue ?? baseStats.total_revenue ?? 0;
+  const totalFrauds = visibleMetrics.data?.decisions.block ?? fallbackDecisions.block ?? 0;
+  const decisions = visibleMetrics.data?.decisions ?? fallbackDecisions;
+  const transactionsByHour = visibleMetrics.data?.byHour ?? fallbackByHour;
 
   return {
     data: {
@@ -774,8 +779,8 @@ export async function fetchOverviewMetrics(token?: string, merchantId?: number) 
         total_frauds: totalFrauds,
         fraud_rate: totalTransactions > 0 ? Number(((totalFrauds / totalTransactions) * 100).toFixed(2)) : 0,
       },
-      decisions: visibleMetrics.data.decisions,
-      transactions_by_hour: visibleMetrics.data.byHour,
+      decisions,
+      transactions_by_hour: transactionsByHour,
     },
     error: null,
     status: 200,

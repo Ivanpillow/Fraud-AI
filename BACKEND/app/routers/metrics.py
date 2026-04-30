@@ -70,8 +70,14 @@ def weekly_transactions(
             func.date(Transaction.timestamp).label("date"),
             func.sum(Transaction.amount).label("total_amount")
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.timestamp >= last_7_days)
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(func.date(Transaction.timestamp))
         .all()
     )
@@ -81,8 +87,14 @@ def weekly_transactions(
             func.date(QRTransaction.created_at).label("date"),
             func.sum(QRTransaction.amount).label("total_amount")
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.created_at >= last_7_days)
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(func.date(QRTransaction.created_at))
         .all()
     )
@@ -92,8 +104,14 @@ def weekly_transactions(
             func.date(BCTransaction.created_at).label("date"),
             func.sum(BCTransaction.amount).label("total_amount")
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.created_at >= last_7_days)
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(func.date(BCTransaction.created_at))
         .all()
     )
@@ -136,6 +154,7 @@ def fraud_funnel(
     total = (
         db.query(func.count(FraudPrediction.prediction_id))
         .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     )
 
@@ -145,6 +164,7 @@ def fraud_funnel(
             func.count(FraudPrediction.prediction_id)
         )
         .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(FraudPrediction.decision)
         .all()
     )
@@ -173,7 +193,13 @@ def transactions_by_country(
             Transaction.country,
             func.sum(Transaction.amount).label("total_amount")
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(Transaction.country)
         .all()
     )
@@ -183,7 +209,13 @@ def transactions_by_country(
             QRTransaction.country,
             func.sum(QRTransaction.amount).label("total_amount")
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(QRTransaction.country)
         .all()
     )
@@ -221,19 +253,37 @@ def overview_metrics(
 
     card_user_ids = (
         db.query(Transaction.user_id)
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .distinct()
         .all()
     )
     qr_user_ids = (
         db.query(QRTransaction.user_id)
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .distinct()
         .all()
     )
     bc_user_ids = (
         db.query(BCTransaction.user_id)
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .distinct()
         .all()
     )
@@ -245,17 +295,35 @@ def overview_metrics(
 
     card_total = (
         db.query(func.count(Transaction.transaction_id))
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
     qr_total = (
         db.query(func.count(QRTransaction.transaction_id))
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
     bc_total = (
         db.query(func.count(BCTransaction.payment_id))
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
 
@@ -263,17 +331,35 @@ def overview_metrics(
 
     card_revenue = (
         db.query(func.sum(Transaction.amount))
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
     qr_revenue = (
         db.query(func.sum(QRTransaction.amount))
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
     bc_revenue = (
         db.query(func.sum(BCTransaction.amount))
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
 
@@ -283,11 +369,13 @@ def overview_metrics(
         db.query(func.count())
         .filter(FraudPrediction.decision == "block")
         .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
     total_predictions = (
         db.query(func.count())
         .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
     fraud_rate = (fraud_count / total_predictions) * 100 if total_predictions > 0 else 0
@@ -297,6 +385,7 @@ def overview_metrics(
     decisions = (
         db.query(FraudPrediction.decision, func.count())
         .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(FraudPrediction.decision)
         .all()
     )
@@ -309,7 +398,13 @@ def overview_metrics(
             func.sum(Transaction.amount),
             func.count(Transaction.transaction_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(Transaction.hour)
         .all()
     )
@@ -320,7 +415,13 @@ def overview_metrics(
             func.sum(QRTransaction.amount),
             func.count(QRTransaction.transaction_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(QRTransaction.hour)
         .all()
     )
@@ -331,7 +432,13 @@ def overview_metrics(
             func.sum(BCTransaction.amount),
             func.count(BCTransaction.payment_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by("hour")
         .all()
     )
@@ -392,8 +499,14 @@ def trends(
             func.count(Transaction.transaction_id),
             func.sum(Transaction.amount)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.timestamp >= last_7_days)
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(func.date(Transaction.timestamp))
         .all()
     )
@@ -404,8 +517,14 @@ def trends(
             func.count(QRTransaction.transaction_id),
             func.sum(QRTransaction.amount)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.created_at >= last_7_days)
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(func.date(QRTransaction.created_at))
         .all()
     )
@@ -416,8 +535,14 @@ def trends(
             func.count(BCTransaction.payment_id),
             func.sum(BCTransaction.amount)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.created_at >= last_7_days)
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(func.date(BCTransaction.created_at))
         .all()
     )
@@ -443,7 +568,13 @@ def trends(
             Transaction.device_type,
             func.count(Transaction.transaction_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(Transaction.device_type)
         .all()
     )
@@ -454,7 +585,13 @@ def trends(
             func.sum(Transaction.amount),
             func.count(Transaction.transaction_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(Transaction.hour)
         .all()
     )
@@ -465,7 +602,13 @@ def trends(
             func.sum(QRTransaction.amount),
             func.count(QRTransaction.transaction_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(QRTransaction.hour)
         .all()
     )
@@ -476,7 +619,13 @@ def trends(
             func.sum(BCTransaction.amount),
             func.count(BCTransaction.payment_id)
         )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by("hour")
         .all()
     )

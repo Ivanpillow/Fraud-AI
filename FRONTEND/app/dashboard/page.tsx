@@ -13,7 +13,7 @@ import ConversionFunnel from "@/components/dashboard/charts/conversion-funnel";
 import { useAuth } from "@/lib/auth-context";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchDashboardStats, fetchMerchants, fetchOverviewMetrics } from "@/lib/api";
+import { fetchMerchants, fetchOverviewMetrics } from "@/lib/api";
 
 type MerchantOption = {
   merchant_id: number;
@@ -25,12 +25,11 @@ export default function OverviewPage() {
   const isSuperadmin = !!currentUser?.is_superadmin;
 
   const [overviewData, setOverviewData] = useState<any>(null);
-  const [dashboardData, setDashboardData] = useState<any>(null);
   const [merchants, setMerchants] = useState<MerchantOption[]>([]);
   const [selectedMerchantId, setSelectedMerchantId] = useState<number | undefined>(undefined);
 
   const searchParams = useSearchParams();
-  const stats = dashboardData?.stats;
+  const stats = overviewData?.stats;
   const totalRevenue = Number(stats?.total_revenue ?? 0);
   const deniedSection = searchParams.get("denied");
   const deniedMessage =
@@ -95,17 +94,10 @@ export default function OverviewPage() {
   useEffect(() => {
     const load = async () => {
       const merchantId = isSuperadmin ? selectedMerchantId : undefined;
-      const [overviewRes, dashboardRes] = await Promise.all([
-        fetchOverviewMetrics(undefined, merchantId),
-        fetchDashboardStats(undefined),
-      ]);
+      const overviewRes = await fetchOverviewMetrics(undefined, merchantId);
 
       if (overviewRes.data) {
         setOverviewData(overviewRes.data);
-      }
-
-      if (dashboardRes.data) {
-        setDashboardData(dashboardRes.data);
       }
     };
 

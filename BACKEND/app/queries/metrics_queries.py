@@ -17,22 +17,22 @@ def get_global_metrics(db):
     """
     Obtiene métricas globales considerando tanto transacciones card como QR.
     """
-    total_card_tx = db.query(func.count(Transaction.transaction_id)).scalar()
-    total_qr_tx = db.query(func.count(QRTransaction.transaction_id)).scalar()
-    total_tx = total_card_tx + total_qr_tx
-    
-    total_fraud = (
-        db.query(func.count(FraudPrediction.prediction_id))
-        .filter(FraudPrediction.prediction_label == True)
-        .scalar()
-    )
+    reviewed_predictions = _reviewed_predictions_query(db)
 
-    fraud_rate = (total_fraud / total_tx) if total_tx > 0 else 0
+    total_card_tx = reviewed_predictions.filter(FraudPrediction.channel == "card").count()
+    total_qr_tx = reviewed_predictions.filter(FraudPrediction.channel == "qr").count()
+    total_crypto_tx = reviewed_predictions.filter(FraudPrediction.channel == "blockchain").count()
+    total_tx = total_card_tx + total_qr_tx + total_crypto_tx
+
+    total_fraud = reviewed_predictions.filter(FraudPrediction.prediction_label.is_(True)).count()
+    reviewed_total = reviewed_predictions.count()
+    fraud_rate = (total_fraud / reviewed_total) if reviewed_total > 0 else 0
 
     return {
         "total_transactions": total_tx,
         "total_card_transactions": total_card_tx,
         "total_qr_transactions": total_qr_tx,
+        "total_crypto_transactions": total_crypto_tx,
         "total_frauds": total_fraud,
         "fraud_rate": round(fraud_rate, 4)
     }
@@ -51,6 +51,7 @@ def frauds_by_hour(db):
             (FraudPrediction.transaction_id == Transaction.transaction_id)
             & (FraudPrediction.channel == "card")
         )
+        .filter(FraudPrediction.reviewed.is_(True))
         .filter(FraudPrediction.prediction_label == True)
         .group_by(Transaction.hour)
         .all()
@@ -66,6 +67,7 @@ def frauds_by_hour(db):
             (FraudPrediction.transaction_id == QRTransaction.transaction_id)
             & (FraudPrediction.channel == "qr")
         )
+        .filter(FraudPrediction.reviewed.is_(True))
         .filter(FraudPrediction.prediction_label == True)
         .group_by(QRTransaction.hour)
         .all()
@@ -94,6 +96,7 @@ def frauds_by_country(db):
             (FraudPrediction.transaction_id == Transaction.transaction_id) & 
             (FraudPrediction.channel == "card")
         )
+        .filter(FraudPrediction.reviewed.is_(True))
         .filter(FraudPrediction.prediction_label == True)
         .group_by(Transaction.country)
         .all()
@@ -110,6 +113,7 @@ def frauds_by_country(db):
             (FraudPrediction.transaction_id == QRTransaction.transaction_id) & 
             (FraudPrediction.channel == "qr")
         )
+        .filter(FraudPrediction.reviewed.is_(True))
         .filter(FraudPrediction.prediction_label == True)
         .group_by(QRTransaction.country)
         .all()
@@ -134,6 +138,7 @@ def decisions_distribution(db):
             FraudPrediction.decision,
             func.count(FraudPrediction.prediction_id).label("count")
         )
+        .filter(FraudPrediction.reviewed.is_(True))
         .group_by(FraudPrediction.channel, FraudPrediction.decision)
         .all()
     )
