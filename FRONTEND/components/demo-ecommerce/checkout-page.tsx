@@ -27,12 +27,15 @@ export default function DemoEcommerceCheckoutPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("card");
   const [subtotal, setSubtotal] = useState<number>(0);
   const [resetTrigger, setResetTrigger] = useState(0);
+  const [qrResetCounter, setQrResetCounter] = useState(0);
   const [merchantApiKey, setMerchantApiKey] = useState<string>("floreria_key");
   const [merchantName, setMerchantName] = useState<string | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>("/demo-ecommerce");
   const [isPolling, setIsPolling] = useState(false);
   const [pendingQrTransactionId, setPendingQrTransactionId] = useState<number | null>(null);
+  const [qrStatusMessage, setQrStatusMessage] = useState<string | null>(null);
   const total = subtotal;
+  const qrResetTrigger = resetTrigger + qrResetCounter;
 
   const [fraudResult, setFraudResult] = useState<{
     transaction_id: number;
@@ -64,6 +67,8 @@ export default function DemoEcommerceCheckoutPage() {
   const handleNewTransaction = useCallback(() => {
     setFraudResult(null);
     setPendingQrTransactionId(null);
+    setQrStatusMessage(null);
+    setQrResetCounter(0);
     setSubtotal(0);
     setSelectedMethod("card");
     setResetTrigger((prev) => prev + 1);
@@ -71,6 +76,7 @@ export default function DemoEcommerceCheckoutPage() {
 
   const handleQrSessionCreated = useCallback((transactionId: number | null) => {
     setPendingQrTransactionId(transactionId);
+    setQrStatusMessage(null);
   }, []);
 
   useEffect(() => {
@@ -189,7 +195,9 @@ export default function DemoEcommerceCheckoutPage() {
       if (res.data.status === "cancelled") {
         setIsPolling(false);
         setPendingQrTransactionId(null);
-        setSelectedMethod("card");
+        setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
+        setQrResetCounter((prev) => prev + 1);
+        setSelectedMethod("qr");
       }
     }, 1500);
 
@@ -300,8 +308,9 @@ export default function DemoEcommerceCheckoutPage() {
               <DemoLibreriaQRPaymentForm
                 subtotal={subtotal}
                 apiKey={merchantApiKey}
-                resetTrigger={resetTrigger}
+                resetTrigger={qrResetTrigger}
                 onQrSessionCreated={handleQrSessionCreated}
+                statusMessage={qrStatusMessage}
                 onResult={handleTransactionResult}
               />
             )}

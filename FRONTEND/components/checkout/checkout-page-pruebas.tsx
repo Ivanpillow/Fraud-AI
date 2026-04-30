@@ -47,6 +47,7 @@ export default function CheckoutPage() {
   const [subtotal, setSubtotal] = useState<number>(0);
   const [selectedTax, setSelectedTax] = useState<TaxCode | null>(null);
   const [resetTrigger, setResetTrigger] = useState(0);
+  const [qrResetCounter, setQrResetCounter] = useState(0);
   const [merchantApiKey, setMerchantApiKey] = useState<string>("floreria_key");
   const [merchantName, setMerchantName] = useState<string | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export default function CheckoutPage() {
   const taxRate = selectedTax ? TAX_OPTIONS[selectedTax] : 0;
   const taxAmount = subtotal * taxRate;
   const total = subtotal + taxAmount;
+  const qrResetTrigger = resetTrigger + qrResetCounter;
 
   const [fraudResult, setFraudResult] = useState<{
     transaction_id: number;
@@ -89,6 +91,7 @@ export default function CheckoutPage() {
     setFraudResult(null);
     setPendingQrTransactionId(null);
     setQrStatusMessage(null);
+    setQrResetCounter(0);
     setSubtotal(0);
     setSelectedTax(null);
     setSelectedMethod("card");
@@ -212,7 +215,8 @@ export default function CheckoutPage() {
         setIsPolling(false);
         setPendingQrTransactionId(null);
         setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
-        setSelectedMethod("card");
+        setQrResetCounter((prev) => prev + 1);
+        setSelectedMethod("qr");
       }
     }, 1500);
 
@@ -325,7 +329,7 @@ export default function CheckoutPage() {
               <QRPaymentForm
                 subtotal={subtotal}
                 apiKey={merchantApiKey}
-                resetTrigger={resetTrigger}
+                resetTrigger={qrResetTrigger}
                 onQrSessionCreated={handleQrSessionCreated}
                 statusMessage={qrStatusMessage}
                 onResult={handleTransactionResult}

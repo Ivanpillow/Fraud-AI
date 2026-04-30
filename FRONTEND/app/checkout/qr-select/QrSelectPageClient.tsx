@@ -99,6 +99,7 @@ export default function QrSelectPage() {
     explanations?: unknown;
   } | null>(null);
   const [sessionEndedState, setSessionEndedState] = useState<"cancelled" | "returned" | null>(null);
+  const [cancelSource, setCancelSource] = useState<"phone" | "desktop" | null>(null);
 
   const hasNavigatedRef = useRef(false);
 
@@ -137,6 +138,7 @@ export default function QrSelectPage() {
     }
     restoreCartForReturn();
     clearQrSessionStorage();
+    setCancelSource("phone");
     setSessionEndedState("cancelled");
   };
 
@@ -166,6 +168,7 @@ export default function QrSelectPage() {
       if (res.data.status === "cancelled" || res.data.status === "returned") {
         hasNavigatedRef.current = true;
         clearQrSessionStorage();
+        setCancelSource("desktop");
         setSessionEndedState(res.data.status);
       }
     }, 1500);
@@ -274,7 +277,11 @@ export default function QrSelectPage() {
               <div className="flex items-center gap-3 text-amber-200">
                 <XCircle size={22} />
                 <h2 className="text-xl font-semibold">
-                  {sessionEndedState === "cancelled" ? "Pago cancelado desde desktop" : "Regreso al carrito detectado"}
+                  {sessionEndedState === "returned"
+                    ? "Regreso al carrito detectado"
+                    : cancelSource === "phone"
+                    ? "Pago cancelado desde el telefono"
+                    : "Pago cancelado desde desktop"}
                 </h2>
               </div>
               <p className="mt-3 text-sm text-amber-100/90">
