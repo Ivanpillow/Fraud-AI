@@ -222,27 +222,7 @@ export default function CheckoutPage() {
     clearDemoLibreriaCart();
   }, []);
 
-  useEffect(() => {
-    const ctx = loadFraudAICheckoutContext();
-    
-    // Si hay contexto guardado, usarlo pero SIEMPRE usar /checkout como returnUrl
-    // para el flujo de checkout normal
-    if (ctx) {
-      setMerchantApiKey(normalizeTestMerchantApiKey(ctx.merchant.apiKey));
-      setMerchantName(ctx.merchant.name || null);
-      // IMPORTANTE: El checkout normal siempre regresa a /checkout
-      setReturnUrl("/checkout");
-
-      // Precargar subtotal (shipping/tax están en 0 en la demo de comercios).
-      if (Number.isFinite(ctx.cart?.subtotal)) {
-        setSubtotal(Number(ctx.cart.subtotal));
-      }
-    } else {
-      // Si no hay contexto, usar valores por defecto para el checkout normal
-      setReturnUrl("/checkout");
-      setMerchantApiKey("floreria_key");
-    }
-  }, []);
+  
 
   const paymentMethods = [
     { id: "card" as PaymentMethod, label: "Tarjeta", icon: CreditCard },

@@ -254,17 +254,12 @@ export default function DemoLibreriaQRPaymentForm({
           )}
         >
           {qrSeed !== null && qrImageUrl ? (
-            <div className="relative">
+            <div className="flex items-center justify-center">
               <img
                 src={qrImageUrl}
                 alt="Código QR para abrir la selección de tarjeta"
-                className="h-40 w-40 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30"
+                className="h-44 w-44 rounded-2xl bg-white p-2 shadow-2xl shadow-black/30 object-contain"
               />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-8 h-8 rounded-lg bg-primary/80 flex items-center justify-center">
-                  <QrCode size={16} className="text-primary-foreground" />
-                </div>
-              </div>
             </div>
           ) : (
             <button

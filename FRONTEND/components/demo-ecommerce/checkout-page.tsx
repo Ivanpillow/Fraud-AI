@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CreditCard, QrCode, Bitcoin } from "lucide-react";
 import DemoLibreriaCardPaymentForm from "@/components/demo-ecommerce/checkout-ecommerce/card-payment-form";
 import DemoLibreriaQRPaymentForm from "@/components/demo-ecommerce/checkout-ecommerce/qr-payment-form";
@@ -22,6 +23,7 @@ function normalizeDemoMerchantApiKey(apiKey: string): string {
 }
 
 export default function DemoEcommerceCheckoutPage() {
+  const searchParams = useSearchParams();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("card");
   const [subtotal, setSubtotal] = useState<number>(0);
   const [resetTrigger, setResetTrigger] = useState(0);
@@ -46,13 +48,14 @@ export default function DemoEcommerceCheckoutPage() {
 
   const handleTransactionResult = useCallback(
     (result: FraudResultPayload | null) => {
+      setIsPolling(false);
+      setPendingQrTransactionId(null);
+
       if (!result) {
         setFraudResult(null);
         return;
       }
 
-      setIsPolling(false);
-      setPendingQrTransactionId(null);
       navigateToFraudResult(result, returnUrl ?? "/demo-ecommerce");
     },
     [returnUrl]
@@ -84,6 +87,64 @@ export default function DemoEcommerceCheckoutPage() {
 
     getDemoLibreriaRuntimeCheckoutContext();
   }, []);
+
+  useEffect(() => {
+    const transactionId = searchParams.get("transactionId");
+    const decision = searchParams.get("decision");
+    const fraudProbability = searchParams.get("fraud_probability");
+
+    if (!transactionId || decision === null || fraudProbability === null) {
+      return;
+    }
+
+    if (!merchantApiKey) {
+      return;
+    }
+
+    setIsPolling(true);
+    setSelectedMethod("qr");
+
+    const pollInterval = window.setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/qr-transactions/${transactionId}`, {
+          method: "GET",
+          headers: {
+            "X-API-Key": merchantApiKey,
+          },
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          handleTransactionResult(data);
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.error("Error polling transaction result:", error);
+      }
+    }, 1000);
+
+    const timeout = window.setTimeout(() => {
+      clearInterval(pollInterval);
+      setIsPolling(false);
+      const result = {
+        transaction_id: parseInt(transactionId, 10),
+        fraud_probability: parseFloat(fraudProbability),
+        decision: decision,
+        model_scores: {
+          random_forest: 0,
+          logistic_regression: 0,
+          kmeans_anomaly: 0,
+        },
+      };
+      handleTransactionResult(result);
+    }, 30000);
+
+    return () => {
+      clearInterval(pollInterval);
+      clearTimeout(timeout);
+    };
+  }, [searchParams, merchantApiKey, handleTransactionResult]);
 
   useEffect(() => {
     if (!pendingQrTransactionId || !merchantApiKey) {
@@ -179,6 +240,21 @@ export default function DemoEcommerceCheckoutPage() {
 
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
         <div className="flex flex-col gap-6 animate-fade-in">
+          {isPolling && (
+            <div className="glass-checkout-card rounded-3xl p-6 bg-blue-500/10 border border-blue-500/20">
+              <div className="flex items-center gap-3">
+                <div className="relative h-5 w-5">
+                  <div className="absolute inset-0 rounded-full bg-blue-500/30 animate-ping" />
+                  <div className="absolute inset-1 rounded-full bg-blue-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-200">Esperando confirmación del móvil...</h3>
+                  <p className="text-xs text-blue-100/70">Completa el pago en tu celular para continuar</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="glass-checkout-card rounded-3xl p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4">
               Selecciona un metodo de pago
@@ -194,11 +270,13 @@ export default function DemoEcommerceCheckoutPage() {
                       setSelectedMethod(method.id);
                       setFraudResult(null);
                     }}
+                    disabled={isPolling && method.id !== "qr"}
                     className={cn(
                       "glass-checkout-pill flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-medium transition-all duration-300",
                       isActive
                         ? "glass-checkout-pill-active text-foreground shadow-lg shadow-primary/20"
-                        : "text-muted-foreground hover:text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                      isPolling && method.id !== "qr" && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <Icon size={18} />
