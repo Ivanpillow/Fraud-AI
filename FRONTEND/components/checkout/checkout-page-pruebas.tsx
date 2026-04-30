@@ -10,7 +10,7 @@ import OrderSummary from "./order-summary";
 import CustomSelect from "./custom-select";
 import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
-import { API_BASE_URL, fetchQrSessionStatus } from "@/lib/api";
+import { API_BASE_URL, fetchMerchants, fetchQrSessionStatus } from "@/lib/api";
 import { readHttpErrorMessage } from "@/lib/utils";
 import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
 import { clearDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
@@ -26,12 +26,7 @@ const TAX_OPTIONS: Record<"MX" | "US" | "EU", number> = {
   EU: 0.20,
 };
 
-const MERCHANT_KEY_OPTIONS = [
-  { value: "floreria_key", label: "Florería - floreria_key" },
-  { value: "sk_test_demo_merchant", label: "Demo Merchant - sk_test_demo_merchant" },
-  { value: "libreria_api_key", label: "BookSwap - libreria_api_key" },
-  { value: "sk_comercio_2_key", label: "Prueba Comercio 2 - sk_comercio_2_key" },
-];
+type MerchantKeyOption = { value: string; label: string };
 
 function normalizeTestMerchantApiKey(apiKey: string): string {
   if (apiKey === "libreria_key") return "libreria_api_key";
@@ -48,7 +43,8 @@ export default function CheckoutPage() {
   const [selectedTax, setSelectedTax] = useState<TaxCode | null>(null);
   const [resetTrigger, setResetTrigger] = useState(0);
   const [qrResetCounter, setQrResetCounter] = useState(0);
-  const [merchantApiKey, setMerchantApiKey] = useState<string>("floreria_key");
+  const [merchantApiKey, setMerchantApiKey] = useState<string>("");
+  const [merchantKeyOptions, setMerchantKeyOptions] = useState<MerchantKeyOption[]>([]);
   const [merchantName, setMerchantName] = useState<string | null>(null);
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
@@ -103,6 +99,55 @@ export default function CheckoutPage() {
   const handleQrSessionCreated = useCallback((transactionId: number | null) => {
     setPendingQrTransactionId(transactionId);
     setQrStatusMessage(null);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMerchantKeys = async () => {
+      try {
+        const merchants = await fetchMerchants();
+        const uniqueOptions = new Map<string, MerchantKeyOption>();
+
+        for (const merchant of merchants) {
+          if (merchant.status !== "active") continue;
+
+          for (const apiKey of merchant.api_keys) {
+            if (apiKey.status !== "active" || !apiKey.label) continue;
+
+            uniqueOptions.set(apiKey.label, {
+              value: apiKey.label,
+              label: apiKey.label,
+            });
+          }
+        }
+
+        if (!isMounted) return;
+
+        const options = Array.from(uniqueOptions.values());
+        setMerchantKeyOptions(options);
+
+        const normalizedKey = normalizeTestMerchantApiKey(merchantApiKey);
+        const hasKey = options.some((option) => option.value === normalizedKey);
+
+        if (hasKey && normalizedKey !== merchantApiKey) {
+          setMerchantApiKey(normalizedKey);
+          return;
+        }
+
+        if (!hasKey && options.length > 0) {
+          setMerchantApiKey(options[0].value);
+        }
+      } catch (error) {
+        console.error("Error loading merchant api keys:", error);
+      }
+    };
+
+    loadMerchantKeys();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Polling para obtener resultado de QR después de redirigir desde el móvil
@@ -249,8 +294,13 @@ export default function CheckoutPage() {
             <CustomSelect
               value={merchantApiKey}
               onChange={setMerchantApiKey}
-              options={MERCHANT_KEY_OPTIONS}
-              placeholder="Selecciona la llave de comercio"
+              options={merchantKeyOptions}
+              placeholder={
+                merchantKeyOptions.length
+                  ? "Selecciona la llave de comercio"
+                  : "No hay llaves activas"
+              }
+              disabled={merchantKeyOptions.length === 0}
             />
           </div>
           {/* {returnUrl && (
