@@ -85,13 +85,13 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     return buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
       merchantName: checkoutContext.merchant.name,
-      merchantApiKey: checkoutContext.merchant.apiKey,
+      merchantApiKey: apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/demo-libreria/checkout",
       transactionId: sharedTransactionId,
       cartItems,
     });
-  }, [checkoutContext, subtotal, sharedTransactionId, cartItems]);
+  }, [checkoutContext, apiKey, subtotal, sharedTransactionId, cartItems]);
 
   const qrImageUrl = useMemo(() => (qrSelectionUrl ? buildQrImageUrl(qrSelectionUrl) : ""), [qrSelectionUrl]);
   const hasRequiredShippingFields = [
@@ -166,7 +166,7 @@ export default function DemoLibreriaQRPaymentForm({ subtotal, apiKey, resetTrigg
     const selectionUrl = buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
       merchantName: checkoutContext.merchant.name,
-      merchantApiKey: checkoutContext.merchant.apiKey,
+      merchantApiKey: apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/demo-libreria/checkout",
       transactionId,

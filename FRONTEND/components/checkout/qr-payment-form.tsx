@@ -122,7 +122,7 @@ export default function QRPaymentForm({
     return buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
       merchantName: checkoutContext.merchant.name,
-      merchantApiKey: checkoutContext.merchant.apiKey,
+      merchantApiKey: apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
       transactionId: sharedTransactionId,
@@ -138,6 +138,7 @@ export default function QRPaymentForm({
     });
   }, [
     checkoutContext,
+    apiKey,
     subtotal,
     sharedTransactionId,
     cartItems,
@@ -279,7 +280,7 @@ export default function QRPaymentForm({
     const selectionUrl = buildQrSelectionUrl({
       merchantSlug: checkoutContext.merchant.slug,
       merchantName: checkoutContext.merchant.name,
-      merchantApiKey: checkoutContext.merchant.apiKey,
+      merchantApiKey: apiKey,
       subtotal,
       returnUrl: checkoutContext.returnUrl ?? "/checkout",
       transactionId,

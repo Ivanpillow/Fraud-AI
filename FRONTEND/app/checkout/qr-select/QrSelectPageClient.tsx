@@ -287,13 +287,6 @@ export default function QrSelectPage() {
                 >
                   Volver al checkout
                 </button>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Reintentar con sesión actual
-                </button>
               </div>
             </div>
           ) : (
