@@ -13,7 +13,6 @@ interface Props {
   apiKey: string;
   resetTrigger?: number;
   onQrSessionCreated?: (transactionId: number | null) => void;
-  statusMessage?: string | null;
   onResult: (result: {
     transaction_id: number;
     fraud_probability: number;
@@ -79,7 +78,6 @@ export default function DemoLibreriaQRPaymentForm({
   apiKey,
   resetTrigger = 0,
   onQrSessionCreated,
-  statusMessage,
   onResult,
 }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -280,11 +278,6 @@ export default function DemoLibreriaQRPaymentForm({
           <p className="text-xs text-muted-foreground animate-fade-in">
             Escanea el código QR para completar el pago.
           </p>
-        )}
-        {statusMessage && (
-          <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
-            {statusMessage}
-          </div>
         )}
       </div>
 

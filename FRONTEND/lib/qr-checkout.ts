@@ -76,5 +76,5 @@ export function generateQrTransactionId(): number {
 }
 
 export function buildQrImageUrl(targetUrl: string): string {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=420x420&ecc=H&margin=2&data=${encodeURIComponent(targetUrl)}`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(targetUrl)}`;
 }

@@ -52,7 +52,6 @@ export default function CheckoutPage() {
   const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [pendingQrTransactionId, setPendingQrTransactionId] = useState<number | null>(null);
-  const [qrStatusMessage, setQrStatusMessage] = useState<string | null>(null);
 
   const taxRate = selectedTax ? TAX_OPTIONS[selectedTax] : 0;
   const taxAmount = subtotal * taxRate;
@@ -88,7 +87,6 @@ export default function CheckoutPage() {
   const handleNewTransaction = useCallback(() => {
     setFraudResult(null);
     setPendingQrTransactionId(null);
-    setQrStatusMessage(null);
     setSubtotal(0);
     setSelectedTax(null);
     setSelectedMethod("card");
@@ -99,7 +97,6 @@ export default function CheckoutPage() {
 
   const handleQrSessionCreated = useCallback((transactionId: number | null) => {
     setPendingQrTransactionId(transactionId);
-    setQrStatusMessage(null);
   }, []);
 
   // Polling para obtener resultado de QR después de redirigir desde el móvil
@@ -211,7 +208,6 @@ export default function CheckoutPage() {
       if (res.data.status === "cancelled") {
         setIsPolling(false);
         setPendingQrTransactionId(null);
-        setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
         setSelectedMethod("card");
       }
     }, 1500);
@@ -327,7 +323,6 @@ export default function CheckoutPage() {
                 apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
                 onQrSessionCreated={handleQrSessionCreated}
-                statusMessage={qrStatusMessage}
                 onResult={handleTransactionResult}
               />
             )}

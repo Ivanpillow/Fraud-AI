@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, ChevronLeft, CreditCard, Loader2, Sparkles, XCircle } from "lucide-react";
 import { API_BASE_URL, createQrSession, fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
@@ -65,6 +65,7 @@ function clearQrSessionStorage() {
 }
 
 export default function QrSelectPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const merchantSlug = searchParams.get("merchantSlug") ?? "";
@@ -129,19 +130,14 @@ export default function QrSelectPage() {
     }
   };
 
-  const handleCancel = () => {
+  const handleBack = () => {
     hasNavigatedRef.current = true;
     if (merchantApiKey && sharedTransactionId > 0) {
       void updateQrSessionStatus(merchantApiKey, sharedTransactionId, "cancelled").catch(() => undefined);
     }
     restoreCartForReturn();
     clearQrSessionStorage();
-    setSessionEndedState("cancelled");
-  };
-
-  const handleCloseWindow = () => {
-    if (typeof window === "undefined") return;
-    window.close();
+    router.push(returnUrl);
   };
 
   useEffect(() => {
@@ -248,9 +244,13 @@ export default function QrSelectPage() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 animate-fade-in">
         <section className="glass-card rounded-3xl p-6 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-muted-foreground">
-              <ChevronLeft size={14} /> Sesion QR activa
-            </div>
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
+            >
+              <ChevronLeft size={14} /> Volver
+            </button>
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
               {merchantSlug || "checkout"}
             </div>
@@ -277,15 +277,15 @@ export default function QrSelectPage() {
                 </h2>
               </div>
               <p className="mt-3 text-sm text-amber-100/90">
-                Esta sesion QR ya no esta activa. Cierra esta ventana y genera un nuevo QR desde tu computadora.
+                Esta sesión QR ya no está activa. Puedes cerrar esta pestaña o escanear el nuevo QR generado en tu computadora.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={handleCloseWindow}
+                  onClick={() => router.push(returnUrl)}
                   className="rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-foreground transition-colors hover:bg-white/20"
                 >
-                  Cerrar ventana
+                  Volver al checkout
                 </button>
               </div>
             </div>
@@ -379,31 +379,22 @@ export default function QrSelectPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={handlePay}
-                disabled={!canSubmit || isSubmitting}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" /> Procesando pago...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={18} /> Confirmar pago QR
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-sm text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
-              >
-                <XCircle size={16} /> Cancelar pago
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={!canSubmit || isSubmitting}
+              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" /> Procesando pago...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} /> Confirmar pago QR
+                </>
+              )}
+            </button>
           )}
           </>
           )}

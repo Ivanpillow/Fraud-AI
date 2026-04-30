@@ -32,7 +32,6 @@ export default function DemoEcommerceCheckoutPage() {
   const [returnUrl, setReturnUrl] = useState<string | null>("/demo-ecommerce");
   const [isPolling, setIsPolling] = useState(false);
   const [pendingQrTransactionId, setPendingQrTransactionId] = useState<number | null>(null);
-  const [qrStatusMessage, setQrStatusMessage] = useState<string | null>(null);
   const total = subtotal;
 
   const [fraudResult, setFraudResult] = useState<{
@@ -65,7 +64,6 @@ export default function DemoEcommerceCheckoutPage() {
   const handleNewTransaction = useCallback(() => {
     setFraudResult(null);
     setPendingQrTransactionId(null);
-    setQrStatusMessage(null);
     setSubtotal(0);
     setSelectedMethod("card");
     setResetTrigger((prev) => prev + 1);
@@ -73,7 +71,6 @@ export default function DemoEcommerceCheckoutPage() {
 
   const handleQrSessionCreated = useCallback((transactionId: number | null) => {
     setPendingQrTransactionId(transactionId);
-    setQrStatusMessage(null);
   }, []);
 
   useEffect(() => {
@@ -192,7 +189,6 @@ export default function DemoEcommerceCheckoutPage() {
       if (res.data.status === "cancelled") {
         setIsPolling(false);
         setPendingQrTransactionId(null);
-        setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
         setSelectedMethod("card");
       }
     }, 1500);
@@ -306,7 +302,6 @@ export default function DemoEcommerceCheckoutPage() {
                 apiKey={merchantApiKey}
                 resetTrigger={resetTrigger}
                 onQrSessionCreated={handleQrSessionCreated}
-                statusMessage={qrStatusMessage}
                 onResult={handleTransactionResult}
               />
             )}
