@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import DemoEcommerceCheckoutPage from "@/components/demo-ecommerce/checkout-page";
 import FraudAiLoginFloatingButton from "@/components/demo-libreria/fraudai-login-floating-button";
 
@@ -14,7 +14,9 @@ export default function DemoEcommerceCheckoutRoute() {
       </div>
 
       <div className="relative z-10">
-        <DemoEcommerceCheckoutPage />
+        <Suspense fallback={null}>
+          <DemoEcommerceCheckoutPage />
+        </Suspense>
       </div>
 
       <FraudAiLoginFloatingButton />
