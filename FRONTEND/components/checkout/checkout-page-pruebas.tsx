@@ -9,9 +9,12 @@ import CryptoPaymentForm from "./crypto-payment-form";
 import OrderSummary from "./order-summary";
 import CustomSelect from "./custom-select";
 import { cn } from "@/lib/utils";
-import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
+import {
+  loadFraudAICheckoutContext,
+  saveFraudAICheckoutContext,
+  type FraudAICheckoutContextV1,
+} from "@/lib/fraudai-checkout-context";
 import { API_BASE_URL, fetchMerchants, fetchQrSessionStatus } from "@/lib/api";
-import { readHttpErrorMessage } from "@/lib/utils";
 import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
 import { clearDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
 import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
@@ -127,7 +130,17 @@ export default function CheckoutPage() {
         const options = Array.from(uniqueOptions.values());
         setMerchantKeyOptions(options);
 
-        const normalizedKey = normalizeTestMerchantApiKey(merchantApiKey);
+        const storedContext = loadFraudAICheckoutContext();
+        if (storedContext) {
+          setMerchantName(storedContext.merchant.name || null);
+          setReturnUrl(storedContext.returnUrl ?? "/checkout");
+          if (Number.isFinite(storedContext.cart?.subtotal)) {
+            setSubtotal(Number(storedContext.cart.subtotal));
+          }
+        }
+
+        const preferredKey = storedContext?.merchant?.apiKey || merchantApiKey;
+        const normalizedKey = normalizeTestMerchantApiKey(preferredKey);
         const hasKey = options.some((option) => option.value === normalizedKey);
 
         if (hasKey && normalizedKey !== merchantApiKey) {
@@ -149,6 +162,31 @@ export default function CheckoutPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!merchantApiKey) return;
+
+    const checkoutContext: FraudAICheckoutContextV1 = {
+      version: 1,
+      merchant: {
+        slug: "checkout",
+        name: merchantName ?? "Checkout pruebas",
+        apiKey: merchantApiKey,
+      },
+      cart: {
+        currency: "MXN",
+        items: [],
+        subtotal,
+        shipping: 0,
+        tax: taxAmount,
+        total,
+      },
+      returnUrl: "/checkout",
+      createdAt: new Date().toISOString(),
+    };
+
+    saveFraudAICheckoutContext(checkoutContext);
+  }, [merchantApiKey, merchantName, subtotal, taxAmount, total]);
 
   // Polling para obtener resultado de QR después de redirigir desde el móvil
   useEffect(() => {
