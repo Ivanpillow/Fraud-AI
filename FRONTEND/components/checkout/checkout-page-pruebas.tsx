@@ -26,13 +26,13 @@ const TAX_OPTIONS: Record<"MX" | "US" | "EU", number> = {
 
 const MERCHANT_KEY_OPTIONS = [
   { value: "floreria_key", label: "Florería - floreria_key" },
-  { value: "sk_test_demo_merchant", label: "Librería demo - libreria_key / libreria_api_key" },
-  { value: "sk_comercio_2_key", label: "Marketplace - Prueba_Comercio_2 / sk_comercio_2_key" },
-  { value: "libros_book", label: "Libros Book - libros_book" },
+  { value: "sk_test_demo_merchant", label: "Demo Merchant - sk_test_demo_merchant" },
+  { value: "libreria_api_key", label: "BookSwap - libreria_api_key" },
+  { value: "sk_comercio_2_key", label: "Prueba Comercio 2 - sk_comercio_2_key" },
 ];
 
 function normalizeTestMerchantApiKey(apiKey: string): string {
-  if (apiKey === "libreria_key" || apiKey === "libreria_api_key") return "sk_test_demo_merchant";
+  if (apiKey === "libreria_key") return "libreria_api_key";
   if (apiKey === "Prueba_Comercio_2") return "sk_comercio_2_key";
   return apiKey;
 }
