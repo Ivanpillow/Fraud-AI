@@ -294,6 +294,9 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     setIsSubmitting(true);
 
     try {
+      const now = new Date();
+      const autoHour = now.getHours();
+      const autoDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
       const payload = {
         user_id: parsedUserId,
         amount: subtotal,
@@ -311,8 +314,8 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
         shipping_reference: shippingReference,
         shipping_full_name: shippingName,
         shipping_phone: shippingPhone,
-        ...(selectedHour !== "" ? { hour: parseInt(selectedHour, 10) } : {}),
-        ...(selectedDayOfWeek !== "" ? { day_of_week: parseInt(selectedDayOfWeek, 10) } : {}),
+        hour: selectedHour !== "" ? parseInt(selectedHour, 10) : autoHour,
+        day_of_week: selectedDayOfWeek !== "" ? parseInt(selectedDayOfWeek, 10) : autoDayOfWeek,
       };
 
       const response = await fetch(`${API_BASE_URL}/bc-transactions/simple`, {
