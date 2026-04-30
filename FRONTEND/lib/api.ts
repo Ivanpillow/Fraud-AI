@@ -413,7 +413,7 @@ export async function updateTransactionStatus(
   };
 }
 // Endpoint para obtener las notificaciones
-export async function fetchNotifications(token?: string) {
+export async function fetchNotifications(token?: string, merchantId?: number) {
   return apiRequest<Array<{
     id: string;
     prediction_id: number;
@@ -440,14 +440,14 @@ export async function fetchNotifications(token?: string) {
       contribution_value?: number;
       direction?: string;
     }>;
-  }>>("/notifications", {
+  }>>(withMerchantQuery("/notifications", merchantId), {
     method: "GET",
     token,
   });
 }
 
 // Endpoint para obtener el historial de transacciones revisadas
-export async function fetchFraudHistory(token?: string) {
+export async function fetchFraudHistory(token?: string, merchantId?: number) {
   return apiRequest<Array<{
     id: string;
     prediction_id: number;
@@ -474,7 +474,7 @@ export async function fetchFraudHistory(token?: string) {
       contribution_value?: number;
       direction?: string;
     }>;
-  }>>("/notifications/history", {
+  }>>(withMerchantQuery("/notifications/history", merchantId), {
     method: "GET",
     token,
   });
@@ -509,23 +509,222 @@ export async function fetchWeeklyTransactions(token?: string) {
   >("/metrics/weekly-transactions", { token });
 }
 
+type VisibleTransaction = {
+  id: string;
+  transaction_id: number;
+  channel: string;
+  amount: number;
+  timestamp: string;
+  type: "allow" | "review" | "block";
+  final_decision?: "allow" | "review" | "block" | null;
+  shipping_country?: string | null;
+};
+
+type DerivedVisibleMetrics = {
+  totalTransactions: number;
+  totalRevenue: number;
+  decisions: Record<"allow" | "review" | "block", number>;
+  byCountry: Array<{ name: string; value: number }>;
+  byHour: Array<{ hour: number; amount: number; count: number }>;
+  line: Array<{ name: string; transactions: number; revenue: number }>;
+  bar: Array<{ name: string; value: number }>;
+  scatter: Array<{ hour: number; amount: number; count: number }>;
+};
+
+function normalizeVisibleType(txn: VisibleTransaction): "allow" | "review" | "block" {
+  const resolved = txn.final_decision ?? txn.type;
+  if (resolved === "allow" || resolved === "review" || resolved === "block") {
+    return resolved;
+  }
+  return "review";
+}
+
+function dedupeVisibleTransactions(items: VisibleTransaction[]): VisibleTransaction[] {
+  const byKey = new Map<string, VisibleTransaction>();
+
+  for (const item of items) {
+    const key = `${item.channel}-${item.transaction_id}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, item);
+      continue;
+    }
+
+    const existingTs = new Date(existing.timestamp).getTime();
+    const nextTs = new Date(item.timestamp).getTime();
+    if (Number.isFinite(nextTs) && (!Number.isFinite(existingTs) || nextTs >= existingTs)) {
+      byKey.set(key, item);
+    }
+  }
+
+  return Array.from(byKey.values());
+}
+
+function deriveMetricsFromVisibleTransactions(items: VisibleTransaction[]): DerivedVisibleMetrics {
+  const decisions: Record<"allow" | "review" | "block", number> = {
+    allow: 0,
+    review: 0,
+    block: 0,
+  };
+
+  let totalRevenue = 0;
+  const countryMap = new Map<string, number>();
+  const hourMap = new Map<number, { amount: number; count: number }>();
+
+  for (let hour = 0; hour < 24; hour += 1) {
+    hourMap.set(hour, { amount: 0, count: 0 });
+  }
+
+  for (const item of items) {
+    const decision = normalizeVisibleType(item);
+    decisions[decision] += 1;
+
+    const amount = Number(item.amount) || 0;
+    totalRevenue += amount;
+
+    const country = (item.shipping_country || "N/A").trim() || "N/A";
+    countryMap.set(country, (countryMap.get(country) || 0) + amount);
+
+    const dt = new Date(item.timestamp);
+    const hour = Number.isFinite(dt.getTime()) ? dt.getHours() : 0;
+    const currentHour = hourMap.get(hour) || { amount: 0, count: 0 };
+    hourMap.set(hour, {
+      amount: currentHour.amount + amount,
+      count: currentHour.count + 1,
+    });
+  }
+
+  const byHour = Array.from(hourMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([hour, values]) => ({
+      hour,
+      amount: values.amount,
+      count: values.count,
+    }));
+
+  const byCountry = Array.from(countryMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }));
+
+  const line = byHour.map((row) => ({
+    name: `${String(row.hour).padStart(2, "0")}:00`,
+    transactions: row.count,
+    revenue: row.amount,
+  }));
+
+  const bar = [
+    { name: "Tarjeta", value: items.filter((i) => i.channel === "card").length },
+    { name: "QR", value: items.filter((i) => i.channel === "qr").length },
+    { name: "Crypto", value: items.filter((i) => i.channel === "blockchain" || i.channel === "crypto").length },
+  ];
+
+  return {
+    totalTransactions: items.length,
+    totalRevenue,
+    decisions,
+    byCountry,
+    byHour,
+    line,
+    bar,
+    scatter: byHour.map((row) => ({
+      hour: row.hour,
+      amount: row.amount,
+      count: row.count,
+    })),
+  };
+}
+
+async function fetchVisibleTransactionsMetrics(token?: string, merchantId?: number) {
+  const [historyRes, notificationsRes] = await Promise.all([
+    fetchFraudHistory(token, merchantId),
+    fetchNotifications(token, merchantId),
+  ]);
+
+  if (historyRes.error && notificationsRes.error) {
+    return {
+      data: null,
+      error: historyRes.error || notificationsRes.error,
+      status: historyRes.status || notificationsRes.status,
+    };
+  }
+
+  const history = (historyRes.data || []).map((item) => ({
+    id: item.id,
+    transaction_id: item.transaction_id,
+    channel: item.channel,
+    amount: item.amount,
+    timestamp: item.timestamp,
+    type: item.type,
+    final_decision: item.final_decision,
+    shipping_country: item.shipping_country,
+  })) as VisibleTransaction[];
+
+  const notifications = (notificationsRes.data || []).map((item) => ({
+    id: item.id,
+    transaction_id: item.transaction_id,
+    channel: item.channel,
+    amount: item.amount,
+    timestamp: item.timestamp,
+    type: item.type,
+    final_decision: item.final_decision,
+    shipping_country: item.shipping_country,
+  })) as VisibleTransaction[];
+
+  const merged = dedupeVisibleTransactions([...history, ...notifications]);
+  return {
+    data: deriveMetricsFromVisibleTransactions(merged),
+    error: null,
+    status: 200,
+  };
+}
+
 export async function fetchFraudFunnel(token?: string, merchantId?: number) {
-  return apiRequest<{
-    total: number;
-    decisions: Array<{ name: string; value: number }>;
-  }>(withMerchantQuery("/metrics/fraud-funnel", merchantId), { token });
+  const visibleMetrics = await fetchVisibleTransactionsMetrics(token, merchantId);
+  if (visibleMetrics.error || !visibleMetrics.data) {
+    return {
+      data: null,
+      error: visibleMetrics.error || "No se pudieron cargar métricas",
+      status: visibleMetrics.status,
+    };
+  }
+
+  const d = visibleMetrics.data.decisions;
+  return {
+    data: {
+      total: visibleMetrics.data.totalTransactions,
+      decisions: [
+        { name: "allow", value: d.allow },
+        { name: "review", value: d.review },
+        { name: "block", value: d.block },
+      ],
+    },
+    error: null,
+    status: 200,
+  };
 }
 
 export async function fetchTransactionsByCountry(token?: string, merchantId?: number) {
-  return apiRequest<
-    Array<{ name: string; value: number }>
-  >(withMerchantQuery("/metrics/transactions-by-country", merchantId), { token });
+  const visibleMetrics = await fetchVisibleTransactionsMetrics(token, merchantId);
+  if (visibleMetrics.error || !visibleMetrics.data) {
+    return {
+      data: null,
+      error: visibleMetrics.error || "No se pudieron cargar métricas",
+      status: visibleMetrics.status,
+    };
+  }
+
+  return {
+    data: visibleMetrics.data.byCountry,
+    error: null,
+    status: 200,
+  };
 }
 
 
 // 
 export async function fetchOverviewMetrics(token?: string, merchantId?: number) {
-  return apiRequest<{
+  const [statsRes, visibleMetrics] = await Promise.all([
+    apiRequest<{
     stats: {
       total_users: number;
       total_transactions: number;
@@ -538,15 +737,64 @@ export async function fetchOverviewMetrics(token?: string, merchantId?: number) 
       amount: number;
       count: number;
     }>;
-  }>(withMerchantQuery("/metrics/overview", merchantId), { token });
+    }>(withMerchantQuery("/metrics/overview", merchantId), { token }),
+    fetchVisibleTransactionsMetrics(token, merchantId),
+  ]);
+
+  if (visibleMetrics.error || !visibleMetrics.data) {
+    return {
+      data: null,
+      error: visibleMetrics.error || "No se pudieron cargar métricas",
+      status: visibleMetrics.status,
+    };
+  }
+
+  const baseStats = statsRes.data?.stats;
+  const totalTransactions = visibleMetrics.data.totalTransactions;
+  const totalRevenue = visibleMetrics.data.totalRevenue;
+  const totalFrauds = visibleMetrics.data.decisions.block;
+
+  return {
+    data: {
+      stats: {
+        total_users: baseStats?.total_users || 0,
+        total_transactions: totalTransactions,
+        total_revenue: totalRevenue,
+        active_users: baseStats?.active_users || 0,
+        users_change: baseStats?.users_change || 0,
+        transactions_change: baseStats?.transactions_change || 0,
+        revenue_change: baseStats?.revenue_change || 0,
+        fraud_change: baseStats?.fraud_change || 0,
+        total_frauds: totalFrauds,
+        fraud_rate: totalTransactions > 0 ? Number(((totalFrauds / totalTransactions) * 100).toFixed(2)) : 0,
+      },
+      decisions: visibleMetrics.data.decisions,
+      transactions_by_hour: visibleMetrics.data.byHour,
+    },
+    error: null,
+    status: 200,
+  };
 }
 
 export async function fetchTrends(merchantId?: number) {
-  return apiRequest<{
-    line: any[];
-    bar: any[];
-    scatter: any[];
-  }>(withMerchantQuery("/metrics/trends", merchantId));
+  const visibleMetrics = await fetchVisibleTransactionsMetrics(undefined, merchantId);
+  if (visibleMetrics.error || !visibleMetrics.data) {
+    return {
+      data: null,
+      error: visibleMetrics.error || "No se pudieron cargar tendencias",
+      status: visibleMetrics.status,
+    };
+  }
+
+  return {
+    data: {
+      line: visibleMetrics.data.line,
+      bar: visibleMetrics.data.bar,
+      scatter: visibleMetrics.data.scatter,
+    },
+    error: null,
+    status: 200,
+  };
 }
 
 

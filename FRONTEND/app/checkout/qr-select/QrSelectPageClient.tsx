@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, ChevronLeft, ShieldCheck, CreditCard, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronLeft, CreditCard, Loader2, Sparkles, XCircle } from "lucide-react";
 import { API_BASE_URL, createQrSession, fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
 import { readHttpErrorMessage } from "@/lib/utils";
@@ -98,6 +98,7 @@ export default function QrSelectPage() {
     };
     explanations?: unknown;
   } | null>(null);
+  const [sessionEndedState, setSessionEndedState] = useState<"cancelled" | "returned" | null>(null);
 
   const hasNavigatedRef = useRef(false);
 
@@ -159,11 +160,8 @@ export default function QrSelectPage() {
 
       if (res.data.status === "cancelled" || res.data.status === "returned") {
         hasNavigatedRef.current = true;
-        if (res.data.status === "cancelled") {
-          restoreCartForReturn();
-        }
         clearQrSessionStorage();
-        router.push(returnUrl);
+        setSessionEndedState(res.data.status);
       }
     }, 1500);
 
@@ -270,6 +268,35 @@ export default function QrSelectPage() {
         </section>
 
         <section className="glass-card rounded-3xl p-6 md:p-8">
+          {sessionEndedState ? (
+            <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 md:p-8">
+              <div className="flex items-center gap-3 text-amber-200">
+                <XCircle size={22} />
+                <h2 className="text-xl font-semibold">
+                  {sessionEndedState === "cancelled" ? "Pago cancelado desde desktop" : "Regreso al carrito detectado"}
+                </h2>
+              </div>
+              <p className="mt-3 text-sm text-amber-100/90">
+                Esta sesión QR ya no está activa. Puedes cerrar esta pestaña o escanear el nuevo QR generado en tu computadora.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push(returnUrl)}
+                  className="rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-foreground transition-colors hover:bg-white/20"
+                >
+                  Volver al checkout
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  Reintentar con sesión actual
+                </button>
+              </div>
+            </div>
+          ) : (
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Total a pagar</p>
@@ -374,6 +401,7 @@ export default function QrSelectPage() {
                 </>
               )}
             </button>
+          )}
           )}
         </section>
       </div>
