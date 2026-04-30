@@ -297,6 +297,7 @@ export default function QrSelectPage() {
               </div>
             </div>
           ) : (
+          <>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">Total a pagar</p>
@@ -402,6 +403,7 @@ export default function QrSelectPage() {
               )}
             </button>
           )}
+          </>
           )}
         </section>
       </div>
