@@ -26,20 +26,20 @@ export type DemoQrCard = {
 export const DEMO_QR_CARDS: DemoQrCard[] = [
   {
     label: "Visa principal",
-    cardNumber: "5566100166771001",
-    displayNumber: "5566 1001 6677 1001",
+    cardNumber: "5566100166771002",
+    displayNumber: "5566 1001 6677 1002",
     description: "Tarjeta 1 con formato de Visa",
   },
   {
     label: "Mastercard secundaria",
-    cardNumber: "4455100155661001",
-    displayNumber: "4455 1001 5566 1001",
+    cardNumber: "4455100155661002",
+    displayNumber: "4455 1001 5566 1002",
     description: "Tarjeta 2 con formato de Mastercard",
   },
   {
     label: "American Express demo",
-    cardNumber: "343410013434343",
-    displayNumber: "3434 100134 34343",
+    cardNumber: "343410013434344",
+    displayNumber: "3434 100134 34344",
     description: "Tarjeta 3 con formato de American Express",
   },
 ];
