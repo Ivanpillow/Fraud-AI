@@ -440,7 +440,7 @@ export default function DemoLibreriaCryptoPaymentForm({
       </div>
 
       <div>
-        <label className="checkout-label">Direccion wallet (opcional)</label>
+        <label className="checkout-label">Direccion wallet</label>
         <input
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
