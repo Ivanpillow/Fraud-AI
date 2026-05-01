@@ -52,7 +52,7 @@ export default function ConversionFunnel({ merchantId }: ConversionFunnelProps) 
   return (
     <GlassCard title="Embudo de Conversión de Transacciones">
       <p className="text-xs text-muted-foreground mb-2">
-        Muestra la cantidad de transacciones en cada etapa del proceso de decisión de fraude. 
+        Cantidad de transacciones en cada etapa del proceso de verificación. 
       </p>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart

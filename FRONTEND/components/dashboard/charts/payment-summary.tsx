@@ -98,14 +98,14 @@ export default function PaymentSummary({ merchantId }: PaymentSummaryProps) {
               <DollarSign size={16} />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Payments</p>
+              <p className="text-xs text-muted-foreground">Total de Pagos</p>
               <p className="text-lg font-bold text-foreground">
                 {total.toLocaleString()}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Avg. Amount</p>
+            <p className="text-xs text-muted-foreground">Monto Promedio</p>
             <p className="text-sm font-mono font-semibold text-foreground">
               ${data.average_amount.toFixed(2)}
             </p>
