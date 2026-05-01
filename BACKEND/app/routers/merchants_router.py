@@ -118,7 +118,7 @@ def list_merchants(db: Session = Depends(get_db), current_user=Depends(get_curre
     return {"data": result}
 
 
-@router.post("")
+@router.post("/")
 def create_merchant(
     payload: MerchantRequest,
     db: Session = Depends(get_db),

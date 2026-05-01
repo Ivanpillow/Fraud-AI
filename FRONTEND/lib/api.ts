@@ -975,7 +975,7 @@ export type Merchant = {
 
 // Obtener todos los comercios
 export async function fetchMerchants() {
-  const res = await apiRequest<{ data: Merchant[] }>("/merchants")
+  const res = await apiRequest<{ data: Merchant[] }>("/merchants/")
 
   if (res.error || !res.data) {
     throw new Error(res.error || "Failed to load merchants")
@@ -991,7 +991,7 @@ export async function createMerchant(data: {
   plan_type: string;
   key: string;
 }) {
-  return apiRequest("/merchants", {
+  return apiRequest("/merchants/", {
     method: "POST",
     body: JSON.stringify(data)
   })
