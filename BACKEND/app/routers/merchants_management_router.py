@@ -14,7 +14,7 @@ from app.services.merchants_management_services import (
 from app.models import Merchant, APIKey
 
 
-router = APIRouter(prefix="/merchants", tags=["Merchants Management"])
+router = APIRouter(tags=["Merchants Management"])
 
 class UpdateMerchantRequest(BaseModel):
     name: str
@@ -36,7 +36,7 @@ class CreateMerchantRequest(BaseModel):
 
 
 
-@router.get("/")
+@router.get("/merchants")
 def get_merchants(db: Session = Depends(get_db)):
 
     merchants = list_merchants_service(db)
@@ -50,7 +50,7 @@ def get_merchants(db: Session = Depends(get_db)):
 # CREAR COMERCIO
 # ============================
 
-@router.post("/")
+@router.post("/merchants")
 def create_merchant(
     payload: CreateMerchantRequest,
     db: Session = Depends(get_db),
@@ -67,7 +67,7 @@ def create_merchant(
 
 
 
-@router.put("/{merchant_id}")
+@router.put("/merchants/{merchant_id}")
 def update_merchant(
     merchant_id: int,
     payload: UpdateMerchantRequest,
@@ -86,7 +86,7 @@ def update_merchant(
 
 
 
-@router.patch("/{merchant_id}/status")
+@router.patch("/merchants/{merchant_id}/status")
 def toggle_merchant_status(
     merchant_id: int,
     payload: ToggleStatusRequest,
@@ -103,7 +103,7 @@ def toggle_merchant_status(
     }
 
 
-@router.delete("/{merchant_id}")
+@router.delete("/merchants/{merchant_id}")
 def delete_merchant(
     merchant_id: int,
     db: Session = Depends(get_db),

@@ -1,3 +1,4 @@
+"""No montado en main.py; en producción se usa merchants_management_router."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
