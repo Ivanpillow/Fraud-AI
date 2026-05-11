@@ -412,6 +412,12 @@ def calculate_risk_score_rule(
     if hour is not None and (hour >= 0 and hour <= 5):
         score += 0.10
 
+    # Riesgo combinado: usuario con poco historial + pico fuerte en horario/riesgo internacional
+    if user_history_count < 5 and amount_vs_avg >= 2.5:
+        score += 0.15
+    if amount_vs_avg >= 2.5 and is_international and hour is not None and (hour >= 0 and hour <= 5):
+        score += 0.20
+
     # Asegurar rango [0,1]
     return round(min(score, 1.0), 2)
 
@@ -489,6 +495,12 @@ def calculate_risk_score_rule_qr(
 
     # Riesgo usuario nuevo
     if transactions_last_24h == 0:
+        score += 0.10
+
+    # Riesgo combinado: poco historial + pico fuerte en horario/riesgo internacional
+    if user_history_count < 5 and amount_vs_avg >= 2.5:
+        score += 0.15
+    if amount_vs_avg >= 2.5 and is_international:
         score += 0.10
 
     # Asegurar rango [0,1]

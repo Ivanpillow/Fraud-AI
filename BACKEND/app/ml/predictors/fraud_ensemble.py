@@ -9,6 +9,7 @@ from app.ml.utils.feature_engineering import (
     build_logistic_features,
     build_rf_features,
 )
+from app.core.config import settings
 
 BASE_DIR = os.path.dirname(__file__)
 PARENT_DIR = os.path.dirname(BASE_DIR)
@@ -30,6 +31,11 @@ def predict_fraud_combined(tx_features):
 
     final_prob = meta_model.predict_proba(X_meta)[0][1]
     label = int(final_prob >= 0.5)
+
+    if settings.FRAUD_LOG_DEBUG:
+        print(
+            f"FraudScores log={log_prob:.4f} rf={rf_prob:.4f} kmeans={kmeans_score:.4f} final={final_prob:.4f}"
+        )
 
     return {
         "label": label,

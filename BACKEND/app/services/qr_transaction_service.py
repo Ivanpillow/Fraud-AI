@@ -23,6 +23,33 @@ from app.services.transaction_detail_service import save_user_transaction_detail
 MEXICO_CITY_TZ = ZoneInfo("America/Mexico_City")
 
 
+def _adjust_fraud_probability(
+    prob: float,
+    decision: str,
+    risk_score_rule: float,
+    features: dict,
+) -> float:
+    adjusted = float(prob)
+
+    if decision == "review":
+        adjusted = max(adjusted, 0.30)
+        adjusted = min(1.0, adjusted + 0.20)
+    elif decision == "block":
+        adjusted = max(adjusted, 0.65)
+        adjusted = min(1.0, adjusted + 0.30)
+
+    if float(features.get("amount", 0) or 0) >= 10000:
+        adjusted = min(1.0, adjusted + 0.10)
+
+    if bool(features.get("is_international")) and int(features.get("hour", 0)) <= 5:
+        adjusted = min(1.0, adjusted + 0.10)
+
+    if float(risk_score_rule) >= 0.60:
+        adjusted = min(1.0, adjusted + 0.05)
+
+    return round(min(max(adjusted, 0.0), 1.0), 4)
+
+
 def _normalize_card_number(value: object) -> str:
     return "".join(char for char in str(value or "") if char.isdigit())
 
@@ -275,6 +302,8 @@ def _score_qr_decision(features: dict, model_result: dict, is_new_user: bool, ri
         decision_score += 0.04
     if float(features["amount_vs_avg"]) >= 2.0:
         decision_score += 0.04
+    if user_history_count < 5 and float(features["amount_vs_avg"]) >= 2.5:
+        decision_score += 0.06
     if bool(features["is_international"]) and int(features["hour"]) <= 5:
         decision_score += 0.03
     if user_history_count >= 5 and max(amount_vs_user_max, amount_vs_user_p95) >= 3:
@@ -299,6 +328,16 @@ def _score_qr_decision(features: dict, model_result: dict, is_new_user: bool, ri
         decision = "review"
     else:
         decision = "allow"
+
+    # Pagos grandes: si el modelo permite, forzar a revision.
+    if decision == "allow" and float(features["amount"]) >= 10000:
+        decision = "review"
+
+    # Regla dura: picos fuertes internacionales en madrugada deben ser al menos review.
+    amount_vs_avg = float(features["amount_vs_avg"])
+    hour = int(features["hour"])
+    if amount_vs_avg >= 2.5 and bool(features["is_international"]) and 0 <= hour <= 5:
+        decision = "block" if amount_vs_avg >= 4.0 else "review"
 
     # Filtro de estabilidad
     if (
@@ -460,6 +499,13 @@ def process_qr_transaction(db, tx_data, merchant_id):
         else:
             decision = "allow"
 
+        adjusted_prob = _adjust_fraud_probability(
+            prob=prob,
+            decision=decision,
+            risk_score_rule=risk_score_rule,
+            features=features,
+        )
+
         # Evaluación de confianza para ALLOW: determinar si se auto-finaliza o requiere revisión
         final_decision, reviewed = _evaluate_allow_confidence(
             decision=decision,
@@ -476,7 +522,7 @@ def process_qr_transaction(db, tx_data, merchant_id):
             merchant_id=merchant_id,
             channel="qr",
             model_version="RF_LG_v1_qr_logit",
-            fraud_probability=prob,
+            fraud_probability=adjusted_prob,
             prediction_label=prediction,
             risk_score_rule=risk_score_rule,
             decision=decision,
@@ -543,7 +589,7 @@ def process_qr_transaction(db, tx_data, merchant_id):
         # Respuesta detallada 
         return {
             "transaction_id": qr_tx.transaction_id,
-            "fraud_probability": prob,
+            "fraud_probability": adjusted_prob,
             "decision": decision,
             "model_scores": {
                 "random_forest": round(result["rf_probability"], 4),

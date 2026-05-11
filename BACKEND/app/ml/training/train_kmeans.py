@@ -1,5 +1,6 @@
 import pandas as pd
 import joblib
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import os
@@ -47,9 +48,15 @@ kmeans = KMeans(
 
 kmeans.fit(X_scaled)
 
+# Calcular umbral percentil (p95) para normalizar el score.
+distances = kmeans.transform(X_scaled)
+min_distances = np.min(distances, axis=1)
+p95_distance = float(np.percentile(min_distances, 95))
+
 # Guardar artefactos
 parent_dir = os.path.dirname(BASE_DIR)
 joblib.dump(kmeans, os.path.join(parent_dir, "kmeans_model.pkl"))
 joblib.dump(scaler, os.path.join(parent_dir, "kmeans_scaler.pkl"))
+joblib.dump(p95_distance, os.path.join(parent_dir, "kmeans_threshold.pkl"))
 
 print("KMeans entrenado y guardado correctamente")

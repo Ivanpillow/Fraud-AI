@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     BC_INTERNAL_WEBHOOK_SECRET: str = "dev_bc_webhook_secret"
     BC_INTERNAL_WEBHOOK_URL: str = "http://127.0.0.1:8000/bc-transactions/webhook/internal"
 
+    # Fraud logging
+    FRAUD_LOG_DEBUG: bool = False
+
     # class Config:
     #     env_file = ".env"
     #     extra = "ignore"
