@@ -33,17 +33,9 @@ def predict_kmeans_score(features: dict) -> float:
     basado en la distancia al centroide más cercano.
     """
 
-    x = pd.DataFrame([features], columns=FEATURE_ORDER)
-
-    # Asegurar que todas las columnas existan
-    for col in FEATURE_ORDER:
-        if col not in x.columns:
-            x[col] = 0
-
-    x = x[FEATURE_ORDER]
-
-    # Reemplazar NaN por 0
-    x = x.fillna(0)
+    expected = list(getattr(scaler, "feature_names_in_", FEATURE_ORDER))
+    # Align to the feature order used at fit time; fill missing with 0.
+    x = pd.DataFrame([features]).reindex(columns=expected, fill_value=0)
 
     x_scaled = scaler.transform(x)
 

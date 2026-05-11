@@ -33,6 +33,7 @@ log_features = [
 ]
 
 rf_features = [
+    "amount",
     "amount_vs_avg",
     "amount_vs_user_max",
     "amount_vs_user_p95",
@@ -51,6 +52,7 @@ rf_features = [
 ]
 
 kmeans_features = [
+    "amount",
     "amount_vs_avg",
     "amount_vs_user_max",
     "amount_vs_user_p95",

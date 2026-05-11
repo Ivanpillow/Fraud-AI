@@ -28,8 +28,9 @@ FEATURE_ORDER = [
 ]
 
 def predict_fraud(features: dict):
-
-    x = pd.DataFrame([features], columns=FEATURE_ORDER).fillna(0)
+    expected = list(getattr(scaler, "feature_names_in_", FEATURE_ORDER))
+    # Align to the feature order used at fit time; fill missing with 0.
+    x = pd.DataFrame([features]).reindex(columns=expected, fill_value=0)
     x_scaled = scaler.transform(x)
 
     prob = model.predict_proba(x_scaled)[0][1]

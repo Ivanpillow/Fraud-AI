@@ -17,6 +17,7 @@ DATASET_PATH = os.path.join(
 df = pd.read_csv(DATASET_PATH)
 
 FEATURES = [
+    "amount",
     "amount_vs_avg",
     "amount_vs_user_max",
     "amount_vs_user_p95",
