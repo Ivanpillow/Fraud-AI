@@ -48,6 +48,19 @@ export function formatCurrencyMXN(value: number | string | null | undefined): st
   }).format(numericValue)
 }
 
+export function getMexicoCityNowParts(): { hour: number; dayOfWeek: number } {
+  const now = new Date()
+  const mexicoNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/Mexico_City" })
+  )
+
+  const hour = mexicoNow.getHours()
+  const dayJs = mexicoNow.getDay()
+  const dayOfWeek = dayJs === 0 ? 7 : dayJs
+
+  return { hour, dayOfWeek }
+}
+
 /** Lee el cuerpo de una respuesta HTTP fallida (JSON FastAPI o texto plano del servidor). */
 export async function readHttpErrorMessage(response: Response): Promise<string> {
   const statusPart = `Error HTTP ${response.status}`;

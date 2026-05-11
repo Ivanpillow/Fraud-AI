@@ -1,3 +1,5 @@
+import { getMexicoCityNowParts } from "@/lib/utils";
+
 export type DemoRuntimeCheckoutContext = {
   userId: number;
   merchantCategory: string;
@@ -72,21 +74,18 @@ function mapCatalogToMerchantCategory(): string {
 }
 
 export function getDemoLibreriaRuntimeCheckoutContext(): DemoRuntimeCheckoutContext {
-  const now = new Date();
+  const nowParts = getMexicoCityNowParts();
   const country = detectCountryFromLocale();
   const deviceType = detectDeviceType();
   const coords = COUNTRY_COORDS[country] ?? COUNTRY_COORDS.MX;
-
-  const dayJs = now.getDay();
-  const dayOfWeek = dayJs === 0 ? 7 : dayJs;
 
   return {
     userId: getOrCreateDemoUserId(),
     merchantCategory: mapCatalogToMerchantCategory(),
     country,
     deviceType,
-    hour: now.getHours(),
-    dayOfWeek,
+    hour: nowParts.hour,
+    dayOfWeek: nowParts.dayOfWeek,
     latitude: coords.latitude,
     longitude: coords.longitude,
     deviceChangeFlag: calculateDeviceChangeFlag(deviceType),

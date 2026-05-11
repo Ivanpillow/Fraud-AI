@@ -11,11 +11,20 @@ scaler = joblib.load(os.path.join(PARENT_DIR, "kmeans_scaler.pkl"))
 
 FEATURE_ORDER = [
     "amount_vs_avg",
+    "amount_vs_user_max",
+    "amount_vs_user_p95",
+    "amount_vs_merchant_avg",
+    "amount_vs_user_merchant_avg",
     "transactions_last_24h",
+    "card_tx_last_24h",
+    "qr_tx_last_24h",
     "hour",
     "day_of_week",
     "failed_attempts",
-    "is_international"
+    "is_international",
+    "user_history_count",
+    "merchant_history_count",
+    "user_merchant_history_count"
 ]
 
 def predict_kmeans_score(features: dict) -> float:

@@ -12,6 +12,9 @@ from app.services.user_behavior_service import (
     update_failed_attempts,
     calculate_amount_vs_avg,
     calculate_risk_score_rule_qr,
+    get_user_amount_history_stats,
+    get_merchant_amount_history_stats,
+    get_user_merchant_amount_history_stats,
 )
 from app.ml.utils.explainability import explain_transaction
 from app.queries.fraud_explanation_queries import save_explanations
@@ -204,7 +207,12 @@ def _evaluate_allow_confidence(
     user_is_established = not is_new_user  # transactions_last_24h >= 3
     
     # 3. Monto normal (cercano al promedio)
-    amount_is_normal = float(features["amount_vs_avg"]) < 1.5
+    amount_checks = [float(features["amount_vs_avg"]) ]
+    for key in ("amount_vs_user_p95", "amount_vs_merchant_avg", "amount_vs_user_merchant_avg"):
+        value = float(features.get(key, 0) or 0)
+        if value > 0:
+            amount_checks.append(value)
+    amount_is_normal = max(amount_checks) < 1.5
     
     # 4. Sin intentos fallidos recientes
     no_failed_attempts = int(features["failed_attempts"]) == 0
@@ -248,6 +256,14 @@ def _score_qr_decision(features: dict, model_result: dict, is_new_user: bool, ri
     logistic_prob = float(model_result["logistic_probability"])
     rf_prob = float(model_result["rf_probability"])
 
+    amount_vs_user_max = float(features.get("amount_vs_user_max", 0) or 0)
+    amount_vs_user_p95 = float(features.get("amount_vs_user_p95", 0) or 0)
+    amount_vs_merchant_avg = float(features.get("amount_vs_merchant_avg", 0) or 0)
+    amount_vs_user_merchant_avg = float(features.get("amount_vs_user_merchant_avg", 0) or 0)
+    user_history_count = int(features.get("user_history_count", 0) or 0)
+    merchant_history_count = int(features.get("merchant_history_count", 0) or 0)
+    user_merchant_history_count = int(features.get("user_merchant_history_count", 0) or 0)
+
     decision_score = (0.45 * stacked_prob) + (0.40 * logistic_prob) + (0.15 * rf_prob)
 
     if risk_score_rule >= 0.60:
@@ -261,6 +277,16 @@ def _score_qr_decision(features: dict, model_result: dict, is_new_user: bool, ri
         decision_score += 0.04
     if bool(features["is_international"]) and int(features["hour"]) <= 5:
         decision_score += 0.03
+    if user_history_count >= 5 and max(amount_vs_user_max, amount_vs_user_p95) >= 3:
+        decision_score += 0.06
+    elif user_history_count >= 5 and max(amount_vs_user_max, amount_vs_user_p95) >= 2:
+        decision_score += 0.04
+
+    if merchant_history_count >= 20 and amount_vs_merchant_avg >= 2.5:
+        decision_score += 0.04
+
+    if user_merchant_history_count >= 3 and amount_vs_user_merchant_avg >= 2.0:
+        decision_score += 0.04
 
     decision_score = max(0.0, min(decision_score, 1.0))
 
@@ -304,6 +330,18 @@ def process_qr_transaction(db, tx_data, merchant_id):
         is_new_user = user_stats["transactions_last_24h"] < 3
         country = str(tx_data["country"]).upper().strip()
 
+        user_history = get_user_amount_history_stats(db, tx_data["user_id"])
+        merchant_history = get_merchant_amount_history_stats(db, merchant_id)
+        user_merchant_history = get_user_merchant_amount_history_stats(
+            db,
+            tx_data["user_id"],
+            merchant_id,
+        )
+
+        user_history_count = int(user_history["count"])
+        merchant_history_count = int(merchant_history["count"])
+        user_merchant_history_count = int(user_merchant_history["count"])
+
         # Reutilizar el transaction_id compartido con la PC cuando venga desde el flujo QR
         transaction_id = _resolve_transaction_id(db, tx_data)
 
@@ -333,6 +371,19 @@ def process_qr_transaction(db, tx_data, merchant_id):
             avg_amount_user=user_stats["avg_amount_user"]
         )
 
+        amount_vs_user_max = calculate_amount_vs_avg(tx_data["amount"], user_history["max"])
+        amount_vs_user_p95 = calculate_amount_vs_avg(tx_data["amount"], user_history["p95"])
+        amount_vs_merchant_avg = calculate_amount_vs_avg(tx_data["amount"], merchant_history["avg"])
+        amount_vs_user_merchant_avg = calculate_amount_vs_avg(tx_data["amount"], user_merchant_history["avg"])
+
+        if user_history_count < 5:
+            amount_vs_user_max = 0
+            amount_vs_user_p95 = 0
+        if merchant_history_count < 20:
+            amount_vs_merchant_avg = 0
+        if user_merchant_history_count < 3:
+            amount_vs_user_merchant_avg = 0
+
         is_international = country != "MX"
 
         risk_score_rule = calculate_risk_score_rule_qr(
@@ -343,6 +394,13 @@ def process_qr_transaction(db, tx_data, merchant_id):
             is_international=is_international,
             transactions_last_24h=user_stats["transactions_last_24h"],
             geo_distance=0.0,
+            amount_vs_user_max=amount_vs_user_max,
+            amount_vs_user_p95=amount_vs_user_p95,
+            amount_vs_merchant_avg=amount_vs_merchant_avg,
+            amount_vs_user_merchant_avg=amount_vs_user_merchant_avg,
+            user_history_count=user_history_count,
+            merchant_history_count=merchant_history_count,
+            user_merchant_history_count=user_merchant_history_count,
         )
 
         # Features para ML
@@ -356,6 +414,13 @@ def process_qr_transaction(db, tx_data, merchant_id):
             "day_of_week": model_day_of_week,
             "failed_attempts": user_stats["failed_attempts"],
             "is_international": is_international,
+            "amount_vs_user_max": amount_vs_user_max,
+            "amount_vs_user_p95": amount_vs_user_p95,
+            "amount_vs_merchant_avg": amount_vs_merchant_avg,
+            "amount_vs_user_merchant_avg": amount_vs_user_merchant_avg,
+            "user_history_count": user_history_count,
+            "merchant_history_count": merchant_history_count,
+            "user_merchant_history_count": user_merchant_history_count,
         }
 
         # Limitar valores extremos p

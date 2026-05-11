@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Bitcoin, Loader2, ShieldCheck, AlertTriangle, MapPin } from "lucide-react";
-import { cn, readHttpErrorMessage } from "@/lib/utils";
+import { cn, getMexicoCityNowParts, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
 
@@ -294,9 +294,7 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     setIsSubmitting(true);
 
     try {
-      const now = new Date();
-      const autoHour = now.getHours();
-      const autoDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+      const { hour: autoHour, dayOfWeek: autoDayOfWeek } = getMexicoCityNowParts();
       const payload = {
         user_id: parsedUserId,
         amount: subtotal,

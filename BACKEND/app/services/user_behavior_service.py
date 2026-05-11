@@ -207,6 +207,131 @@ def calculate_amount_vs_avg(
     return round(min(ratio, max_ratio), 2)
 
 
+def _summarize_amounts(amounts: list[float]) -> dict:
+    cleaned = [float(value) for value in amounts if value is not None and float(value) > 0]
+    if not cleaned:
+        return {"count": 0, "avg": 0.0, "max": 0.0, "p95": 0.0}
+
+    cleaned.sort()
+    count = len(cleaned)
+    avg = round(sum(cleaned) / count, 2)
+    max_amount = round(cleaned[-1], 2)
+    p95_index = int(round(0.95 * (count - 1)))
+    p95_amount = round(cleaned[p95_index], 2)
+
+    return {
+        "count": count,
+        "avg": avg,
+        "max": max_amount,
+        "p95": p95_amount,
+    }
+
+
+def get_user_amount_history_stats(
+    db: Session,
+    user_id: int,
+    lookback_days: int = 90,
+    limit: int = 200,
+) -> dict:
+    since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+
+    card_amounts = (
+        db.query(Transaction.amount)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.timestamp >= since,
+        )
+        .order_by(Transaction.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+
+    qr_amounts = (
+        db.query(QRTransaction.amount)
+        .filter(
+            QRTransaction.user_id == user_id,
+            QRTransaction.created_at >= since,
+        )
+        .order_by(QRTransaction.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    amounts = [row[0] for row in card_amounts] + [row[0] for row in qr_amounts]
+    return _summarize_amounts(amounts)
+
+
+def get_merchant_amount_history_stats(
+    db: Session,
+    merchant_id: int,
+    lookback_days: int = 90,
+    limit: int = 200,
+) -> dict:
+    since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+
+    card_amounts = (
+        db.query(Transaction.amount)
+        .filter(
+            Transaction.merchant_id == merchant_id,
+            Transaction.timestamp >= since,
+        )
+        .order_by(Transaction.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+
+    qr_amounts = (
+        db.query(QRTransaction.amount)
+        .filter(
+            QRTransaction.merchant_id == merchant_id,
+            QRTransaction.created_at >= since,
+        )
+        .order_by(QRTransaction.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    amounts = [row[0] for row in card_amounts] + [row[0] for row in qr_amounts]
+    return _summarize_amounts(amounts)
+
+
+def get_user_merchant_amount_history_stats(
+    db: Session,
+    user_id: int,
+    merchant_id: int,
+    lookback_days: int = 90,
+    limit: int = 200,
+) -> dict:
+    since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+
+    card_amounts = (
+        db.query(Transaction.amount)
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.merchant_id == merchant_id,
+            Transaction.timestamp >= since,
+        )
+        .order_by(Transaction.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+
+    qr_amounts = (
+        db.query(QRTransaction.amount)
+        .filter(
+            QRTransaction.user_id == user_id,
+            QRTransaction.merchant_id == merchant_id,
+            QRTransaction.created_at >= since,
+        )
+        .order_by(QRTransaction.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    amounts = [row[0] for row in card_amounts] + [row[0] for row in qr_amounts]
+    return _summarize_amounts(amounts)
+
+
 
 def calculate_risk_score_rule(
     amount_vs_avg: float,
@@ -217,6 +342,13 @@ def calculate_risk_score_rule(
     channel: str,
     card_tx_last_24h: int = 0,
     qr_tx_last_24h: int = 0,
+    amount_vs_user_max: float | None = None,
+    amount_vs_user_p95: float | None = None,
+    amount_vs_merchant_avg: float | None = None,
+    amount_vs_user_merchant_avg: float | None = None,
+    user_history_count: int = 0,
+    merchant_history_count: int = 0,
+    user_merchant_history_count: int = 0,
 ) -> float:
     # Calcula un score heurístico de riesgo basado en reglas para transacciones generales.
 
@@ -227,6 +359,27 @@ def calculate_risk_score_rule(
         score += 0.30
     elif amount_vs_avg >= 2:
         score += 0.20
+
+    if user_history_count >= 5:
+        peak_ratio = max(amount_vs_user_max or 0.0, amount_vs_user_p95 or 0.0)
+        if peak_ratio >= 4:
+            score += 0.35
+        elif peak_ratio >= 3:
+            score += 0.25
+        elif peak_ratio >= 2:
+            score += 0.15
+
+    if merchant_history_count >= 20:
+        if (amount_vs_merchant_avg or 0.0) >= 3:
+            score += 0.20
+        elif (amount_vs_merchant_avg or 0.0) >= 2:
+            score += 0.10
+
+    if user_merchant_history_count >= 3:
+        if (amount_vs_user_merchant_avg or 0.0) >= 3:
+            score += 0.20
+        elif (amount_vs_user_merchant_avg or 0.0) >= 2:
+            score += 0.10
 
     # Riesgo por frecuencia (dependiente de canal)
 
@@ -271,6 +424,13 @@ def calculate_risk_score_rule_qr(
     is_international: bool,
     transactions_last_24h: int,
     geo_distance: float = 0.0,
+    amount_vs_user_max: float | None = None,
+    amount_vs_user_p95: float | None = None,
+    amount_vs_merchant_avg: float | None = None,
+    amount_vs_user_merchant_avg: float | None = None,
+    user_history_count: int = 0,
+    merchant_history_count: int = 0,
+    user_merchant_history_count: int = 0,
 ) -> float:
     # Calcula un score heurístico de riesgo basado en reglas para transacciones QR.
     
@@ -281,6 +441,27 @@ def calculate_risk_score_rule_qr(
         score += 0.30
     elif amount_vs_avg >= 2:
         score += 0.20
+
+    if user_history_count >= 5:
+        peak_ratio = max(amount_vs_user_max or 0.0, amount_vs_user_p95 or 0.0)
+        if peak_ratio >= 4:
+            score += 0.30
+        elif peak_ratio >= 3:
+            score += 0.22
+        elif peak_ratio >= 2:
+            score += 0.12
+
+    if merchant_history_count >= 20:
+        if (amount_vs_merchant_avg or 0.0) >= 3:
+            score += 0.18
+        elif (amount_vs_merchant_avg or 0.0) >= 2:
+            score += 0.10
+
+    if user_merchant_history_count >= 3:
+        if (amount_vs_user_merchant_avg or 0.0) >= 3:
+            score += 0.18
+        elif (amount_vs_user_merchant_avg or 0.0) >= 2:
+            score += 0.10
 
     # Riesgo por distancia geográfica (ESPECÍFICO QR)
     if geo_distance > 50:

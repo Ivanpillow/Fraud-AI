@@ -11,18 +11,25 @@ scaler = joblib.load(os.path.join(PARENT_DIR, "scaler.pkl"))
 FEATURE_ORDER = [
     "amount",
     "amount_vs_avg",
+    "amount_vs_user_max",
+    "amount_vs_user_p95",
+    "amount_vs_merchant_avg",
+    "amount_vs_user_merchant_avg",
     "transactions_last_24h",
     "card_tx_last_24h",
     "qr_tx_last_24h",
     "hour",
     "day_of_week",
     "failed_attempts",
-    "is_international"
+    "is_international",
+    "user_history_count",
+    "merchant_history_count",
+    "user_merchant_history_count"
 ]
 
 def predict_fraud(features: dict):
 
-    x = pd.DataFrame([features], columns=FEATURE_ORDER)
+    x = pd.DataFrame([features], columns=FEATURE_ORDER).fillna(0)
     x_scaled = scaler.transform(x)
 
     prob = model.predict_proba(x_scaled)[0][1]

@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   MapPin,
 } from "lucide-react";
-import { cn, readHttpErrorMessage } from "@/lib/utils";
+import { cn, getMexicoCityNowParts, readHttpErrorMessage } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/api";
 import CustomSelect from "./custom-select";
 
@@ -358,9 +358,7 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
     setIsSubmitting(true);
 
     try {
-      const now = new Date();
-      const autoHour = now.getHours();
-      const autoDayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+      const { hour: autoHour, dayOfWeek: autoDayOfWeek } = getMexicoCityNowParts();
       const payload = {
         card_number: digits,
         amount: amount,

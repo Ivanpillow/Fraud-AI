@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, ChevronLeft, CreditCard, Loader2, Sparkles, XCircle } from "lucide-react";
 import { API_BASE_URL, createQrSession, fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
-import { readHttpErrorMessage } from "@/lib/utils";
+import { getMexicoCityNowParts, readHttpErrorMessage } from "@/lib/utils";
 import { navigateToFraudResult } from "@/lib/fraud-result-routing";
 import { saveDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 import { loadDemoEcommerceCart, saveDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
@@ -22,11 +22,6 @@ function formatMoney(value: number): string {
 function parseNumber(value: string | null): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function dayOfWeekToIso(value: number): number {
-  const current = value % 7;
-  return current === 0 ? 7 : current;
 }
 
 function getGeoFallback() {
@@ -191,7 +186,7 @@ export default function QrSelectPage() {
 
     try {
       const fallback = getGeoFallback();
-      const now = new Date();
+      const nowParts = getMexicoCityNowParts();
       const payload = {
         ...(sharedTransactionId > 0 ? { transaction_id: sharedTransactionId } : {}),
         card_number: selectedCard?.cardNumber,
@@ -200,8 +195,8 @@ export default function QrSelectPage() {
         latitude: fallback.latitude,
         longitude: fallback.longitude,
         device_change_flag: false,
-        hour: now.getHours(),
-        day_of_week: dayOfWeekToIso(now.getDay()),
+        hour: nowParts.hour,
+        day_of_week: nowParts.dayOfWeek,
         shipping_country: shippingCountry,
         shipping_state: shippingState,
         shipping_city: shippingCity,

@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(__file__)
 
 DATASET_PATH = os.path.join(
     BASE_DIR,
-    "../../utils/fraud_ai_dataset_v3.csv"
+    "../../utils/fraud_ai_dataset_v4.csv"
 )
 
 df = pd.read_csv(DATASET_PATH)
@@ -20,13 +20,20 @@ df = pd.read_csv(DATASET_PATH)
 FEATURES = [
     "amount",
     "amount_vs_avg",
+    "amount_vs_user_max",
+    "amount_vs_user_p95",
+    "amount_vs_merchant_avg",
+    "amount_vs_user_merchant_avg",
     "transactions_last_24h",
     "card_tx_last_24h",
     "qr_tx_last_24h",
     "hour",
     "day_of_week",
     "failed_attempts",
-    "is_international"
+    "is_international",
+    "user_history_count",
+    "merchant_history_count",
+    "user_merchant_history_count"
 ]
 
 
