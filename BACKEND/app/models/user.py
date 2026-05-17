@@ -8,6 +8,8 @@ class User(Base):
     user_id = Column(BigInteger, primary_key=True)
     # PAN normalizado (solo dígitos). En producción conviene tokenizar o guardar un hash (PCI-DSS).
     card_number = Column(String(19), unique=True, nullable=True, index=True)
+    wallet_address = Column(String(160), unique=True, nullable=True, index=True)
+    wallet_network = Column(String(32), nullable=True)
     country = Column(String(5))
     avg_amount_user = Column(Numeric(12,2))
     risk_profile = Column(String(10))

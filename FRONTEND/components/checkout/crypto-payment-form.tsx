@@ -120,7 +120,6 @@ const POLL_INTERVAL_MS = 2000;
 export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, onResult }: Props) {
   const [selectedCrypto, setSelectedCrypto] = useState<string>("BTC");
   const [walletAddress, setWalletAddress] = useState("");
-  const [userId, setUserId] = useState("1");
   const [merchantCategory, setMerchantCategory] = useState("crypto");
   const [country, setCountry] = useState("MX");
   const [deviceType, setDeviceType] = useState("desktop");
@@ -155,7 +154,6 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     stopPolling();
     setSelectedCrypto("BTC");
     setWalletAddress("");
-    setUserId("1");
     setMerchantCategory("crypto");
     setCountry("MX");
     setDeviceType("desktop");
@@ -280,9 +278,9 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
       return;
     }
 
-    const parsedUserId = parseInt(userId, 10);
-    if (!Number.isFinite(parsedUserId) || parsedUserId <= 0) {
-      setError("ID de usuario inválido");
+    const normalizedWalletAddress = walletAddress.trim();
+    if (!normalizedWalletAddress) {
+      setError("Ingresa la wallet del pagador.");
       return;
     }
 
@@ -296,14 +294,13 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
     try {
       const { hour: autoHour, dayOfWeek: autoDayOfWeek } = getMexicoCityNowParts();
       const payload = {
-        user_id: parsedUserId,
         amount: subtotal,
         merchant_category: merchantCategory,
         country,
         device_type: deviceType,
         asset_symbol: selected.symbol,
         network: selected.network,
-        wallet_address: walletAddress || undefined,
+        wallet_address: normalizedWalletAddress,
         shipping_country: shippingCountry,
         shipping_state: shippingState,
         shipping_city: shippingCity,
@@ -465,7 +462,7 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
       </div>
 
       <div>
-        <label className="checkout-label">Dirección de billetera (demo)</label>
+        <label className="checkout-label">Wallet del pagador</label>
         <input
           type="text"
           value={walletAddress}
@@ -477,18 +474,6 @@ export default function CryptoPaymentForm({ subtotal, apiKey, resetTrigger = 0, 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="checkout-label">ID de Usuario</label>
-          <input
-            type="number"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="1"
-            className="checkout-input placeholder:text-muted-foreground/40"
-            min="1"
-            disabled={isSubmitting}
-          />
-        </div>
         <div>
           <label className="checkout-label">Tipo de Dispositivo</label>
           <CustomSelect

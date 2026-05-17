@@ -241,6 +241,12 @@ export default function DemoLibreriaCryptoPaymentForm({
       return;
     }
 
+    const normalizedWalletAddress = walletAddress.trim();
+    if (!normalizedWalletAddress) {
+      setError("Ingresa la wallet del pagador.");
+      return;
+    }
+
     if (!hasRequiredShippingFields) {
       setError("Completa la direccion de envio obligatoria.");
       return;
@@ -249,7 +255,6 @@ export default function DemoLibreriaCryptoPaymentForm({
     const runtimeNow = runtime ?? getDemoLibreriaRuntimeCheckoutContext();
 
     const payload = {
-      user_id: runtimeNow.userId,
       amount: subtotal,
       merchant_category: runtimeNow.merchantCategory,
       country: runtimeNow.country,
@@ -258,7 +263,7 @@ export default function DemoLibreriaCryptoPaymentForm({
       day_of_week: runtimeNow.dayOfWeek,
       asset_symbol: selected.symbol,
       network: selected.network,
-      wallet_address: walletAddress || undefined,
+      wallet_address: normalizedWalletAddress,
     };
 
     setIsSubmitting(true);
@@ -312,7 +317,6 @@ export default function DemoLibreriaCryptoPaymentForm({
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <p className="text-muted-foreground">Usuario: <span className="text-foreground">{runtime ? `#${runtime.userId}` : "—"}</span></p>
           <p className="text-muted-foreground">Categoria: <span className="text-foreground">{runtime?.merchantCategory ?? "retail"}</span></p>
           <p className="text-muted-foreground">Dispositivo: <span className="text-foreground">{runtime?.deviceType ?? "web"}</span></p>
           <p className="text-muted-foreground">Hora: <span className="text-foreground">{runtime ? `${String(runtime.hour).padStart(2, "0")}:00` : "—"}</span></p>
@@ -412,7 +416,7 @@ export default function DemoLibreriaCryptoPaymentForm({
       </div>
 
       <div>
-        <label className="checkout-label">Direccion wallet</label>
+        <label className="checkout-label">Wallet del pagador</label>
         <input
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}

@@ -7,6 +7,7 @@ from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 import httpx
+from sqlalchemy import func
 
 from app.core.config import settings
 from app.db.session import SessionLocal
@@ -122,24 +123,49 @@ def _get_provider() -> BlockchainProvider:
     return FakeBlockchainProvider()
 
 
-def _ensure_user_exists(db, tx_data: dict) -> None:
-    user_id = int(tx_data["user_id"])
-    user = db.query(User).filter(User.user_id == user_id).first()
+def _normalize_wallet_address(value: object) -> str:
+    return str(value or "").strip().lower()
+
+
+def _resolve_user_by_wallet(db, tx_data: dict) -> None:
+    wallet_address = _normalize_wallet_address(tx_data.get("wallet_address"))
+    if not wallet_address:
+        raise ValueError("Se requiere wallet_address para transacciones blockchain")
+
+    tx_data["wallet_address"] = wallet_address
+
+    user = (
+        db.query(User)
+        .filter(func.lower(func.trim(User.wallet_address)) == wallet_address)
+        .first()
+    )
     if user:
+        tx_data["user_id"] = int(user.user_id)
+        if not user.wallet_address or user.wallet_address != wallet_address:
+            user.wallet_address = wallet_address
+        network = str(tx_data.get("network") or "").strip()[:32] or None
+        if network and not user.wallet_network:
+            user.wallet_network = network
+        db.flush()
         return
 
     country = str(tx_data.get("country") or "MX").upper()[:5]
-    amount = float(tx_data.get("amount") or 0.0)
+    network = str(tx_data.get("network") or "").strip()[:32] or None
+    max_id = db.query(func.max(User.user_id)).scalar()
+    new_id = int(max_id or 0) + 1
 
     db.add(
         User(
-            user_id=user_id,
+            user_id=new_id,
+            wallet_address=wallet_address,
+            wallet_network=network,
             country=country,
-            avg_amount_user=round(max(amount, 0.0), 2),
+            avg_amount_user=0,
             risk_profile="medium",
         )
     )
     db.flush()
+    tx_data["user_id"] = new_id
 
 
 def _score_bc_decision(features: dict, model_result: dict, is_new_user: bool) -> tuple[str, float, float]:
@@ -212,6 +238,8 @@ def _score_bc_decision(features: dict, model_result: dict, is_new_user: bool) ->
     # Pagos grandes: si el modelo permite, forzar a revision.
     if decision == "allow" and float(features["amount"]) >= 10000:
         decision = "review"
+        
+
 
     # Regla dura: picos fuertes internacionales en madrugada deben ser al menos review.
     amount_vs_avg = float(features["amount_vs_avg"])
@@ -407,7 +435,7 @@ def _simulate_blockchain_confirmation(payment_id: int, tx_data: dict, merchant_i
 
 
 def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[str, Any]:
-    _ensure_user_exists(db, tx_data)
+    _resolve_user_by_wallet(db, tx_data)
 
     tx_hour = int(tx_data["hour"]) % 24
     tx_day_of_week = int(tx_data["day_of_week"])
@@ -601,7 +629,7 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
 
 def process_bc_transaction(db, tx_data, merchant_id, background_tasks=None):
     try:
-        _ensure_user_exists(db, tx_data)
+        _resolve_user_by_wallet(db, tx_data)
 
         provider = _get_provider()
         payment_id = int(datetime.utcnow().timestamp() * 1_000_000)
@@ -656,7 +684,7 @@ def process_bc_transaction(db, tx_data, merchant_id, background_tasks=None):
 
 def process_bc_transaction_simple(db, tx_data, merchant_id, background_tasks=None):
     try:
-        _ensure_user_exists(db, tx_data)
+        _resolve_user_by_wallet(db, tx_data)
 
         now = datetime.now(MEXICO_CITY_TZ)
 

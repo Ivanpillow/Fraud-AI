@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 class BCTransactionCreate(BaseModel):
     transaction_id: Optional[int] = None
-    user_id: int = Field(gt=0)
     amount: float = Field(gt=0)
     hour: int = Field(ge=0, le=23)
     day_of_week: int = Field(ge=1, le=7)
@@ -17,7 +16,7 @@ class BCTransactionCreate(BaseModel):
     amount_vs_avg: float = Field(gt=0)
     asset_symbol: str = Field(default="BTC", min_length=2, max_length=12)
     network: str = Field(default="Bitcoin", min_length=2, max_length=32)
-    wallet_address: Optional[str] = Field(default=None, max_length=160)
+    wallet_address: str = Field(min_length=1, max_length=160)
     shipping_country: Optional[str] = None
     shipping_state: Optional[str] = None
     shipping_city: Optional[str] = None
@@ -32,10 +31,14 @@ class BCTransactionCreate(BaseModel):
     def normalize_country(cls, value: str) -> str:
         return value.upper().strip()
 
+    @field_validator("wallet_address")
+    @classmethod
+    def normalize_wallet_address(cls, value: str) -> str:
+        return value.strip().lower()
+
 
 class BCTransactionRawCreate(BaseModel):
     transaction_id: Optional[int] = None
-    user_id: int = Field(gt=0)
     amount: float = Field(gt=0)
     merchant_category: str
     country: str = Field(min_length=2, max_length=2)
@@ -44,7 +47,7 @@ class BCTransactionRawCreate(BaseModel):
     day_of_week: Optional[int] = Field(default=None, ge=1, le=7)
     asset_symbol: str = Field(default="BTC", min_length=2, max_length=12)
     network: str = Field(default="Bitcoin", min_length=2, max_length=32)
-    wallet_address: Optional[str] = Field(default=None, max_length=160)
+    wallet_address: str = Field(min_length=1, max_length=160)
     shipping_country: Optional[str] = None
     shipping_state: Optional[str] = None
     shipping_city: Optional[str] = None
@@ -58,6 +61,11 @@ class BCTransactionRawCreate(BaseModel):
     @classmethod
     def normalize_country(cls, value: str) -> str:
         return value.upper().strip()
+
+    @field_validator("wallet_address")
+    @classmethod
+    def normalize_wallet_address(cls, value: str) -> str:
+        return value.strip().lower()
 
 
 class BCFraudResult(BaseModel):
