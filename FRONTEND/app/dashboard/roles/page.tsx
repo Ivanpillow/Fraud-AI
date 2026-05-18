@@ -174,7 +174,17 @@ export default function RolesPage() {
       setNewRole("");
       setNewRoleIsAdmin(false);
 
-      loadRoles();
+      const createdRole = (response.data as { data?: Role } | null)?.data;
+      setRoles((prev) =>
+        [
+          ...prev,
+          {
+            role_id: createdRole?.role_id ?? Date.now(),
+            name: createdRole?.name ?? cleanRoleName,
+            is_admin: createdRole?.is_admin ?? newRoleIsAdmin,
+          },
+        ].sort((a, b) => a.role_id - b.role_id)
+      );
 
     } catch (error: any) {
 
@@ -210,7 +220,18 @@ export default function RolesPage() {
       setEditingRoleId(null)
       setEditingName("")
 
-      loadRoles()
+      const updatedRole = (response.data as { data?: Role } | null)?.data
+      setRoles((prev) =>
+        prev.map((role) =>
+          role.role_id === role_id
+            ? {
+                ...role,
+                name: updatedRole?.name ?? cleanRoleName,
+                is_admin: updatedRole?.is_admin ?? role.is_admin,
+              }
+            : role
+        )
+      )
 
     } catch (error: any) {
 
@@ -228,7 +249,7 @@ export default function RolesPage() {
 
         await deleteRole(role_id, isSuperadmin ? selectedMerchantId : undefined)
 
-        loadRoles()
+        setRoles((prev) => prev.filter((role) => role.role_id !== role_id))
 
     } catch (error: any) {
 

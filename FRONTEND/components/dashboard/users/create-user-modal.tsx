@@ -8,7 +8,7 @@ import { isValidEmail, sanitizeInput, validateFullName, validatePassword } from 
 
 type Props = {
   onClose: () => void
-  onCreated: () => void
+  onCreated: (user?: UserResponse) => void
   user?: User | null
   selectedMerchantId?: number
 }
@@ -18,6 +18,13 @@ type User = {
   email: string
   full_name: string
   role: string
+}
+
+type UserResponse = User & {
+  merchant: string
+  is_active: boolean
+  is_admin: boolean
+  is_superadmin?: boolean
 }
 
 type Role = {
@@ -154,6 +161,7 @@ export default function CreateUserModal({ onClose, onCreated, user, selectedMerc
     if (Object.keys(errors).length > 0) return
 
     try {
+      let savedUser: UserResponse | undefined
 
       if (editing && user) {
 
@@ -167,6 +175,8 @@ export default function CreateUserModal({ onClose, onCreated, user, selectedMerc
           setError(res.error)
           return
         }
+
+        savedUser = (res.data as { data?: UserResponse } | null)?.data
 
       } else {
 
@@ -182,9 +192,11 @@ export default function CreateUserModal({ onClose, onCreated, user, selectedMerc
           return
         }
 
+        savedUser = (res.data as { data?: UserResponse } | null)?.data
+
       }
 
-      onCreated()
+      onCreated(savedUser)
       closeModal()
 
     } catch (error) {

@@ -21,6 +21,19 @@ ph = PasswordHasher()
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
 
+def _serialize_user(user):
+    return {
+        "id": getattr(user, "id"),
+        "email": getattr(user, "email"),
+        "full_name": getattr(user, "full_name"),
+        "role": getattr(user.role, "name"),
+        "merchant": getattr(user.merchant, "name"),
+        "is_active": bool(getattr(user, "is_active")),
+        "is_admin": bool(getattr(user.role, "is_admin")),
+        "is_superadmin": is_superadmin_email(getattr(user, "email", None))
+    }
+
+
 
 # ============================
 # Listar usuarios
@@ -29,18 +42,9 @@ def list_users_by_merchant(db: Session, merchant_id: int):
     users = get_users_by_merchant(db, merchant_id)
 
     return [
-        {
-            "id": getattr(u, "id"),
-            "email": getattr(u, "email"),
-            "full_name": getattr(u, "full_name"),
-            "role": getattr(u.role, "name"),
-            "merchant": getattr(u.merchant, "name"),
-            "is_active": bool(getattr(u, "is_active")),
-            "is_admin": bool(getattr(u.role, "is_admin")),
-            "is_superadmin": is_superadmin_email(getattr(u, "email", None))
-        }
+        _serialize_user(u)
         for u in users
-]
+    ]
 
 
 # ============================
@@ -78,14 +82,7 @@ def create_user_service(db: Session, payload, merchant_id: int):
         merchant_id=merchant_id
     )
 
-    return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "role": role_name,
-        "merchant": user.merchant_id,
-        "is_active": user.is_active
-    }
+    return _serialize_user(user)
 
 
 # ============================
@@ -147,13 +144,7 @@ def update_user_service(db: Session, user_id: int, payload, merchant_id: int):
         getattr(role, "role_id")
     )
 
-    return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "role": role_name,
-        "is_active": user.is_active
-    }
+    return _serialize_user(user)
 
 
 # ============================

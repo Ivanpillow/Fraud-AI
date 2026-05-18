@@ -106,6 +106,11 @@ def update_merchant_service(db: Session, merchant_id: int, payload):
 
     updated_merchant = update_merchant_db(db, merchant, name)
 
+    api_key = get_api_key_by_merchant(db, merchant_id)
+
+    if not api_key:
+        raise HTTPException(status_code=404, detail="Llave API no encontrada")
+
     updated_api_key = None
 
     # 🔐 Si viene label → actualizar llave API
@@ -114,11 +119,6 @@ def update_merchant_service(db: Session, merchant_id: int, payload):
         label = _validate_key(payload.label)
         key_hash = _hash_key(label)
 
-        api_key = get_api_key_by_merchant(db, merchant_id)
-
-        if not api_key:
-            raise HTTPException(status_code=404, detail="Llave API no encontrada")
-
         updated_api_key = update_api_key_db(
             db,
             api_key,
@@ -126,13 +126,18 @@ def update_merchant_service(db: Session, merchant_id: int, payload):
             key_hash
         )
 
+    current_api_key = updated_api_key or api_key
+
     return {
         "merchant_id": updated_merchant.merchant_id,
         "name": updated_merchant.name,
         "status": updated_merchant.status,
         "created_at": updated_merchant.created_at,
         "api_key": {
-            "label": updated_api_key.label if updated_api_key else None
+            "api_key_id": current_api_key.api_key_id,
+            "label": current_api_key.label,
+            "status": current_api_key.status,
+            "created_at": current_api_key.created_at,
         }
     }
 

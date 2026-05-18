@@ -7,7 +7,7 @@ import { sanitizeInput, validateMerchantName } from "@/lib/auth-validation"
 
 type Props = {
   onClose: () => void
-  onCreated: () => void
+  onCreated: (merchant?: MerchantResponse) => void
   merchant?: Merchant | null
 }
 
@@ -18,6 +18,27 @@ type Merchant = {
   plan_type: string
   api_keys: {
     label: string | null
+  }[]
+}
+
+type MerchantResponse = {
+  merchant_id: number
+  name: string
+  status: string
+  plan_type?: string
+  created_at?: string
+  api_key?: {
+    api_key_id?: number
+    label: string | null
+    status?: string
+    created_at?: string
+  }
+  api_keys?: {
+    api_key_id?: number
+    key_hash?: string
+    label: string | null
+    status?: string
+    created_at?: string
   }[]
 }
 
@@ -85,24 +106,14 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
       errors.name = merchantNameError
     }
 
-    if (!editing) {
-      if (!cleanKey) {
-        errors.key = "La llave es requerida"
-      } else if (/\s/.test(cleanKey)) {
-        errors.key = "La llave no puede contener espacios"
-      } else if (cleanKey.length < 6) {
-        errors.key = "La llave debe tener al menos 6 caracteres"
-      } else if (cleanKey.length > 120) {
-        errors.key = "La llave es demasiado larga"
-      }
-    } else if (cleanKey) {
-      if (/\s/.test(cleanKey)) {
-        errors.key = "La llave no puede contener espacios"
-      } else if (cleanKey.length < 6) {
-        errors.key = "La llave debe tener al menos 6 caracteres"
-      } else if (cleanKey.length > 120) {
-        errors.key = "La llave es demasiado larga"
-      }
+    if (!cleanKey) {
+      errors.key = "La llave es requerida"
+    } else if (/\s/.test(cleanKey)) {
+      errors.key = "La llave no puede contener espacios"
+    } else if (cleanKey.length < 6) {
+      errors.key = "La llave debe tener al menos 6 caracteres"
+    } else if (cleanKey.length > 120) {
+      errors.key = "La llave es demasiado larga"
     }
 
     if (!editing && !["active", "inactive"].includes(form.status)) {
@@ -113,6 +124,7 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
     if (Object.keys(errors).length > 0) return
 
     try {
+      let savedMerchant: MerchantResponse | undefined
 
       if (editing && merchant) {
 
@@ -134,6 +146,8 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
           return
         }
 
+        savedMerchant = (res.data as { data?: MerchantResponse } | null)?.data
+
       } else {
 
         const res = await createMerchant({
@@ -148,9 +162,11 @@ export default function CreateMerchantModal({ onClose, onCreated, merchant }: Pr
           return
         }
 
+        savedMerchant = (res.data as { data?: MerchantResponse } | null)?.data
+
       }
 
-      onCreated()
+      onCreated(savedMerchant)
       closeModal()
 
     } catch (err) {

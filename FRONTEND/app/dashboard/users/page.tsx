@@ -175,20 +175,53 @@ export default function UsersPage() {
 
   async function handleToggle(user: User) {
     if (!canManageAdmin(user)) return;
-    await toggleUser(user.id, isSuperadmin ? selectedMerchantId : undefined);
+
+    const previousStatus = user.is_active;
     setUsers((prev) =>
       prev.map((u) =>
         u.id === user.id ? { ...u, is_active: !u.is_active } : u
       )
     );
+
+    try {
+      const response = await toggleUser(user.id, isSuperadmin ? selectedMerchantId : undefined);
+
+      if (response.error) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === user.id ? { ...u, is_active: previousStatus } : u
+          )
+        );
+        return;
+      }
+
+      const updatedUser = (response.data as { data?: Partial<User> } | null)?.data;
+      if (updatedUser?.is_active !== undefined) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === user.id ? { ...u, is_active: Boolean(updatedUser.is_active) } : u
+          )
+        );
+      }
+    } catch (error) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, is_active: previousStatus } : u
+        )
+      );
+      console.error("Error cambiando estado de usuario", error);
+    }
   }
 
   async function handleDeleteUser(user: User) {
     if (!canManageAdmin(user)) return;
+    const previousUsers = users;
+    setUsers((prev) => prev.filter((u) => u.id !== user.id));
+
     try {
       await deleteUser(user.id, isSuperadmin ? selectedMerchantId : undefined);
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (error) {
+      setUsers(previousUsers);
       console.error("Error eliminando usuario", error);
     }
   }
@@ -539,8 +572,21 @@ export default function UsersPage() {
             setShowCreateModal(false);
             setEditingUser(null);
           }}
-          onCreated={() => {
-            loadUsers();
+          onCreated={(savedUser) => {
+            if (savedUser) {
+              setUsers((prev) => {
+                const exists = prev.some((user) => user.id === savedUser.id);
+
+                if (exists) {
+                  return prev.map((user) =>
+                    user.id === savedUser.id ? { ...user, ...savedUser } : user
+                  );
+                }
+
+                return [...prev, savedUser].sort((a, b) => a.id - b.id);
+              });
+            }
+
             setEditingUser(null);
           }}
         />

@@ -91,7 +91,7 @@ def create_role(
     db.commit()
     db.refresh(role)
 
-    return {"data": {"role_id": role.role_id, "name": role.name}}
+    return {"data": {"role_id": role.role_id, "name": role.name, "is_admin": role.is_admin}}
 
 
 @router.put("/{role_id}")
@@ -137,7 +137,7 @@ def update_role(
     db.commit()
     db.refresh(role)
 
-    return {"data": {"role_id": role.role_id, "name": role.name}}
+    return {"data": {"role_id": role.role_id, "name": role.name, "is_admin": role.is_admin}}
 
 
 

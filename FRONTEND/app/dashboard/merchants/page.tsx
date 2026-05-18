@@ -35,6 +35,45 @@ type Merchant = {
   api_keys: APIKey[];
 };
 
+type MerchantPayload = Omit<Partial<Merchant>, "api_keys"> & {
+  merchant_id: number;
+  api_key?: Partial<APIKey> & { label: string | null };
+  api_keys?: Array<Partial<APIKey> & { label: string | null }>;
+};
+
+function normalizeMerchant(payload: MerchantPayload, previous?: Merchant): Merchant {
+  const apiKeys = payload.api_keys
+    ? payload.api_keys.map((key, index) => ({
+        api_key_id: key.api_key_id ?? previous?.api_keys?.[index]?.api_key_id ?? 0,
+        key_hash: key.key_hash ?? previous?.api_keys?.[index]?.key_hash ?? "",
+        label: key.label,
+        status: key.status ?? previous?.api_keys?.[index]?.status ?? "active",
+        created_at: key.created_at ?? previous?.api_keys?.[index]?.created_at ?? new Date().toISOString(),
+      }))
+    : previous?.api_keys ?? [];
+  const apiKey = payload.api_key;
+  const shouldUseApiKey = apiKey && apiKey.label !== null;
+
+  return {
+    merchant_id: payload.merchant_id,
+    name: payload.name ?? previous?.name ?? "",
+    status: payload.status ?? previous?.status ?? "active",
+    plan_type: payload.plan_type ?? previous?.plan_type ?? "basic",
+    created_at: payload.created_at ?? previous?.created_at ?? new Date().toISOString(),
+    api_keys: shouldUseApiKey
+      ? [
+          {
+            api_key_id: apiKey.api_key_id ?? previous?.api_keys?.[0]?.api_key_id ?? 0,
+            key_hash: apiKey.key_hash ?? previous?.api_keys?.[0]?.key_hash ?? "",
+            label: apiKey.label,
+            status: apiKey.status ?? previous?.api_keys?.[0]?.status ?? "active",
+            created_at: apiKey.created_at ?? previous?.api_keys?.[0]?.created_at ?? new Date().toISOString(),
+          },
+        ]
+      : apiKeys,
+  };
+}
+
 export default function MerchantsPage() {
   const router = useRouter();
   const { user: currentUser, isLoading: authLoading } = useAuth();
@@ -129,7 +168,16 @@ export default function MerchantsPage() {
       setEditingMerchantId(null);
       setErrorMessage(null);
       setSuccessMessage("Comercio actualizado correctamente.");
-      loadMerchants();
+      setMerchants((prev) =>
+        prev.map((merchant) =>
+          merchant.merchant_id === merchant_id
+            ? normalizeMerchant(
+                (res.data as { data?: MerchantPayload } | null)?.data ?? { merchant_id, name: cleanName },
+                merchant
+              )
+            : merchant
+        )
+      );
     } catch (error) {
       console.error("Error updating merchant", error);
       setErrorMessage("No se pudo actualizar el comercio.");
@@ -168,10 +216,23 @@ export default function MerchantsPage() {
     }
 
     const newStatus = merchant.status === "active" ? "inactive" : "active";
+    const previousStatus = merchant.status;
+
+    setMerchants((prev) =>
+      prev.map((item) =>
+        item.merchant_id === merchant.merchant_id ? { ...item, status: newStatus } : item
+      )
+    );
+
     try {
       const res = await toggleMerchantStatus(merchant.merchant_id, newStatus);
 
       if (res.error) {
+        setMerchants((prev) =>
+          prev.map((item) =>
+            item.merchant_id === merchant.merchant_id ? { ...item, status: previousStatus } : item
+          )
+        );
         setSuccessMessage(null);
         setErrorMessage(res.error);
         return;
@@ -183,8 +244,12 @@ export default function MerchantsPage() {
           ? "Comercio activado correctamente."
           : "Comercio desactivado correctamente."
       );
-      loadMerchants();
     } catch (error) {
+      setMerchants((prev) =>
+        prev.map((item) =>
+          item.merchant_id === merchant.merchant_id ? { ...item, status: previousStatus } : item
+        )
+      );
       console.error("Error toggling merchant status", error);
       setSuccessMessage(null);
       setErrorMessage("No se pudo cambiar el estado del comercio.");
@@ -197,13 +262,16 @@ export default function MerchantsPage() {
       return;
     }
 
+    const previousMerchants = merchants;
+    setMerchants((prev) => prev.filter((merchant) => merchant.merchant_id !== merchant_id));
+
     try {
       await deleteMerchant(merchant_id);
       setMerchantToDelete(null);
       setErrorMessage(null);
       setSuccessMessage("Comercio eliminado correctamente.");
-      loadMerchants();
     } catch (error) {
+      setMerchants(previousMerchants);
       const message = error instanceof Error
         ? error.message
         : "No se pudo eliminar el comercio.";
@@ -520,9 +588,23 @@ export default function MerchantsPage() {
             setShowCreateModal(false);
             setEditingMerchant(null);
             }}
-            onCreated={() => {
-            loadMerchants();
-            setEditingMerchant(null);
+            onCreated={(merchant) => {
+              if (merchant) {
+                setMerchants((prev) => {
+                  const existing = prev.find((item) => item.merchant_id === merchant.merchant_id);
+                  const normalized = normalizeMerchant(merchant, existing);
+
+                  if (existing) {
+                    return prev.map((item) =>
+                      item.merchant_id === merchant.merchant_id ? normalized : item
+                    );
+                  }
+
+                  return [...prev, normalized].sort((a, b) => a.merchant_id - b.merchant_id);
+                });
+              }
+
+              setEditingMerchant(null);
               setShowCreateModal(false);
               setErrorMessage(null);
               setSuccessMessage("Comercio guardado correctamente.");
