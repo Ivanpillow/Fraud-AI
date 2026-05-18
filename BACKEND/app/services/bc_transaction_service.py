@@ -450,6 +450,7 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
     amount_vs_avg = calculate_amount_vs_avg(
         amount=tx_data["amount"],
         avg_amount_user=user_stats["avg_amount_user"],
+        min_avg=300.0,
     )
     is_international = str(tx_data.get("country") or "MX").upper() != "MX"
 
@@ -622,6 +623,8 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
             "random_forest": round(result["rf_probability"], 4),
             "logistic_regression": round(result["logistic_probability"], 4),
             "kmeans_anomaly": round(result["kmeans_score"], 4),
+            "stacking": round(result["final_score"], 4),
+            "heuristic_rules": round(risk_score_rule, 4),
         },
         "explanations": explanations,
     }
@@ -703,6 +706,7 @@ def process_bc_transaction_simple(db, tx_data, merchant_id, background_tasks=Non
         amount_vs_avg = calculate_amount_vs_avg(
             amount=tx_data["amount"],
             avg_amount_user=user_stats["avg_amount_user"],
+            min_avg=300.0,
         )
 
         is_international = tx_data["country"].upper() != "MX"

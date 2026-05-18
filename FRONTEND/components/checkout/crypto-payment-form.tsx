@@ -87,6 +87,8 @@ interface Props {
       random_forest: number;
       logistic_regression: number;
       kmeans_anomaly: number;
+      stacking: number;
+      heuristic_rules: number;
     };
     explanations?: unknown;
   } | null) => void;
@@ -109,6 +111,8 @@ interface BCPaymentStatus {
       random_forest: number;
       logistic_regression: number;
       kmeans_anomaly: number;
+      stacking: number;
+      heuristic_rules: number;
     };
     explanations?: unknown;
   } | null;

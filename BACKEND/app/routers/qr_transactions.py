@@ -4,6 +4,7 @@ from sqlalchemy import and_
 from app.core.auth import get_current_merchant
 from app.schemas.qr_transaction import QRTransactionCreate, QRTransactionRawCreate
 from app.services.qr_transaction_service import process_qr_transaction, process_qr_transaction_simple
+from app.ml.predictors.fraud_ensemble import predict_stacking_from_scores
 from app.db.session import get_db
 from app.models.qr_transaction import QRTransaction
 from app.models.fraud_prediction import FraudPrediction
@@ -60,7 +61,16 @@ def get_qr_transaction_result(
         "model_scores": {
             "random_forest": float(fraud_pred.rf_probability),
             "logistic_regression": float(fraud_pred.logistic_probability),
-            "kmeans_anomaly": float(fraud_pred.kmeans_score)
+            "kmeans_anomaly": float(fraud_pred.kmeans_score),
+            "stacking": round(
+                predict_stacking_from_scores(
+                    fraud_pred.logistic_probability,
+                    fraud_pred.rf_probability,
+                    fraud_pred.kmeans_score,
+                ),
+                4,
+            ),
+            "heuristic_rules": float(fraud_pred.risk_score_rule or 0),
         },
         "created_at": qr_tx.created_at
     }

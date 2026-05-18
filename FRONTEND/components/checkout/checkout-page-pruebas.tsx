@@ -67,6 +67,8 @@ export default function CheckoutPage() {
       random_forest: number;
       logistic_regression: number;
       kmeans_anomaly: number;
+      stacking: number;
+      heuristic_rules: number;
     };
     explanations?: unknown;
   } | null>(null);
@@ -243,6 +245,8 @@ export default function CheckoutPage() {
           random_forest: 0,
           logistic_regression: 0,
           kmeans_anomaly: 0,
+          stacking: 0,
+          heuristic_rules: 0,
         },
       };
       handleTransactionResult(result);

@@ -272,12 +272,12 @@ export default function DemoEcommerceShopSimulator() {
             </div>
 
             <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm px-5 py-4 text-right">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground/80">Tienda verificada</p>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground/80">Tienda en Línea</p>
               <p className="mt-2 text-lg font-semibold text-foreground">{selectedMerchant.name}</p>
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-1 border border-emerald-400/30">
+              {/* <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-1 border border-emerald-400/30">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <p className="text-xs text-emerald-300">Online</p>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -545,7 +545,7 @@ export default function DemoEcommerceShopSimulator() {
             )}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground/80 mb-1">Tu carrito</p>
+                  {/* <p className="text-xs uppercase tracking-wider text-muted-foreground/80 mb-1">Tu carrito</p> */}
                   <h2 className="text-2xl font-bold text-foreground">{selectedMerchant.cartLabel}</h2>
                 </div>
                 <div className={cn(

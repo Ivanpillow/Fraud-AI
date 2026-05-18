@@ -103,7 +103,7 @@ export default function OverviewChart({ merchantId }: OverviewChartProps) {
 
   const titles: Record<ChartType, string> = {
     line: "Tendencias de Transacciones e Ingresos",
-    bar: "Volumen de Transacciones por tipo de Dispositivo",
+    bar: "Volumen de Transacciones por Tipo de Pago",
     scatter: "Distribución de Transacciones por Hora",
   };
 

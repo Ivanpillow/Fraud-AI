@@ -16,6 +16,47 @@ PARENT_DIR = os.path.dirname(BASE_DIR)
 
 meta_model = joblib.load(os.path.join(PARENT_DIR, "stacking_model.pkl"))
 
+# Empirical boost to emphasize international risk in outputs.
+_INTERNATIONAL_BOOSTS = {
+    "logistic": 0.40,
+    "random_forest": 0.35,
+    "kmeans": 0.12,
+    "stacking": 0.45,
+}
+
+_AMOUNT_BOOSTS = {
+    "logistic": 0.35,
+    "random_forest": 0.35,
+    "kmeans": 0.18,
+    "stacking": 0.40,
+}
+
+def _apply_international_boost(prob: float, boost: float, is_international: bool) -> float:
+    if not is_international:
+        return float(prob)
+    clamped = max(0.0, min(float(prob), 1.0))
+    return min(1.0, clamped + boost * (1.0 - clamped))
+
+def _amount_avg_multiplier(amount_vs_avg: float) -> float:
+    if amount_vs_avg >= 4.0:
+        return 1.0
+    if amount_vs_avg >= 3.0:
+        return 0.7
+    if amount_vs_avg >= 2.0:
+        return 0.4
+    return 0.0
+
+def _apply_amount_boost(prob: float, boost: float, amount_vs_avg: float) -> float:
+    multiplier = _amount_avg_multiplier(amount_vs_avg)
+    if multiplier <= 0:
+        return float(prob)
+    clamped = max(0.0, min(float(prob), 1.0))
+    return min(1.0, clamped + (boost * multiplier) * (1.0 - clamped))
+
+def predict_stacking_from_scores(log_prob: float, rf_prob: float, kmeans_score: float) -> float:
+    X_meta = np.array([[float(log_prob), float(rf_prob), float(kmeans_score)]])
+    return float(meta_model.predict_proba(X_meta)[0][1])
+
 def predict_fraud_combined(tx_features):
 
     logistic_features = build_logistic_features(tx_features)
@@ -26,10 +67,20 @@ def predict_fraud_combined(tx_features):
     rf_prob = predict_fraud_rf(rf_features)
     kmeans_score = predict_kmeans_score(tx_features)
 
-    # Meta input
-    X_meta = np.array([[log_prob, rf_prob, kmeans_score]])
+    is_international = bool(tx_features.get("is_international"))
+    amount_vs_avg = float(tx_features.get("amount_vs_avg") or 0)
+    log_prob = _apply_international_boost(log_prob, _INTERNATIONAL_BOOSTS["logistic"], is_international)
+    rf_prob = _apply_international_boost(rf_prob, _INTERNATIONAL_BOOSTS["random_forest"], is_international)
+    kmeans_score = _apply_international_boost(kmeans_score, _INTERNATIONAL_BOOSTS["kmeans"], is_international)
 
-    final_prob = meta_model.predict_proba(X_meta)[0][1]
+    log_prob = _apply_amount_boost(log_prob, _AMOUNT_BOOSTS["logistic"], amount_vs_avg)
+    rf_prob = _apply_amount_boost(rf_prob, _AMOUNT_BOOSTS["random_forest"], amount_vs_avg)
+    kmeans_score = _apply_amount_boost(kmeans_score, _AMOUNT_BOOSTS["kmeans"], amount_vs_avg)
+
+    # Meta input
+    final_prob = predict_stacking_from_scores(log_prob, rf_prob, kmeans_score)
+    final_prob = _apply_international_boost(final_prob, _INTERNATIONAL_BOOSTS["stacking"], is_international)
+    final_prob = _apply_amount_boost(final_prob, _AMOUNT_BOOSTS["stacking"], amount_vs_avg)
     label = int(final_prob >= 0.5)
 
     if settings.FRAUD_LOG_DEBUG:

@@ -6,6 +6,8 @@ export interface FraudResultPayload {
     random_forest: number;
     logistic_regression: number;
     kmeans_anomaly: number;
+    stacking: number;
+    heuristic_rules: number;
   };
   explanations?: unknown;
 }
@@ -47,6 +49,8 @@ export function buildFraudResultUrl(result: FraudResultPayload, backUrl: string)
   url.searchParams.set("random_forest", String(Number(result.model_scores.random_forest).toFixed(6)));
   url.searchParams.set("logistic_regression", String(Number(result.model_scores.logistic_regression).toFixed(6)));
   url.searchParams.set("kmeans_anomaly", String(Number(result.model_scores.kmeans_anomaly).toFixed(6)));
+  url.searchParams.set("stacking", String(Number(result.model_scores.stacking).toFixed(6)));
+  url.searchParams.set("heuristic_rules", String(Number(result.model_scores.heuristic_rules).toFixed(6)));
   return url.toString();
 }
 
@@ -95,6 +99,8 @@ export function parseFraudResultFromSearchParams(searchParams: { get(name: strin
       random_forest: Number(searchParams.get("random_forest") || "0"),
       logistic_regression: Number(searchParams.get("logistic_regression") || "0"),
       kmeans_anomaly: Number(searchParams.get("kmeans_anomaly") || "0"),
+      stacking: Number(searchParams.get("stacking") || "0"),
+      heuristic_rules: Number(searchParams.get("heuristic_rules") || "0"),
     },
   };
 }

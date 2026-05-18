@@ -49,7 +49,11 @@ def predict_kmeans_score(features: dict) -> float:
 
     # Normalización por percentil p95 del entrenamiento
     denom = float(KMEANS_P95) if float(KMEANS_P95) > 0 else 8.0
-    score = min(min_distance / denom, 1.0)
+    raw_score = min_distance / denom
 
-    return round(score, 4)
+    # Soft-cap to avoid saturating at 1.0 too often.
+    soft_cap = 0.6
+    score = raw_score / (raw_score + soft_cap)
+
+    return round(min(score, 1.0), 4)
 

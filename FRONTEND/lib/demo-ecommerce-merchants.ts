@@ -46,11 +46,10 @@ function createBookCatalog(emoji: string): DemoEcommerceProduct[] {
 export const DEMO_ECOMMERCE_MERCHANTS: Record<DemoEcommerceMerchantSlug, DemoEcommerceMerchant> = {
   floreria: {
     slug: "floreria",
-    name: "Flowers",
+    name: "Florería Flowers",
     apiKey: "floreria_key",
-    tagline: "Arreglos florales premium para cada ocasión",
-    hero: "Flores frescas a tu puerta",
-    cartLabel: "Tu carrito",
+    tagline: "Arreglos florales premium",
+    cartLabel: "Carrito",
     accentTone: "rose",
     catalog: createUniformCatalog(
       [
@@ -70,9 +69,8 @@ export const DEMO_ECOMMERCE_MERCHANTS: Record<DemoEcommerceMerchantSlug, DemoEco
     slug: "libreria",
     name: "BookSwap",
     apiKey: "libreria_api_key",
-    tagline: "Descubre lecturas que transforman",
-    hero: "Tu librería independiente favorita",
-    cartLabel: "Mis libros",
+    tagline: "Lecturas que transforman",
+    cartLabel: "Carrito",
     accentTone: "emerald",
     catalog: createBookCatalog("📕"),
   },
@@ -81,8 +79,7 @@ export const DEMO_ECOMMERCE_MERCHANTS: Record<DemoEcommerceMerchantSlug, DemoEco
     name: "ElectroHub",
     apiKey: "marketplace_key",
     tagline: "Tecnología y lifestyle para tu estilo de vida",
-    hero: "Los mejores productos al mejor precio",
-    cartLabel: "Tu carrito",
+    cartLabel: "Carrito",
     accentTone: "amber",
     catalog: [
       { id: "m1", name: "Audífonos Inalámbricos Pro Max", price: 1299, emoji: "◉", category: "Tecnología" },

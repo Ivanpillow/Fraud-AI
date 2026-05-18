@@ -248,8 +248,10 @@ export default function FraudResultPage() {
             </h2>
             <div className="grid gap-3">
               <ScoreRow label="Random Forest" value={result?.model_scores.random_forest ?? 0} />
-              <ScoreRow label="Logistic Regression" value={result?.model_scores.logistic_regression ?? 0} />
-              <ScoreRow label="KMeans Anomaly" value={result?.model_scores.kmeans_anomaly ?? 0} />
+              <ScoreRow label="Regresión Logística" value={result?.model_scores.logistic_regression ?? 0} />
+              <ScoreRow label="KMeans (Anomalías)" value={result?.model_scores.kmeans_anomaly ?? 0} />
+              <ScoreRow label="Stacking" value={result?.model_scores.stacking ?? 0} />
+              {/* <ScoreRow label="Reglas heurísticas" value={result?.model_scores.heuristic_rules ?? 0} /> */}
             </div>
           </div>
 

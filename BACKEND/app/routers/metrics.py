@@ -652,7 +652,7 @@ def trends(
     merge_daily(daily_qr)
     merge_daily(daily_bc)
 
-    # Transacciones por tipo de dispositivo
+    # Transacciones por tipo de pago
     device = (
         db.query(
             Transaction.device_type,

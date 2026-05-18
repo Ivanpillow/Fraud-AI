@@ -594,7 +594,9 @@ def process_qr_transaction(db, tx_data, merchant_id):
             "model_scores": {
                 "random_forest": round(result["rf_probability"], 4),
                 "logistic_regression": round(result["logistic_probability"], 4),
-                "kmeans_anomaly": round(result["kmeans_score"], 4)
+                "kmeans_anomaly": round(result["kmeans_score"], 4),
+                "stacking": round(result["final_score"], 4),
+                "heuristic_rules": round(risk_score_rule, 4),
             },
             "explanations": explanations
         }
