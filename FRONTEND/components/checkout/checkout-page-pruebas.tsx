@@ -33,7 +33,7 @@ type MerchantKeyOption = { value: string; label: string };
 
 function normalizeTestMerchantApiKey(apiKey: string): string {
   if (apiKey === "libreria_key") return "libreria_api_key";
-  if (apiKey === "Prueba_Comercio_2") return "sk_comercio_2_key";
+  if (apiKey === "Prueba_Comercio_2") return "marketplace_key";
   return apiKey;
 }
 

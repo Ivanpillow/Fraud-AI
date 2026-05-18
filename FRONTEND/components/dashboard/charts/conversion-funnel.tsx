@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,17 +12,19 @@ import {
   Cell,
 } from "recharts";
 import GlassCard from "../glass-card";
-import { mockAnalyticsChartData } from "@/lib/mock-data";
+import { fetchFraudsByHour } from "@/lib/api";
 
-import { useEffect, useState } from "react";
-import { fetchFraudFunnel } from "@/lib/api";
+type FraudHourPoint = {
+  hour: string;
+  count: number;
+};
 
 const COLORS = [
   "hsl(168, 70%, 45%)",
-  "hsl(180, 60%, 40%)",
-  "hsl(200, 65%, 45%)",
-  "hsl(220, 70%, 55%)",
-  "hsl(240, 60%, 50%)",
+  "hsl(180, 58%, 42%)",
+  "hsl(196, 62%, 46%)",
+  "hsl(210, 68%, 52%)",
+  "hsl(224, 60%, 48%)",
 ];
 
 type ConversionFunnelProps = {
@@ -29,75 +32,104 @@ type ConversionFunnelProps = {
 };
 
 export default function ConversionFunnel({ merchantId }: ConversionFunnelProps) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<FraudHourPoint[]>([]);
 
   useEffect(() => {
-  const loadData = async () => {
-    const response = await fetchFraudFunnel(undefined, merchantId);
+    let isActive = true;
+    setData([]);
 
-    if (response.data) {
-      const formatted = [
-        { name: "Total", value: response.data.total },
-        ...response.data.decisions,
-      ];
+    const load = async () => {
+      const response = await fetchFraudsByHour(undefined, merchantId);
+
+      if (!isActive || !response.data) {
+        return;
+      }
+
+      const fraudByHour = new Map<number, number>(
+        response.data.map((entry) => [entry.hour, entry.count])
+      );
+
+      const formatted = Array.from({ length: 24 }, (_, hour) => ({
+        hour: `${String(hour).padStart(2, "0")}:00`,
+        count: fraudByHour.get(hour) ?? 0,
+      }));
 
       setData(formatted);
-    }
-  };
+    };
 
-  loadData();
-}, [merchantId]);
+    load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [merchantId]);
+
+  const maxCount = useMemo(
+    () => (data.length > 0 ? Math.max(...data.map((entry) => entry.count)) : 0),
+    [data]
+  );
 
 
   return (
-    <GlassCard title="Embudo de Conversión de Transacciones">
+    <GlassCard title="Fraudes detectados por hora">
       <p className="text-xs text-muted-foreground mb-2">
-        Cantidad de transacciones en cada etapa del proceso de verificación. 
+        Número de casos de fraude detectados en cada hora del día.
       </p>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart
           data={data}
-          layout="vertical"
         >
           <CartesianGrid
             stroke="rgba(255,255,255,0.04)"
             strokeDasharray="3 3"
-            horizontal={false}
           />
           <XAxis
-            type="number"
+            dataKey="hour"
+            tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+            axisLine={{ stroke: "rgba(255,255,255,0.04)" }}
+            tickLine={false}
+            interval={2}
+            label={{
+              value: "Hora del día",
+              position: "insideBottom",
+              offset: -5,
+              fill: "rgba(255,255,255,0.4)",
+              fontSize: 12,
+            }}
+          />
+          <YAxis
             tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 12 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: number) =>
-              v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)
-            }
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            width={80}
+            tickFormatter={(v: number) => String(v)}
+            label={{
+              value: "Casos de fraude",
+              angle: -90,
+              position: "insideLeft",
+              fill: "rgba(255,255,255,0.4)",
+              fontSize: 12,
+            }}
           />
           <Tooltip
-            content={({ active, payload }) => {
+            content={({ active, payload, label }) => {
               if (!active || !payload?.length) return null;
-              const d = payload[0].payload;
+              const d = payload[0].payload as FraudHourPoint;
               return (
                 <div className="glass rounded-xl p-3 text-xs">
-                  <p className="text-foreground font-medium">{d.name}</p>
+                  <p className="text-foreground font-medium">{label}</p>
                   <p className="text-muted-foreground">
-                    {d.value.toLocaleString()} users
+                    {d.count.toLocaleString()} casos detectados
                   </p>
                 </div>
               );
             }}
           />
-          <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={32}>
-            {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={18}>
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.count > 0 && entry.count === maxCount ? COLORS[0] : COLORS[index % COLORS.length]}
+              />
             ))}
           </Bar>
         </BarChart>

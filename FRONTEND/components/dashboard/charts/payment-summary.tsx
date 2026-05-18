@@ -10,21 +10,21 @@ import { fetchOverviewMetrics } from "@/lib/api";
 
 const items = [
   {
-    label: "Successful",
+    label: "Exitosos",
     key: "successful" as const,
     icon: CheckCircle,
     color: "text-primary",
     bg: "bg-primary/10",
   },
   {
-    label: "Failed",
+    label: "Fallidos",
     key: "failed" as const,
     icon: XCircle,
     color: "text-destructive",
     bg: "bg-destructive/10",
   },
   {
-    label: "Pending",
+    label: "Pendientes",
     key: "pending" as const,
     icon: Clock,
     color: "text-[hsl(var(--warning))]",

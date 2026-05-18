@@ -141,7 +141,7 @@ export default function OverviewChart({ merchantId }: OverviewChartProps) {
                 dataKey="transactions"
                 stroke={COLORS.secondary}
                 strokeWidth={2}
-                name="Transactions"
+                name="Transacciones"
               />
               <Line
                 type="monotone"
@@ -149,7 +149,7 @@ export default function OverviewChart({ merchantId }: OverviewChartProps) {
                 stroke={COLORS.tertiary}
                 strokeWidth={2}
                 strokeDasharray="5 5"
-                name="Revenue"
+                name="Ingresos"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -192,7 +192,7 @@ export default function OverviewChart({ merchantId }: OverviewChartProps) {
                 axisLine={{ stroke: COLORS.grid }}
                 tickLine={false}
                 label={{
-                  value: "Hour of Day",
+                  value: "Hora del Día",
                   position: "insideBottom",
                   offset: -5,
                   fill: COLORS.axis,
@@ -206,7 +206,7 @@ export default function OverviewChart({ merchantId }: OverviewChartProps) {
                 axisLine={false}
                 tickLine={false}
                 label={{
-                  value: "Amount ($)",
+                  value: "Cantidad ($)",
                   angle: -90,
                   position: "insideLeft",
                   fill: COLORS.axis,

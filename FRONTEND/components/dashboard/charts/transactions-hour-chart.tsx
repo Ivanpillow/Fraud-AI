@@ -11,24 +11,57 @@ import {
   Cell,
 } from "recharts";
 import GlassCard from "../glass-card";
-import { mockTransactionsByHour } from "@/lib/mock-data";
 import { useEffect, useState } from "react";
-import { fetchOverviewMetrics } from "@/lib/api";
+import { fetchTransactionsByHour } from "@/lib/api";
 
 type TransactionsHourChartProps = {
   merchantId?: number;
 };
 
+type TransactionHourRow = {
+  hour: number;
+  amount: number;
+  count: number;
+};
+
+function normalizeHourlyData(rows: TransactionHourRow[]): TransactionHourRow[] {
+  const byHour = new Map<number, TransactionHourRow>();
+
+  rows.forEach((row) => {
+    const hour = Number(row.hour);
+    if (!Number.isFinite(hour)) return;
+    byHour.set(hour, {
+      hour,
+      amount: Number(row.amount) || 0,
+      count: Number(row.count) || 0,
+    });
+  });
+
+  return Array.from(
+    { length: 24 },
+    (_, hour) => byHour.get(hour) ?? { hour, amount: 0, count: 0 }
+  );
+}
+
 export default function TransactionsHourChart({ merchantId }: TransactionsHourChartProps) {
-  const [data, setData] = useState<any[]>([]);
-    useEffect(() => {
+  const [data, setData] = useState<TransactionHourRow[]>(() => normalizeHourlyData([]));
+
+  useEffect(() => {
+    let isActive = true;
+    setData(normalizeHourlyData([]));
+
     const load = async () => {
-      const res = await fetchOverviewMetrics(undefined, merchantId);
-      if (res.data) {
-        setData(res.data.transactions_by_hour);
+      const res = await fetchTransactionsByHour(undefined, merchantId);
+      if (isActive && res.data) {
+        setData(normalizeHourlyData(res.data));
       }
     };
+
     load();
+
+    return () => {
+      isActive = false;
+    };
   }, [merchantId]);
 
   const maxAmount = data.length > 0 ? Math.max(...data.map((d) => d.amount)) : 0;

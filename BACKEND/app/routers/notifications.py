@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.queries.prediction_queries import get_fraud_notifications, get_fraud_history, update_prediction_decision
@@ -8,6 +8,19 @@ from typing import List
 from datetime import datetime
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+
+def _resolve_merchant_scope(current_user: dict, merchant_id: int | None) -> int | None:
+    user_merchant_id = int(current_user["merchant_id"])
+    is_superadmin = bool(current_user.get("is_superadmin"))
+
+    if is_superadmin:
+        return merchant_id
+
+    if merchant_id is not None and merchant_id != user_merchant_id:
+        raise HTTPException(status_code=403, detail="No puedes consultar notificaciones de otro comercio")
+
+    return user_merchant_id
 
 
 class ExplanationItem(BaseModel):
@@ -46,6 +59,7 @@ class NotificationResponse(BaseModel):
 @router.get("", response_model=List[NotificationResponse])
 def get_notifications(
     limit: int = 20,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -53,13 +67,12 @@ def get_notifications(
     Obtiene notificaciones recientes de fraude (block y review).
     Retorna notificaciones para transacciones con tarjeta y QR.
     """
-    is_superadmin = bool(current_user.get("is_superadmin"))
-    merchant_id = None if is_superadmin else int(current_user["merchant_id"])
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
     notifications_data = get_fraud_notifications(
         db,
         limit=limit,
-        merchant_id=merchant_id,
+        merchant_id=merchant_scope,
     )
     
     result = []
@@ -105,6 +118,7 @@ def get_notifications(
 @router.get("/history", response_model=List[NotificationResponse])
 def get_history(
     limit: int = 50,
+    merchant_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
@@ -113,13 +127,12 @@ def get_history(
     Incluye tanto transacciones auto-finalizadas (con final_decision = 'allow')
     como transacciones que fueron revisadas por administradores.
     """
-    is_superadmin = bool(current_user.get("is_superadmin"))
-    merchant_id = None if is_superadmin else int(current_user["merchant_id"])
+    merchant_scope = _resolve_merchant_scope(current_user, merchant_id)
 
     history_data = get_fraud_history(
         db,
         limit=limit,
-        merchant_id=merchant_id,
+        merchant_id=merchant_scope,
     )
     
     result = []

@@ -79,7 +79,7 @@ export const DEMO_ECOMMERCE_MERCHANTS: Record<DemoEcommerceMerchantSlug, DemoEco
   marketplace: {
     slug: "marketplace",
     name: "Marketplace",
-    apiKey: "sk_comercio_2_key", // API Key del marketplace
+    apiKey: "marketplace_key", // API Key del marketplace
     tagline: "Tecnología/Hogar",
     hero: "",
     cartLabel: "Carrito de Compras",

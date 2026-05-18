@@ -178,7 +178,85 @@ def fraud_funnel(
     }
 
 
-# Transacciones por país
+# Fraudes por hora
+@router.get("/frauds-by-hour")
+def frauds_by_hour_metrics(
+    merchant_id: int | None = Query(default=None),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    merchant_scope = _resolve_merchant_scope(user, merchant_id)
+
+    card_frauds = (
+        db.query(
+            Transaction.hour,
+            func.count(FraudPrediction.prediction_id).label("fraud_count")
+        )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == Transaction.transaction_id)
+            & (FraudPrediction.channel == "card")
+        )
+        .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
+        .filter(FraudPrediction.prediction_label.is_(True))
+        .group_by(Transaction.hour)
+        .all()
+    )
+
+    qr_frauds = (
+        db.query(
+            QRTransaction.hour,
+            func.count(FraudPrediction.prediction_id).label("fraud_count")
+        )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == QRTransaction.transaction_id)
+            & (FraudPrediction.channel == "qr")
+        )
+        .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
+        .filter(FraudPrediction.prediction_label.is_(True))
+        .group_by(QRTransaction.hour)
+        .all()
+    )
+
+    bc_frauds = (
+        db.query(
+            func.extract("hour", BCTransaction.created_at).label("hour"),
+            func.count(FraudPrediction.prediction_id).label("fraud_count")
+        )
+        .join(
+            FraudPrediction,
+            (FraudPrediction.transaction_id == BCTransaction.fraud_transaction_id)
+            & (FraudPrediction.channel == "blockchain")
+        )
+        .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.reviewed.is_(True))
+        .filter(FraudPrediction.prediction_label.is_(True))
+        .group_by("hour")
+        .all()
+    )
+
+    hourly_totals: dict[int, int] = {}
+
+    for hour, count in [*card_frauds, *qr_frauds, *bc_frauds]:
+        if hour is None:
+            continue
+        hour_key = int(hour)
+        hourly_totals[hour_key] = hourly_totals.get(hour_key, 0) + int(count or 0)
+
+    return [
+        {"hour": hour, "count": count}
+        for hour, count in sorted(hourly_totals.items())
+    ]
+
+
+# Transacciones por pais
 @router.get("/transactions-by-country")
 def transactions_by_country(
     merchant_id: int | None = Query(default=None),
@@ -259,6 +337,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "card")
         )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .distinct()
         .all()
@@ -271,6 +350,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "qr")
         )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .distinct()
         .all()
@@ -283,6 +363,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "blockchain")
         )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .distinct()
         .all()
@@ -301,6 +382,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "card")
         )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
@@ -312,6 +394,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "qr")
         )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
@@ -323,6 +406,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "blockchain")
         )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
@@ -337,6 +421,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "card")
         )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
@@ -348,6 +433,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "qr")
         )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
@@ -359,6 +445,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "blockchain")
         )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .scalar()
     ) or 0
@@ -404,6 +491,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "card")
         )
         .filter(Transaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .group_by(Transaction.hour)
         .all()
@@ -421,6 +509,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "qr")
         )
         .filter(QRTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .group_by(QRTransaction.hour)
         .all()
@@ -438,6 +527,7 @@ def overview_metrics(
             & (FraudPrediction.channel == "blockchain")
         )
         .filter(BCTransaction.merchant_id == merchant_scope)
+        .filter(FraudPrediction.merchant_id == merchant_scope)
         .filter(FraudPrediction.reviewed.is_(True))
         .group_by("hour")
         .all()

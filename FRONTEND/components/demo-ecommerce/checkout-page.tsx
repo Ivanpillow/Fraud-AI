@@ -18,7 +18,7 @@ type PaymentMethod = "card" | "qr" | "crypto";
 
 function normalizeDemoMerchantApiKey(apiKey: string): string {
   if (apiKey === "libreria_key") return "sk_test_demo_merchant";
-  if (apiKey === "Prueba_Comercio_2") return "sk_comercio_2_key";
+  if (apiKey === "Prueba_Comercio_2") return "marketplace_key";
   return apiKey;
 }
 

@@ -335,7 +335,7 @@ export async function fetchLocationTraffic(token?: string) {
   };
 }
 
-export async function fetchTransactionsByHour(token?: string) {
+export async function fetchLegacyTransactionsByHour(token?: string) {
   const metricsResponse = await fetchMetrics(token);
   
   if (metricsResponse.error) {
@@ -705,6 +705,27 @@ export async function fetchFraudFunnel(token?: string, merchantId?: number) {
   };
 }
 
+export async function fetchFraudsByHour(token?: string, merchantId?: number) {
+  const res = await apiRequest<Array<{ hour: number; count: number }>>(
+    withMerchantQuery("/metrics/frauds-by-hour", merchantId),
+    { token }
+  );
+
+  if (res.error || !res.data) {
+    return {
+      data: null,
+      error: res.error || "No se pudieron cargar fraudes por hora",
+      status: res.status,
+    };
+  }
+
+  return {
+    data: res.data,
+    error: null,
+    status: res.status,
+  };
+}
+
 export async function fetchTransactionsByCountry(token?: string, merchantId?: number) {
   const visibleMetrics = await fetchVisibleTransactionsMetrics(token, merchantId);
   if (visibleMetrics.error || !visibleMetrics.data) {
@@ -759,11 +780,11 @@ export async function fetchOverviewMetrics(token?: string, merchantId?: number) 
   const fallbackDecisions = statsRes.data.decisions || {};
   const fallbackByHour = statsRes.data.transactions_by_hour || [];
 
-  const totalTransactions = visibleMetrics.data?.totalTransactions ?? baseStats.total_transactions ?? 0;
-  const totalRevenue = visibleMetrics.data?.totalRevenue ?? baseStats.total_revenue ?? 0;
-  const totalFrauds = visibleMetrics.data?.decisions.block ?? fallbackDecisions.block ?? 0;
-  const decisions = visibleMetrics.data?.decisions ?? fallbackDecisions;
-  const transactionsByHour = visibleMetrics.data?.byHour ?? fallbackByHour;
+  const totalTransactions = baseStats.total_transactions ?? visibleMetrics.data?.totalTransactions ?? 0;
+  const totalRevenue = baseStats.total_revenue ?? visibleMetrics.data?.totalRevenue ?? 0;
+  const decisions = fallbackDecisions;
+  const totalFrauds = decisions.block ?? visibleMetrics.data?.decisions.block ?? 0;
+  const transactionsByHour = fallbackByHour;
 
   return {
     data: {
@@ -784,6 +805,30 @@ export async function fetchOverviewMetrics(token?: string, merchantId?: number) 
     },
     error: null,
     status: 200,
+  };
+}
+
+export async function fetchTransactionsByHour(token?: string, merchantId?: number) {
+  const res = await apiRequest<{
+    transactions_by_hour: Array<{
+      hour: number;
+      amount: number;
+      count: number;
+    }>;
+  }>(withMerchantQuery("/metrics/overview", merchantId), { token });
+
+  if (res.error || !res.data) {
+    return {
+      data: null,
+      error: res.error || "No se pudieron cargar transacciones por hora",
+      status: res.status,
+    };
+  }
+
+  return {
+    data: res.data.transactions_by_hour || [],
+    error: null,
+    status: res.status,
   };
 }
 
