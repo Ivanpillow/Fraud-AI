@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 from app.models.bc_transaction import BCTransaction
@@ -55,6 +57,18 @@ def _get_transaction_shipping_details(db: Session, transaction_id: int, channel:
     }
 
 
+def _to_utc_iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+
+    return value.isoformat()
+
+
 def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | None = None):
     """
     Obtiene predicciones recientes de fraude con estado 'block' o 'review' y reviewed = False.
@@ -85,9 +99,9 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
             'final_decision': pred.final_decision,
             'reviewed': bool(pred.reviewed),
             'fraud_probability': float(pred.fraud_probability) if pred.fraud_probability else 0.0,
-            'created_at': pred.created_at,
+            'created_at': _to_utc_iso(pred.created_at),
             'amount': 0.0,
-            'timestamp': pred.created_at,
+            'timestamp': _to_utc_iso(pred.created_at),
             'user_id': None,
             'explanations': _get_prediction_explanations(db, pred.prediction_id),
         }
@@ -99,7 +113,7 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
             ).first()
             if transaction:
                 transaction_data['amount'] = float(transaction.amount) if transaction.amount else 0.0
-                transaction_data['timestamp'] = transaction.timestamp or pred.created_at
+                transaction_data['timestamp'] = _to_utc_iso(transaction.timestamp) or _to_utc_iso(pred.created_at)
                 transaction_data['user_id'] = transaction.user_id
                 transaction_data.update(_get_transaction_shipping_details(db, pred.transaction_id, 'card'))
         
@@ -109,7 +123,7 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
             ).first()
             if qr_transaction:
                 transaction_data['amount'] = float(qr_transaction.amount) if qr_transaction.amount else 0.0
-                transaction_data['timestamp'] = getattr(qr_transaction, 'timestamp', pred.created_at)
+                transaction_data['timestamp'] = _to_utc_iso(getattr(qr_transaction, 'timestamp', None)) or _to_utc_iso(pred.created_at)
                 transaction_data['user_id'] = qr_transaction.user_id
                 transaction_data.update(_get_transaction_shipping_details(db, pred.transaction_id, 'qr'))
 
@@ -119,7 +133,7 @@ def get_fraud_notifications(db: Session, limit: int = 20, merchant_id: int | Non
             ).first()
             if bc_transaction:
                 transaction_data['amount'] = float(bc_transaction.amount) if bc_transaction.amount else 0.0
-                transaction_data['timestamp'] = bc_transaction.created_at or pred.created_at
+                transaction_data['timestamp'] = _to_utc_iso(bc_transaction.created_at) or _to_utc_iso(pred.created_at)
                 transaction_data['user_id'] = bc_transaction.user_id
                 transaction_data.update(_get_transaction_shipping_details(db, pred.transaction_id, 'blockchain'))
         
@@ -157,9 +171,9 @@ def get_fraud_history(db: Session, limit: int = 50, merchant_id: int | None = No
             'final_decision': pred.final_decision,
             'reviewed': bool(pred.reviewed),
             'fraud_probability': float(pred.fraud_probability) if pred.fraud_probability else 0.0,
-            'created_at': pred.created_at,
+            'created_at': _to_utc_iso(pred.created_at),
             'amount': 0.0,
-            'timestamp': pred.created_at,
+            'timestamp': _to_utc_iso(pred.created_at),
             'user_id': None,
             'explanations': _get_prediction_explanations(db, pred.prediction_id),
         }
@@ -171,7 +185,7 @@ def get_fraud_history(db: Session, limit: int = 50, merchant_id: int | None = No
             ).first()
             if transaction:
                 transaction_data['amount'] = float(transaction.amount) if transaction.amount else 0.0
-                transaction_data['timestamp'] = transaction.timestamp or pred.created_at
+                transaction_data['timestamp'] = _to_utc_iso(transaction.timestamp) or _to_utc_iso(pred.created_at)
                 transaction_data['user_id'] = transaction.user_id
                 transaction_data.update(_get_transaction_shipping_details(db, pred.transaction_id, 'card'))
         
@@ -181,7 +195,7 @@ def get_fraud_history(db: Session, limit: int = 50, merchant_id: int | None = No
             ).first()
             if qr_transaction:
                 transaction_data['amount'] = float(qr_transaction.amount) if qr_transaction.amount else 0.0
-                transaction_data['timestamp'] = getattr(qr_transaction, 'timestamp', pred.created_at)
+                transaction_data['timestamp'] = _to_utc_iso(getattr(qr_transaction, 'timestamp', None)) or _to_utc_iso(pred.created_at)
                 transaction_data['user_id'] = qr_transaction.user_id
                 transaction_data.update(_get_transaction_shipping_details(db, pred.transaction_id, 'qr'))
 
@@ -191,7 +205,7 @@ def get_fraud_history(db: Session, limit: int = 50, merchant_id: int | None = No
             ).first()
             if bc_transaction:
                 transaction_data['amount'] = float(bc_transaction.amount) if bc_transaction.amount else 0.0
-                transaction_data['timestamp'] = bc_transaction.created_at or pred.created_at
+                transaction_data['timestamp'] = _to_utc_iso(bc_transaction.created_at) or _to_utc_iso(pred.created_at)
                 transaction_data['user_id'] = bc_transaction.user_id
                 transaction_data.update(_get_transaction_shipping_details(db, pred.transaction_id, 'blockchain'))
         
