@@ -240,7 +240,7 @@ export default function QrSelectPage() {
     });
     if (response.error || !response.data) {
       setCardError(response.error ?? "No se pudo agregar la tarjeta.");
-      return;
+      throw new Error(response.error ?? "No se pudo agregar la tarjeta.");
     }
     setSessionCards(response.data.cards ?? []);
     if (response.data.cards?.[0]) {

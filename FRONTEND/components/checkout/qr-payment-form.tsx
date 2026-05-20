@@ -269,8 +269,8 @@ export default function QRPaymentForm({
       label: payload.label,
       card_number: payload.cardNumber,
     });
-    if (response.error) {
-      throw new Error(response.error);
+    if (response.error || !response.data) {
+      throw new Error(response.error ?? "No se pudo agregar la tarjeta.");
     }
     setAddCardMessage("Tarjeta agregada. Revisa el telefono para verla.");
   };
@@ -381,7 +381,7 @@ export default function QRPaymentForm({
           </div>
           {showAddCard && (
             <div className="mt-4">
-              <QrCardForm onAdd={handleAddCard} />
+              <QrCardForm onAdd={handleAddCard} useFormTag={false} />
               {addCardMessage && (
                 <div className="mt-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
                   {addCardMessage}

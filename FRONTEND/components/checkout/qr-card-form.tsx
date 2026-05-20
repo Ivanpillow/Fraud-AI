@@ -7,6 +7,7 @@ interface QrCardFormProps {
   onAdd: (payload: { label: string; cardNumber: string }) => Promise<void> | void;
   disabled?: boolean;
   compact?: boolean;
+  useFormTag?: boolean;
 }
 
 function formatCardNumber(value: string) {
@@ -26,7 +27,7 @@ function normalizeCardNumber(value: string) {
   return value.replace(/\D/g, "");
 }
 
-export function QrCardForm({ onAdd, disabled, compact }: QrCardFormProps) {
+export function QrCardForm({ onAdd, disabled, compact, useFormTag = true }: QrCardFormProps) {
   const [label, setLabel] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
@@ -34,8 +35,8 @@ export function QrCardForm({ onAdd, disabled, compact }: QrCardFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     const normalized = normalizeCardNumber(cardNumber);
 
     if (!label.trim()) {
@@ -64,8 +65,9 @@ export function QrCardForm({ onAdd, disabled, compact }: QrCardFormProps) {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className={compact ? "grid gap-3" : "grid gap-4"}>
+  const buttonType = useFormTag ? "submit" : "button";
+  const content = (
+    <div className={compact ? "grid gap-3" : "grid gap-4"}>
       <div className="grid gap-2">
         <label className="text-xs uppercase tracking-wide text-muted-foreground">Nombre de la tarjeta</label>
         <input
@@ -117,12 +119,23 @@ export function QrCardForm({ onAdd, disabled, compact }: QrCardFormProps) {
         </div>
       )}
       <button
-        type="submit"
+        type={buttonType}
+        onClick={useFormTag ? undefined : () => void handleSubmit()}
         disabled={disabled || isSubmitting}
         className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Agregando..." : "Agregar tarjeta"}
       </button>
+    </div>
+  );
+
+  if (!useFormTag) {
+    return content;
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={compact ? "grid gap-3" : "grid gap-4"}>
+      {content}
     </form>
   );
 }
