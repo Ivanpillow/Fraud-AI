@@ -275,6 +275,7 @@ export default function CheckoutPage() {
         setIsPolling(false);
         setPendingQrTransactionId(null);
         setQrStatusMessage("Pago confirmado en el telefono.");
+        setQrResetCounter((prev) => prev + 1);
         setSelectedMethod("qr");
       }
     }, 1500);

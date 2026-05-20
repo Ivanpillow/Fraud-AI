@@ -14,7 +14,6 @@ import {
 } from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
 import { getMexicoCityNowParts, readHttpErrorMessage } from "@/lib/utils";
-import { navigateToFraudResult } from "@/lib/fraud-result-routing";
 import { saveDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 import { loadDemoEcommerceCart, saveDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
 import { isDemoEcommerceMerchantSlug } from "@/lib/demo-ecommerce-merchants";
@@ -317,10 +316,8 @@ export default function QrSelectPage() {
       setResult(data);
 
       if (merchantApiKey && sharedTransactionId > 0) {
-        void updateQrSessionStatus(merchantApiKey, sharedTransactionId, "completed").catch(() => undefined);
+        await updateQrSessionStatus(merchantApiKey, sharedTransactionId, "completed");
       }
-
-      navigateToFraudResult(data, returnUrl);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "No se pudo procesar el pago QR");
     } finally {
