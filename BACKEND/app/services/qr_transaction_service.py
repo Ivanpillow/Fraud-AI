@@ -536,10 +536,10 @@ def process_qr_transaction(db, tx_data, merchant_id):
         db.add(fraud_pred)
         db.flush()
 
-        # Explainability - generar explicaciones para transacciones flagged como fraud (block o review)
+        # Explainability 
         explanations = None
 
-        if decision in ["block", "review"]:
+        if decision in ("block", "review") or max(prob, decision_score) >= 0.30:
             logistic_features = {
                 "amount": features["amount"],
                 "amount_vs_avg": features["amount_vs_avg"],

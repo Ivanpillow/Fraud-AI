@@ -48,6 +48,7 @@ export default function HistoryPage() {
   const isSuperadmin = !!user?.is_superadmin;
   const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilter>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [transactions, setTransactions] = useState<HistoryTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -109,6 +110,14 @@ export default function HistoryPage() {
     paymentMethodFilter === "all"
       ? filteredByStatus
       : filteredByStatus.filter((t) => t.channel === paymentMethodFilter);
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredBySearch = normalizedSearch
+    ? filtered.filter((t) => (
+      String(t.transaction_id).includes(normalizedSearch)
+      || t.id.toLowerCase().includes(normalizedSearch)
+    ))
+    : filtered;
 
   const counts = {
     all: transactions.length,
@@ -175,13 +184,21 @@ export default function HistoryPage() {
 
             {/* Filtros */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="w-full md:w-[200px]">
-                <CustomSelect
-                  value={paymentMethodFilter}
-                  onChange={(value) => setPaymentMethodFilter(value as PaymentMethodFilter)}
-                  options={paymentMethodOptions}
-                  placeholder="Método de pago"
-                  variant="dashboard"
+              <div className="flex w-full flex-col gap-3 md:flex-row md:items-center">
+                <div className="w-full md:w-[200px]">
+                  <CustomSelect
+                    value={paymentMethodFilter}
+                    onChange={(value) => setPaymentMethodFilter(value as PaymentMethodFilter)}
+                    options={paymentMethodOptions}
+                    placeholder="Método de pago"
+                    variant="dashboard"
+                  />
+                </div>
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="glass-input w-full rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all md:w-[240px]"
+                  placeholder="Buscar por ID de transacción"
                 />
               </div>
 
@@ -212,13 +229,13 @@ export default function HistoryPage() {
 
             {/* Lista de transacciones */}
             <div className="flex flex-col gap-2 stagger-children">
-              {filtered.length === 0 ? (
+              {filteredBySearch.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <CheckCircle2 size={48} className="mb-3 opacity-30" />
-                  <p className="text-sm">No hay transacciones en este filtro</p>
+                  <p className="text-sm">No hay transacciones con esos filtros</p>
                 </div>
               ) : (
-                filtered.map((txn) => (
+                filteredBySearch.map((txn) => (
                   <div key={txn.id}>
                     <TransactionRow
                       transaction={txn as any}

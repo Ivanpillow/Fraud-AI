@@ -50,6 +50,7 @@ export default function ReviewPage() {
   const isSuperadmin = !!user?.is_superadmin;
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilter>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -121,6 +122,14 @@ export default function ReviewPage() {
     paymentMethodFilter === "all"
       ? filteredByStatus
       : filteredByStatus.filter((t) => t.channel === paymentMethodFilter);
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredBySearch = normalizedSearch
+    ? filtered.filter((t) => (
+      String(t.transaction_id).includes(normalizedSearch)
+      || t.id.toLowerCase().includes(normalizedSearch)
+    ))
+    : filtered;
 
   const counts = {
     all: transactions.length,
@@ -194,49 +203,57 @@ export default function ReviewPage() {
 
             {/* Filtros */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="w-full md:w-[200px]">
-                <CustomSelect
-                  value={paymentMethodFilter}
-                  onChange={(value) => setPaymentMethodFilter(value as PaymentMethodFilter)}
-                  options={paymentMethodOptions}
-                  placeholder="Método de pago"
-                  variant="dashboard"
+              <div className="flex w-full flex-col gap-3 md:flex-row md:items-center">
+                <div className="w-full md:w-[200px]">
+                  <CustomSelect
+                    value={paymentMethodFilter}
+                    onChange={(value) => setPaymentMethodFilter(value as PaymentMethodFilter)}
+                    options={paymentMethodOptions}
+                    placeholder="Método de pago"
+                    variant="dashboard"
+                  />
+                </div>
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="glass-input w-full rounded-lg px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary transition-all md:w-[240px]"
+                  placeholder="Buscar por ID de transacción"
                 />
               </div>
 
               <div className="flex items-center gap-3">
-              <Filter size={16} className="text-muted-foreground" />
-              <div className="flex items-center rounded-xl glass p-1 gap-0.5">
-                {filters.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setFilter(f.key)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-medium transition-all duration-200",
-                      "active:scale-[0.95]",
-                      filter === f.key
-                        ? "bg-primary/15 text-primary shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {f.label}
-                    <span className="text-[10px] opacity-60">
-                      ({counts[f.key]})
-                    </span>
-                  </button>
-                ))}
-              </div>
+                <Filter size={16} className="text-muted-foreground" />
+                <div className="flex items-center rounded-xl glass p-1 gap-0.5">
+                  {filters.map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setFilter(f.key)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-medium transition-all duration-200",
+                        "active:scale-[0.95]",
+                        filter === f.key
+                          ? "bg-primary/15 text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {f.label}
+                      <span className="text-[10px] opacity-60">
+                        ({counts[f.key]})
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Lista de transacciones */}
             <div className="flex flex-col gap-2 stagger-children">
-              {filtered.length === 0 ? (
+              {filteredBySearch.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <p className="text-sm">No hay transacciones en este filtro</p>
+                  <p className="text-sm">No hay transacciones con esos filtros</p>
                 </div>
               ) : (
-                filtered.map((txn) => (
+                filteredBySearch.map((txn) => (
                   <div
                     key={txn.id}
                     className={cn(
