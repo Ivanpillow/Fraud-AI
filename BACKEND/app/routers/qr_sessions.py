@@ -23,8 +23,8 @@ def _load_session(db: Session, transaction_id: int, merchant_id: int) -> QRSessi
 
 def _normalize_cards(session: QRSession) -> list[dict]:
     if session.cards is None:
-        session.cards = []
-    return session.cards
+        return []
+    return list(session.cards)
 
 
 def _format_display_number(card_number: str) -> str:
@@ -130,8 +130,7 @@ def add_qr_session_card(
         "display_number": _format_display_number(card_number),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    cards.insert(0, card)
-    session.cards = cards
+    session.cards = [card, *cards]
     db.commit()
     db.refresh(session)
 

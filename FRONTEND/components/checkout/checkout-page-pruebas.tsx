@@ -259,39 +259,6 @@ export default function CheckoutPage() {
   }, [searchParams, merchantApiKey, handleTransactionResult]);
 
   useEffect(() => {
-    if (!pendingQrTransactionId || !merchantApiKey) {
-      return;
-    }
-
-    setIsPolling(true);
-    setSelectedMethod("qr");
-
-    const pollInterval = window.setInterval(async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/qr-transactions/${pendingQrTransactionId}`, {
-          method: "GET",
-          headers: {
-            "X-API-Key": merchantApiKey,
-          },
-          credentials: "include",
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          handleTransactionResult(data);
-          clearInterval(pollInterval);
-        }
-      } catch (error) {
-        console.error("Error polling QR transaction result:", error);
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, [pendingQrTransactionId, merchantApiKey, handleTransactionResult]);
-
-  useEffect(() => {
     if (!pendingQrTransactionId || !merchantApiKey) return;
 
     const interval = window.setInterval(async () => {
