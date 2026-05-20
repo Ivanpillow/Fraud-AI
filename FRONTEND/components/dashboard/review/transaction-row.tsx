@@ -81,15 +81,22 @@ function formatContribution(value?: number): string {
   return `${sign}${numericValue.toFixed(4)}`;
 }
 
+function parseTimestampAsUtc(ts: string): Date {
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(ts);
+  return new Date(hasTimezone ? ts : `${ts}Z`);
+}
+
 function formatDate(ts: string): string {
   try {
-    const date = new Date(ts);
-    return date.toLocaleDateString("es-MX", {
+    const date = parseTimestampAsUtc(ts);
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    });
+      hour12: true,
+    }).format(date);
   } catch {
     return ts;
   }
