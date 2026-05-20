@@ -61,11 +61,11 @@ export default function ProfilePage() {
     //   return;
     // }
 
-    const fullNameError = validateFullName(sanitizedFullName);
-    if (fullNameError) {
-      setNameError(fullNameError);
-      return;
-    }
+    // const fullNameError = validateFullName(sanitizedFullName);
+    // if (fullNameError) {
+    //   setNameError(fullNameError);
+    //   return;
+    // }
 
 
 
