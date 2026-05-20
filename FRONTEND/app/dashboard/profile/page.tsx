@@ -55,11 +55,11 @@ export default function ProfilePage() {
       return;
     }
 
-    const sanitizedFullName = sanitizeInput(fullName.trim());
-    if (!validateFullName(sanitizedFullName)) {
-      setNameError("El nombre completo no es válido");
-      return;
-    }
+    // const sanitizedFullName = sanitizeInput(fullName.trim());
+    // if (!validateFullName(sanitizedFullName)) {
+    //   setNameError("El nombre completo no es válido");
+    //   return;
+    // }
 
     const fullNameError = validateFullName(sanitizedFullName);
     if (fullNameError) {
