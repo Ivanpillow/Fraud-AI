@@ -15,7 +15,7 @@ import {
   type FraudAICheckoutContextV1,
 } from "@/lib/fraudai-checkout-context";
 import { API_BASE_URL, fetchMerchants, fetchQrSessionStatus } from "@/lib/api";
-import { type FraudResultPayload } from "@/lib/fraud-result-routing";
+import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
 import { clearDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
 import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 
@@ -259,6 +259,39 @@ export default function CheckoutPage() {
   }, [searchParams, merchantApiKey, handleTransactionResult]);
 
   useEffect(() => {
+    if (!pendingQrTransactionId || !merchantApiKey) {
+      return;
+    }
+
+    setIsPolling(true);
+    setSelectedMethod("qr");
+
+    const pollInterval = window.setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/qr-transactions/${pendingQrTransactionId}`, {
+          method: "GET",
+          headers: {
+            "X-API-Key": merchantApiKey,
+          },
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          handleTransactionResult(data);
+          clearInterval(pollInterval);
+        }
+      } catch (error) {
+        console.error("Error polling QR transaction result:", error);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [pendingQrTransactionId, merchantApiKey, handleTransactionResult]);
+
+  useEffect(() => {
     if (!pendingQrTransactionId || !merchantApiKey) return;
 
     const interval = window.setInterval(async () => {
@@ -269,12 +302,6 @@ export default function CheckoutPage() {
         setIsPolling(false);
         setPendingQrTransactionId(null);
         setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
-        setQrResetCounter((prev) => prev + 1);
-        setSelectedMethod("qr");
-      } else if (res.data.status === "completed") {
-        setIsPolling(false);
-        setPendingQrTransactionId(null);
-        setQrStatusMessage("Pago confirmado en el telefono.");
         setQrResetCounter((prev) => prev + 1);
         setSelectedMethod("qr");
       }

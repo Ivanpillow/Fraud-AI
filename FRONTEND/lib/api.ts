@@ -163,14 +163,6 @@ export async function createSimpleQRTransaction(
 
 export type QrSessionStatus = "pending" | "cancelled" | "completed" | "returned";
 
-export interface QrSessionCard {
-  id: string;
-  label: string;
-  card_number: string;
-  display_number: string;
-  created_at: string;
-}
-
 async function qrSessionRequest<T = unknown>(
   endpoint: string,
   apiKey: string,
@@ -214,7 +206,7 @@ export async function createQrSession(
   transactionId: number,
   status: QrSessionStatus = "pending"
 ) {
-  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string; cards: QrSessionCard[] }>(
+  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus }>(
     "/qr-sessions",
     apiKey,
     {
@@ -225,7 +217,7 @@ export async function createQrSession(
 }
 
 export async function fetchQrSessionStatus(apiKey: string, transactionId: number) {
-  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string; cards: QrSessionCard[] }>(
+  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string }>(
     `/qr-sessions/${transactionId}`,
     apiKey,
     {
@@ -239,37 +231,12 @@ export async function updateQrSessionStatus(
   transactionId: number,
   status: QrSessionStatus
 ) {
-  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string; cards: QrSessionCard[] }>(
+  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus }>(
     `/qr-sessions/${transactionId}`,
     apiKey,
     {
       method: "PATCH",
       body: JSON.stringify({ status }),
-    }
-  );
-}
-
-export async function addQrSessionCard(
-  apiKey: string,
-  transactionId: number,
-  payload: { label: string; card_number: string }
-) {
-  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string; cards: QrSessionCard[] }>(
-    `/qr-sessions/${transactionId}/cards`,
-    apiKey,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }
-  );
-}
-
-export async function removeQrSessionCard(apiKey: string, transactionId: number, cardId: string) {
-  return qrSessionRequest<{ transaction_id: number; status: QrSessionStatus; updated_at: string; cards: QrSessionCard[] }>(
-    `/qr-sessions/${transactionId}/cards/${cardId}`,
-    apiKey,
-    {
-      method: "DELETE",
     }
   );
 }
