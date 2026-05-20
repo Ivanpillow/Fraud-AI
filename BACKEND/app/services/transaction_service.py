@@ -451,10 +451,10 @@ def process_transaction(db, tx_data, merchant_id):
             channel="card"
         )
 
-        # Explainability
+# Explainability - generar explicaciones para transacciones flagged como fraud (block o review)
         explanations = None
 
-        if max(prob, decision_score) >= 0.30:
+        if decision in ["block", "review"]:
             logistic_features = {
                 "amount": features["amount"],
                 "amount_vs_avg": features["amount_vs_avg"],

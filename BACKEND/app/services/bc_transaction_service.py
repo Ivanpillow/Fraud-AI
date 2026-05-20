@@ -585,7 +585,7 @@ def _run_blockchain_fraud_analysis(db, tx_data: dict, merchant_id: int) -> dict[
     )
 
     explanations = None
-    if max(prob, decision_score) >= 0.30:
+    if decision in ["block", "review"]:
         logistic_features = {
             "amount": features["amount"],
             "amount_vs_avg": features["amount_vs_avg"],
