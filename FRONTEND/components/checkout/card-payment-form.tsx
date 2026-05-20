@@ -457,7 +457,7 @@ export default function CardPaymentForm({ amount, apiKey, resetTrigger = 0, onRe
             type="text"
             value={cardName}
             onChange={(e) => setCardName(e.target.value)}
-            placeholder="JUAN PÉREZ"
+            placeholder="NOMBRE EN LA TARJETA"
             className="checkout-input placeholder:text-muted-foreground/40"
             disabled={isSubmitting}
           />
