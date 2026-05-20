@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { loadFraudAICheckoutContext } from "@/lib/fraudai-checkout-context";
 import { buildQrImageUrl, buildQrSelectionUrl, generateQrTransactionId } from "@/lib/qr-checkout";
 import CustomSelect from "./custom-select";
-import { createQrSession } from "@/lib/api";
+import { addQrSessionCard, createQrSession } from "@/lib/api";
+import { QrCardForm } from "./qr-card-form";
 
 interface Props {
   subtotal: number;
@@ -110,6 +111,8 @@ export default function QRPaymentForm({
   const [qrSeed, setQrSeed] = useState<number | null>(null);
   const [sharedTransactionId, setSharedTransactionId] = useState<number | null>(null);
   const [checkoutContext, setCheckoutContext] = useState<ReturnType<typeof loadFraudAICheckoutContext> | null>(null);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [addCardMessage, setAddCardMessage] = useState<string | null>(null);
 
   const cartItems = useMemo(
     () =>
@@ -180,6 +183,8 @@ export default function QRPaymentForm({
     setError(null);
     setQrSeed(null);
     setSharedTransactionId(null);
+    setShowAddCard(false);
+    setAddCardMessage(null);
     onQrSessionCreated?.(null);
   }, [resetTrigger]);
 
@@ -256,6 +261,18 @@ export default function QRPaymentForm({
     persistQrSessionContext(transactionId);
     void createQrSession(apiKey, transactionId).catch(() => undefined);
     setQrSeed(Date.now());
+  };
+
+  const handleAddCard = async (payload: { label: string; cardNumber: string }) => {
+    if (!sharedTransactionId) return;
+    const response = await addQrSessionCard(apiKey, sharedTransactionId, {
+      label: payload.label,
+      card_number: payload.cardNumber,
+    });
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    setAddCardMessage("Tarjeta agregada. Revisa el telefono para verla.");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -346,6 +363,34 @@ export default function QRPaymentForm({
           </div>
         )}
       </div>
+
+      {qrSeed !== null && sharedTransactionId && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Agregar tarjeta al QR</p>
+              <p className="text-xs text-muted-foreground">Se sincroniza con el telefono automaticamente.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddCard((prev) => !prev)}
+              className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+            >
+              {showAddCard ? "Ocultar" : "Agregar tarjeta"}
+            </button>
+          </div>
+          {showAddCard && (
+            <div className="mt-4">
+              <QrCardForm onAdd={handleAddCard} />
+              {addCardMessage && (
+                <div className="mt-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+                  {addCardMessage}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* QR Transaction Fields */}
       <div className="border-t border-white/10 pt-5">

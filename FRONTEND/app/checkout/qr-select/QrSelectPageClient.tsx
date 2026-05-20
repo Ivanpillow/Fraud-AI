@@ -2,14 +2,23 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, ChevronLeft, CreditCard, Loader2, Sparkles, XCircle } from "lucide-react";
-import { API_BASE_URL, createQrSession, fetchQrSessionStatus, updateQrSessionStatus } from "@/lib/api";
+import { CheckCircle2, ChevronLeft, CreditCard, Loader2, Sparkles, Trash2, XCircle } from "lucide-react";
+import {
+  API_BASE_URL,
+  QrSessionCard,
+  addQrSessionCard,
+  createQrSession,
+  fetchQrSessionStatus,
+  removeQrSessionCard,
+  updateQrSessionStatus,
+} from "@/lib/api";
 import { DEMO_QR_CARDS, type DemoQrCard } from "@/lib/qr-checkout";
 import { getMexicoCityNowParts, readHttpErrorMessage } from "@/lib/utils";
 import { navigateToFraudResult } from "@/lib/fraud-result-routing";
 import { saveDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 import { loadDemoEcommerceCart, saveDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
 import { isDemoEcommerceMerchantSlug } from "@/lib/demo-ecommerce-merchants";
+import { QrCardForm } from "@/components/checkout/qr-card-form";
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -80,8 +89,10 @@ export default function QrSelectPage() {
   const shippingPhone = searchParams.get("shippingPhone") ?? undefined;
 
   const [selectedCardNumber, setSelectedCardNumber] = useState<string>(DEMO_QR_CARDS[0].cardNumber);
+  const [sessionCards, setSessionCards] = useState<QrSessionCard[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cardError, setCardError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     transaction_id: number;
     fraud_probability: number;
@@ -98,10 +109,47 @@ export default function QrSelectPage() {
 
   const hasNavigatedRef = useRef(false);
 
-  const selectedCard = useMemo<DemoQrCard | undefined>(
-    () => DEMO_QR_CARDS.find((card) => card.cardNumber === selectedCardNumber) ?? DEMO_QR_CARDS[0],
-    [selectedCardNumber]
-  );
+  const selectableCards = useMemo(() => {
+    const synced = sessionCards.map((card) => ({
+      id: card.id,
+      label: card.label,
+      cardNumber: card.card_number,
+      displayNumber: card.display_number,
+      description: "Tarjeta agregada",
+      canDelete: true,
+    }));
+
+    const demo = DEMO_QR_CARDS.map((card) => ({
+      id: card.cardNumber,
+      label: card.label,
+      cardNumber: card.cardNumber,
+      displayNumber: card.displayNumber,
+      description: card.description,
+      canDelete: false,
+    }));
+
+    return [...synced, ...demo];
+  }, [sessionCards]);
+
+  const selectedCard = useMemo<DemoQrCard | undefined>(() => {
+    const found = selectableCards.find((card) => card.cardNumber === selectedCardNumber);
+    if (found) {
+      return {
+        label: found.label,
+        cardNumber: found.cardNumber,
+        displayNumber: found.displayNumber,
+        description: found.description,
+      };
+    }
+    return selectableCards[0]
+      ? {
+          label: selectableCards[0].label,
+          cardNumber: selectableCards[0].cardNumber,
+          displayNumber: selectableCards[0].displayNumber,
+          description: selectableCards[0].description,
+        }
+      : DEMO_QR_CARDS[0];
+  }, [selectableCards, selectedCardNumber]);
 
   const canSubmit = Boolean(merchantSlug && merchantApiKey && subtotal > 0 && selectedCard);
 
@@ -160,6 +208,16 @@ export default function QrSelectPage() {
       const res = await fetchQrSessionStatus(merchantApiKey, sharedTransactionId);
       if (hasNavigatedRef.current || !res.data) return;
 
+      if (Array.isArray(res.data.cards)) {
+        setSessionCards(res.data.cards);
+        if (!res.data.cards.some((card) => card.card_number === selectedCardNumber)) {
+          const firstCard = res.data.cards[0];
+          if (firstCard) {
+            setSelectedCardNumber(firstCard.card_number);
+          }
+        }
+      }
+
       if (res.data.status === "cancelled" || res.data.status === "returned") {
         hasNavigatedRef.current = true;
         clearQrSessionStorage();
@@ -171,7 +229,41 @@ export default function QrSelectPage() {
     return () => {
       window.clearInterval(interval);
     };
-  }, [merchantApiKey, sharedTransactionId, returnUrl, cartItems, merchantSlug, router]);
+  }, [merchantApiKey, sharedTransactionId, returnUrl, cartItems, merchantSlug, router, selectedCardNumber]);
+
+  const handleAddCard = async (payload: { label: string; cardNumber: string }) => {
+    if (!merchantApiKey || sharedTransactionId <= 0) return;
+    setCardError(null);
+    const response = await addQrSessionCard(merchantApiKey, sharedTransactionId, {
+      label: payload.label,
+      card_number: payload.cardNumber,
+    });
+    if (response.error || !response.data) {
+      setCardError(response.error ?? "No se pudo agregar la tarjeta.");
+      return;
+    }
+    setSessionCards(response.data.cards ?? []);
+    if (response.data.cards?.[0]) {
+      setSelectedCardNumber(response.data.cards[0].card_number);
+    }
+  };
+
+  const handleRemoveCard = async (cardId: string) => {
+    if (!merchantApiKey || sharedTransactionId <= 0) return;
+    setCardError(null);
+    const response = await removeQrSessionCard(merchantApiKey, sharedTransactionId, cardId);
+    if (response.error || !response.data) {
+      setCardError(response.error ?? "No se pudo eliminar la tarjeta.");
+      return;
+    }
+    setSessionCards(response.data.cards ?? []);
+    if (!response.data.cards?.some((card) => card.card_number === selectedCardNumber)) {
+      const firstCard = response.data.cards?.[0];
+      if (firstCard) {
+        setSelectedCardNumber(firstCard.card_number);
+      }
+    }
+  };
 
   const handlePay = async () => {
     setError(null);
@@ -305,11 +397,11 @@ export default function QrSelectPage() {
           </div>
 
           <div className="mt-6 grid gap-3">
-            {DEMO_QR_CARDS.map((card) => {
+            {selectableCards.map((card) => {
               const isSelected = selectedCardNumber === card.cardNumber;
               return (
                 <button
-                  key={card.cardNumber}
+                  key={card.id}
                   type="button"
                   onClick={() => setSelectedCardNumber(card.cardNumber)}
                   className={[
@@ -327,8 +419,23 @@ export default function QrSelectPage() {
                       <h2 className="mt-3 text-lg font-semibold text-foreground">{card.displayNumber}</h2>
                       <p className="mt-1 text-sm text-muted-foreground">{card.description}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-foreground">
-                      <CreditCard size={18} />
+                    <div className="flex items-center gap-2">
+                      {card.canDelete && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleRemoveCard(card.id);
+                          }}
+                          className="rounded-2xl border border-white/10 bg-white/5 p-2 text-muted-foreground transition hover:text-foreground"
+                          aria-label="Eliminar tarjeta"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-foreground">
+                        <CreditCard size={18} />
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -340,6 +447,21 @@ export default function QrSelectPage() {
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Tarjeta seleccionada</p>
             <p className="mt-1 text-sm font-semibold text-foreground">{selectedCard?.label}</p>
             <p className="text-xs text-muted-foreground">{selectedCard?.displayNumber}</p>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Agregar tarjeta desde el telefono</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Se sincroniza con el checkout de pruebas automaticamente.
+            </p>
+            <div className="mt-4">
+              <QrCardForm onAdd={handleAddCard} compact />
+            </div>
+            {cardError && (
+              <div className="mt-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
+                {cardError}
+              </div>
+            )}
           </div>
 
           {error && (
