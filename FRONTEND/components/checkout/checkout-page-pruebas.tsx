@@ -15,7 +15,7 @@ import {
   type FraudAICheckoutContextV1,
 } from "@/lib/fraudai-checkout-context";
 import { API_BASE_URL, fetchMerchants, fetchQrSessionStatus } from "@/lib/api";
-import { navigateToFraudResult, type FraudResultPayload } from "@/lib/fraud-result-routing";
+import { type FraudResultPayload } from "@/lib/fraud-result-routing";
 import { clearDemoEcommerceCart } from "@/lib/demo-ecommerce-cart";
 import { clearDemoLibreriaCart } from "@/lib/demo-libreria-cart";
 
@@ -270,6 +270,11 @@ export default function CheckoutPage() {
         setPendingQrTransactionId(null);
         setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
         setQrResetCounter((prev) => prev + 1);
+        setSelectedMethod("qr");
+      } else if (res.data.status === "completed") {
+        setIsPolling(false);
+        setPendingQrTransactionId(null);
+        setQrStatusMessage("Pago confirmado en el telefono.");
         setSelectedMethod("qr");
       }
     }, 1500);

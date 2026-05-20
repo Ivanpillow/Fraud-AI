@@ -169,6 +169,11 @@ export default function DemoEcommerceCheckoutPage() {
         setQrStatusMessage("El pago fue cancelado desde el telefono. Genera un nuevo QR para continuar.");
         setQrResetCounter((prev) => prev + 1);
         setSelectedMethod("qr");
+      } else if (res.data.status === "completed") {
+        setIsPolling(false);
+        setPendingQrTransactionId(null);
+        setQrStatusMessage("Pago confirmado en el telefono.");
+        setSelectedMethod("qr");
       }
     }, 1500);
 

@@ -484,15 +484,12 @@ export default function QrSelectPage() {
                   type="button"
                   onClick={() => {
                     hasNavigatedRef.current = true;
-                    if (merchantApiKey && sharedTransactionId > 0) {
-                      void updateQrSessionStatus(merchantApiKey, sharedTransactionId, "returned").catch(() => undefined);
-                    }
                     clearQrSessionStorage();
-                    router.push(returnUrl);
+                    handleCloseWindow();
                   }}
                   className="rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
-                  Volver a la tienda
+                  Cerrar ventana
                 </button>
                 <button
                   type="button"
